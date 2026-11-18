@@ -13,13 +13,35 @@ import {
 } from '../database.js';
 
 describe('checkServerVersion', () => {
-  it('refuses majors below the minimum', () => {
-    expect(checkServerVersion(160008)).toEqual({ status: 'too_old', major: 16 });
-    expect(versionTooOldMessage(16)).toContain(`PostgreSQL ${MIN_SUPPORTED_MAJOR} or newer`);
+  it('supports PostgreSQL 16 through 18 (postgresql.md#supported-versions, ADR-0018)', () => {
+    expect(MIN_SUPPORTED_MAJOR).toBe(16);
+    expect(NEWEST_SUPPORTED_MAJOR).toBe(18);
   });
 
-  it('accepts the supported range', () => {
-    expect(checkServerVersion(170000)).toEqual({ status: 'ok', major: 17 });
+  it('refuses majors below the minimum', () => {
+    expect(checkServerVersion(150012)).toEqual({ status: 'too_old', major: 15 });
+    expect(checkServerVersion(159999)).toEqual({ status: 'too_old', major: 15 });
+    expect(checkServerVersion(140000)).toEqual({ status: 'too_old', major: 14 });
+    expect(versionTooOldMessage(15)).toBe(
+      'PostgreSQL 15 is not supported. Monevo requires PostgreSQL 16 or newer (see docs/infrastructure/postgresql.md).',
+    );
+  });
+
+  it('refuses an unreadable version (0) instead of accepting it', () => {
+    expect(checkServerVersion(0)).toEqual({ status: 'too_old', major: 0 });
+  });
+
+  it('accepts PostgreSQL 16', () => {
+    expect(checkServerVersion(160000)).toEqual({ status: 'ok', major: 16 });
+    expect(checkServerVersion(160008)).toEqual({ status: 'ok', major: 16 });
+  });
+
+  it('accepts every major in the supported range', () => {
+    for (let major = MIN_SUPPORTED_MAJOR; major <= NEWEST_SUPPORTED_MAJOR; major++) {
+      expect(checkServerVersion(major * 10000)).toEqual({ status: 'ok', major });
+      expect(checkServerVersion(major * 10000 + 9999)).toEqual({ status: 'ok', major });
+    }
+    expect(checkServerVersion(170004)).toEqual({ status: 'ok', major: 17 });
     expect(checkServerVersion(180004)).toEqual({ status: 'ok', major: 18 });
   });
 

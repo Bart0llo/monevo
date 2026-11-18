@@ -1,6 +1,6 @@
 # ADR-0015: External PostgreSQL
 
-- **Status:** Accepted
+- **Status:** Accepted (amended by [ADR-0018](ADR-0018-postgresql-16-minimum.md): minimum 16)
 - **Date:** 2026-11-18
 
 ## Context
@@ -33,4 +33,4 @@ This ADR supersedes the "PostgreSQL runs from the official image on an internal 
 
 ## Status
 
-Accepted (user decision on OQ-08, 2026-11-18).
+Accepted (user decision on OQ-08, 2026-11-18). Amended by [ADR-0018](ADR-0018-postgresql-16-minimum.md): the minimum supported major is PostgreSQL 16.

@@ -13,7 +13,7 @@ Unresolved decisions and assumptions. Each entry has a recommendation, which the
 | [OQ-05](#oq-05-changing-the-base-currency) | Changing the base currency | Allow, as a recompute job | Stage 3 | Open |
 | [OQ-06](#oq-06-authentication-implementation) | Authentication implementation | Own thin layer on vetted primitives | Stage 2 | Open |
 | [OQ-07](#oq-07-ci-platform) | CI platform | **Decided:** none for now; local validation ([ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md)) | Later (does not block) | Deferred |
-| [OQ-08](#oq-08-nodejs-and-postgresql-versions) | Node.js and PostgreSQL versions | **Decided:** Node.js 24; external PostgreSQL via `DATABASE_URL`, maintained majors, minimum 17 | Stage 1 | Closed |
+| [OQ-08](#oq-08-nodejs-and-postgresql-versions) | Node.js and PostgreSQL versions | **Decided:** Node.js 24; external PostgreSQL via `DATABASE_URL`, maintained majors, minimum 16 ([ADR-0018](../decisions/ADR-0018-postgresql-16-minimum.md)) | Stage 1 | Closed |
 | [OQ-09](#oq-09-offline-attachment-uploads) | Offline attachment uploads | Online-only in v1 (deferred) | Stage 6 | Open |
 | [OQ-10](#oq-10-refunds) | Refunds | Enter as INCOME in v1 | Stage 4 | Open |
 | [OQ-11](#oq-11-history-retention-for-deleted-transactions) | History retention for deleted transactions | Retain prior audit entries | Stage 4 | Open |
@@ -75,7 +75,7 @@ R-ADM-05 says admin privileges never grant access to financial data, but R-BAK-0
 
 ### OQ-08: Node.js and PostgreSQL versions
 
-**Status: Closed (2026-11-18).** **Decision:** Node.js 24 in development and in the Docker image. PostgreSQL is **externally hosted**: Monevo connects through `DATABASE_URL`, the Compose stack has no mandatory PostgreSQL container, and nothing provider-specific is hard-coded. Supported: maintained PostgreSQL majors supported by Prisma, minimum 17, never an end-of-life major. Connection, TLS, pooling, and deployment requirements: [postgresql.md](../infrastructure/postgresql.md); decision record: [ADR-0015](../decisions/ADR-0015-external-postgresql.md).
+**Status: Closed (2026-11-18).** **Decision:** Node.js 24 in development and in the Docker image. PostgreSQL is **externally hosted**: Monevo connects through `DATABASE_URL`, the Compose stack has no mandatory PostgreSQL container, and nothing provider-specific is hard-coded. Supported: maintained PostgreSQL majors supported by Prisma, minimum 16 (lowered from 17 on 2026-11-18, [ADR-0018](../decisions/ADR-0018-postgresql-16-minimum.md)), never an end-of-life major. Connection, TLS, pooling, and deployment requirements: [postgresql.md](../infrastructure/postgresql.md); decision record: [ADR-0015](../decisions/ADR-0015-external-postgresql.md).
 
 **Original recommendation (superseded):** Node.js 24 LTS and PostgreSQL 17 ([technology-stack.md](../architecture/technology-stack.md)). PostgreSQL 18 is acceptable if pinned consistently (server image and `postgresql-client` in the app image must have the same major). Major upgrades later follow [deployment.md](../infrastructure/deployment.md#postgresql-major-upgrades).
 

@@ -41,6 +41,7 @@ External (outbound only): OIDC provider · exchange rate provider · Web Push se
 | Backend framework | Express 5 modular monolith, not NestJS | [ADR-0001](../decisions/ADR-0001-express-modular-monolith.md) |
 | Packaging | One application image; Postgres separate | [ADR-0002](../decisions/ADR-0002-single-application-image.md) |
 | Database hosting | External PostgreSQL via `DATABASE_URL`, no database in the Monevo stack | [ADR-0015](../decisions/ADR-0015-external-postgresql.md) |
+| Database versions | PostgreSQL 16 minimum, no 17+-only features | [ADR-0018](../decisions/ADR-0018-postgresql-16-minimum.md) |
 | Persistence | PostgreSQL + Prisma, raw SQL migrations for constraints | [ADR-0003](../decisions/ADR-0003-postgresql-and-prisma.md) |
 | API | REST `/api/v1`, Zod-defined contracts → OpenAPI 3.1 | [ADR-0004](../decisions/ADR-0004-rest-api-versioning-and-contracts.md) |
 | Auth | Local + one OIDC provider, server-side opaque sessions | [ADR-0005](../decisions/ADR-0005-authentication-and-sessions.md) |

@@ -5,7 +5,8 @@ name: monevo-e2e
 
 services:
   db:
-    image: postgres:17-bookworm
+    # Minimum supported PostgreSQL major (MIN_SUPPORTED_MAJOR in apps/server/src/infra/database.ts).
+    image: postgres:16-bookworm
     environment:
       POSTGRES_USER: monevo
       POSTGRES_PASSWORD: monevo

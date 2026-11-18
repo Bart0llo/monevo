@@ -2,9 +2,11 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PrismaClient } from './prisma.js';
 
-// Supported PostgreSQL majors (postgresql.md#supported-versions). Raise NEWEST_SUPPORTED_MAJOR only
-// after the integration suite passes against the new major.
-export const MIN_SUPPORTED_MAJOR = 17;
+// Supported PostgreSQL majors, inclusive (postgresql.md#supported-versions, ADR-0018). Below the
+// minimum the server refuses to start; above the newest it starts with a warning. Lower the minimum
+// only by a new ADR; raise NEWEST_SUPPORTED_MAJOR only after the integration suite passes against
+// the new major. Schema and raw SQL must stay within the features of MIN_SUPPORTED_MAJOR.
+export const MIN_SUPPORTED_MAJOR = 16;
 export const NEWEST_SUPPORTED_MAJOR = 18;
 
 export type VersionCheck =
@@ -12,7 +14,7 @@ export type VersionCheck =
   | { readonly status: 'too_old'; readonly major: number }
   | { readonly status: 'too_new'; readonly major: number };
 
-/** `server_version_num` is e.g. `170004` for 17.4. */
+/** `server_version_num` is e.g. `160008` for 16.8 or `170004` for 17.4. */
 export function checkServerVersion(serverVersionNum: number): VersionCheck {
   const major = Math.floor(serverVersionNum / 10000);
   if (major < MIN_SUPPORTED_MAJOR) return { status: 'too_old', major };

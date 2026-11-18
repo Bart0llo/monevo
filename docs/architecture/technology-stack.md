@@ -11,7 +11,7 @@ Status markers: **[Accepted]** means fixed by the project brief or confirmed by 
 | Infrastructure | Docker Compose. One application image (frontend + backend). PostgreSQL hosted externally, reached through `DATABASE_URL` ([ADR-0015](../decisions/ADR-0015-external-postgresql.md)). Files outside PostgreSQL. API at `/api/v1`. |
 | Runtime | **Node.js 24** in development and in the Docker image ([OQ-08](../planning/open-questions.md#oq-08-nodejs-and-postgresql-versions)) |
 | Repository | **pnpm** workspaces monorepo ([OQ-02](../planning/open-questions.md#oq-02-package-manager-and-repository-layout), [ADR-0012](../decisions/ADR-0012-monorepo-and-shared-packages.md)) |
-| Database versions | Maintained PostgreSQL majors supported by Prisma, minimum 17 ([postgresql.md](../infrastructure/postgresql.md#supported-versions)) |
+| Database versions | Maintained PostgreSQL majors supported by Prisma, minimum 16 ([postgresql.md](../infrastructure/postgresql.md#supported-versions)) |
 | CI | None selected yet **[Deferred]**; all checks run locally ([ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md), [OQ-07](../planning/open-questions.md#oq-07-ci-platform)) |
 
 ## Proposed choices [Proposed]
@@ -34,7 +34,7 @@ Status markers: **[Accepted]** means fixed by the project brief or confirmed by 
 | Validation and contracts | **Zod 4**, shared in `@monevo/contracts` | One schema source for runtime validation, TS types, and OpenAPI. |
 | OpenAPI | `@asteasolutions/zod-to-openapi` (Zod 4 compatible) + `swagger-ui-express` | OpenAPI 3.1 at `/api/v1/openapi.json`, UI at `/api/v1/docs`. |
 | ORM | **Prisma 7** with the `@prisma/adapter-pg` driver adapter | Raw SQL in migrations for CHECK constraints, partial indexes, composite FKs where Prisma's schema DSL is insufficient. Verify the exact major version at Stage 1. |
-| Database | **External PostgreSQL**, minimum major 17 **[Accepted]** | Supported range, TLS, pooling, and the `pg_dump` client version are canonical in [postgresql.md](../infrastructure/postgresql.md). |
+| Database | **External PostgreSQL**, minimum major 16 **[Accepted]** ([ADR-0018](../decisions/ADR-0018-postgresql-16-minimum.md)) | Supported range, TLS, pooling, and the `pg_dump` client version are canonical in [postgresql.md](../infrastructure/postgresql.md). |
 | Decimal math | **decimal.js** (via `@monevo/domain` money wrapper) | Prisma's `Decimal` is decimal.js, so no conversion layer is needed. |
 | Password hashing | **argon2** (node-argon2, argon2id) | |
 | OIDC | **openid-client** (v6+) | Certified relying-party library. Authorization Code + PKCE. |

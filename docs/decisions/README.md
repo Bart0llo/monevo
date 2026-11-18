@@ -20,9 +20,10 @@ Significant or hard-to-reverse decisions are recorded here as ADRs. The summary 
 | [ADR-0012](ADR-0012-monorepo-and-shared-packages.md) | Monorepo and shared packages | Accepted |
 | [ADR-0013](ADR-0013-scheduled-transactions-and-jobs.md) | Scheduled transactions and jobs | Proposed |
 | [ADR-0014](ADR-0014-virtual-savings-pots.md) | Virtual savings pots | Accepted |
-| [ADR-0015](ADR-0015-external-postgresql.md) | External PostgreSQL | Accepted |
+| [ADR-0015](ADR-0015-external-postgresql.md) | External PostgreSQL | Accepted (amended by ADR-0018) |
 | [ADR-0016](ADR-0016-local-validation-ci-deferred.md) | Local validation; CI platform deferred | Accepted |
 | [ADR-0017](ADR-0017-personal-api-tokens.md) | Personal API tokens | Proposed |
+| [ADR-0018](ADR-0018-postgresql-16-minimum.md) | PostgreSQL 16 as the minimum supported major | Accepted |
 
 ## Process
 

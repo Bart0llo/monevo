@@ -6,6 +6,8 @@ name: monevo-dev
 
 services:
   db:
+    # Any supported major works here. Kept at 17 because a persistent data volume can't be opened by
+    # an older major; the tests run on db-test at the minimum.
     image: postgres:17-bookworm
     environment:
       POSTGRES_USER: monevo
@@ -22,7 +24,8 @@ services:
       retries: 20
 
   db-test:
-    image: postgres:17-bookworm
+    # Minimum supported PostgreSQL major (MIN_SUPPORTED_MAJOR in apps/server/src/infra/database.ts).
+    image: postgres:16-bookworm
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres

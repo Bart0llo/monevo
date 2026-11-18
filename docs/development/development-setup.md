@@ -24,8 +24,8 @@ Open `http://localhost:5173`. The Vite dev server proxies `/api` (including the 
 
 | Service | Port (host) | Purpose |
 |---|---|---|
-| `db` | `127.0.0.1:5432` | Development database `monevo_dev` (PostgreSQL at the minimum supported major) |
-| `db-test` | `127.0.0.1:5433` | Disposable database for integration tests (tmpfs, `fsync=off`) |
+| `db` | `127.0.0.1:5432` | Development database `monevo_dev` (PostgreSQL 17, inside the [supported range](../infrastructure/postgresql.md#supported-versions); persistent volume) |
+| `db-test` | `127.0.0.1:5433` | Disposable database for integration tests at the minimum supported major, PostgreSQL 16 (tmpfs, `fsync=off`) |
 | `minio` | `127.0.0.1:9000` (API), `9001` (console) | S3 driver testing (`STORAGE_DRIVER=s3`) |
 | `mailpit` | `127.0.0.1:1025` (SMTP), `8025` (UI) | Catches verification and reset emails |
 

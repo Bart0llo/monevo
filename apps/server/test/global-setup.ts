@@ -27,7 +27,8 @@ export default async function setup(project: TestProject): Promise<() => Promise
   let stopContainer: (() => Promise<unknown>) | undefined;
   if (process.env['TESTCONTAINERS'] === 'true') {
     const { PostgreSqlContainer } = await import('@testcontainers/postgresql');
-    const container = await new PostgreSqlContainer('postgres:17-bookworm').start();
+    // Minimum supported major (MIN_SUPPORTED_MAJOR in src/infra/database.ts).
+    const container = await new PostgreSqlContainer('postgres:16-bookworm').start();
     adminUrl = container.getConnectionUri();
     stopContainer = () => container.stop();
   }

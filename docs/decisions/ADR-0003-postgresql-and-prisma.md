@@ -1,6 +1,6 @@
 # ADR-0003: PostgreSQL and Prisma
 
-- **Status:** Accepted (amended by [ADR-0015](ADR-0015-external-postgresql.md): external PostgreSQL, supported range with minimum 17)
+- **Status:** Accepted (amended by [ADR-0015](ADR-0015-external-postgresql.md): external PostgreSQL, supported range; minimum 16 per [ADR-0018](ADR-0018-postgresql-16-minimum.md))
 - **Date:** 2026-11-18
 
 ## Context

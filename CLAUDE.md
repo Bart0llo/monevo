@@ -10,7 +10,7 @@ Monevo is a self-hosted, offline-first personal finance PWA. It is multi-user, b
 
 ## Stack (summary)
 
-pnpm monorepo: `apps/server` (Node.js 24, Express 5, Prisma 7, pg-boss, Socket.IO), `apps/web` (React, Mantine 8, Dexie, TanStack Query, PWA), `packages/contracts` (Zod 4 → OpenAPI 3.1), `packages/domain` (pure financial and scheduling logic), `packages/i18n` (en, pl), `e2e/`. Database: external PostgreSQL (maintained majors, minimum 17) via `DATABASE_URL` ([postgresql.md](docs/infrastructure/postgresql.md)). Details: [technology-stack.md](docs/architecture/technology-stack.md), [application-structure.md](docs/architecture/application-structure.md), [dependencies.md](docs/planning/dependencies.md).
+pnpm monorepo: `apps/server` (Node.js 24, Express 5, Prisma 7, pg-boss, Socket.IO), `apps/web` (React, Mantine 8, Dexie, TanStack Query, PWA), `packages/contracts` (Zod 4 → OpenAPI 3.1), `packages/domain` (pure financial and scheduling logic), `packages/i18n` (en, pl), `e2e/`. Database: external PostgreSQL (maintained majors, minimum 16) via `DATABASE_URL` ([postgresql.md](docs/infrastructure/postgresql.md)). Details: [technology-stack.md](docs/architecture/technology-stack.md), [application-structure.md](docs/architecture/application-structure.md), [dependencies.md](docs/planning/dependencies.md).
 
 ## Architecture (summary)
 

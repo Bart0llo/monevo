@@ -7,10 +7,12 @@
 ## Supported versions
 
 - **Policy:** Monevo supports PostgreSQL major versions that are still maintained by the PostgreSQL Global Development Group (not end-of-life) **and** supported by the Prisma release Monevo ships with.
-- **Minimum supported major: PostgreSQL 17.** Monevo never targets an end-of-life major. The minimum is raised only in a release whose notes say so, typically when that major reaches end-of-life or a needed feature requires a newer one.
+- **Supported majors: PostgreSQL 16, 17, and 18.** The minimum is **PostgreSQL 16** ([ADR-0018](../decisions/ADR-0018-postgresql-16-minimum.md)); 18 is the newest major tested with this release.
+- Monevo never targets an end-of-life major. The minimum is raised only in a release whose notes say so, typically when that major reaches end-of-life (PostgreSQL 16: November 2028) or a needed feature requires a newer one. Lowering or raising it needs an ADR.
 - **Newer majors** are supported once the integration suite passes against them. The newest supported major is listed in the release notes.
-- **Startup check:** the server reads `server_version_num` at startup. Below the minimum, it refuses to start with a readable error. Above the newest supported major, it starts but logs a warning, and the admin System status reports the database as `WARN` ([administration.md](../architecture/administration.md#system-r-adm-02-r-adm-06)).
+- **Startup check:** the server reads `server_version_num` at startup and compares its major with `MIN_SUPPORTED_MAJOR` and `NEWEST_SUPPORTED_MAJOR` in `apps/server/src/infra/database.ts`. Below the minimum (for example PostgreSQL 15), it refuses to start with a readable error. Above the newest supported major, it starts but logs a warning, and the admin System status reports the database as `WARN` ([administration.md](../architecture/administration.md#system-r-adm-02-r-adm-06)).
 - Only Prisma-compatible features are used. Raw SQL in migrations (CHECK constraints, partial indexes, composite foreign keys, triggers) uses plain PostgreSQL features that are available in every supported major ([database-architecture.md](../architecture/database-architecture.md#5-migrations)).
+- **No PostgreSQL 17+ features.** Schema, migrations, and raw SQL must work on PostgreSQL 16. Features added in 17 or later (for example `JSON_TABLE` and the SQL/JSON query functions, `MERGE ... RETURNING`, `uuidv7()`, `OLD`/`NEW` in `RETURNING`) need an ADR that either raises the minimum or names a PostgreSQL 16 alternative.
 
 ## Connection
 
@@ -103,7 +105,7 @@ Alternative: create a new empty database on the new server, point `DATABASE_URL`
 
 ## Testing
 
-- Startup version check: below the minimum refuses to start; above the newest supported major warns.
-- Integration tests run against the minimum supported major by default ([testing-strategy.md](../development/testing-strategy.md)). Before a release they also run against the newest supported major.
+- Startup version check (unit tests): PostgreSQL 15 and older refuse to start; 16, 17, and 18 are accepted; above the newest supported major warns.
+- Integration tests run against the minimum supported major (PostgreSQL 16: `db-test` in `docker-compose.dev.yml`, Testcontainers, and the E2E database) by default ([testing-strategy.md](../development/testing-strategy.md)). Before a release they also run against the newest supported major, for example with `TEST_DATABASE_URL` pointing at a PostgreSQL 18 server.
 - URL handling: the same `DATABASE_URL` (including TLS parameters) is accepted by node-postgres and passed correctly to `pg_dump`/`pg_restore`.
 - Container smoke test: the `pg_dump --version` major equals the newest supported major.
