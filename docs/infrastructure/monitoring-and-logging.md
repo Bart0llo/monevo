@@ -17,6 +17,7 @@
 | `time`, `level`, `msg` | pino defaults (ISO time) |
 | `requestId` | Per request; from a validated incoming `X-Request-Id` or a new UUIDv7. Returned in the `X-Request-Id` response header and in problem+json bodies ([api-design.md](../architecture/api-design.md)) |
 | `userId` | After authentication (an opaque UUID, not the email) |
+| `apiTokenId` | When the request is authenticated by a personal API token ([api-tokens.md](../architecture/api-tokens.md#6-audit-and-logging)) |
 | `module`, `event` | e.g. `module: "sync"`, `event: "sync.push.conflict"` |
 | `job`, `jobId` | Inside job handlers |
 | `durationMs`, `status`, `method`, `route` | HTTP access log (route pattern, e.g. `/api/v1/transactions/:id`, not the raw URL with query strings) |

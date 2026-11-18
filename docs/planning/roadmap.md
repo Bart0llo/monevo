@@ -7,8 +7,8 @@ Overview of the implementation stages. Stage contents, prerequisites, and accept
 | # | Stage | Main outcome |
 |---|---|---|
 | 0 | Discovery, architecture and documentation | This documentation |
-| 1 | Foundation | Deployable skeleton, CI, theme, i18n, PWA shell |
-| 2 | Identity and users | Auth, sessions, settings, admin users, isolation harness |
+| 1 | Foundation | Deployable skeleton, local validation, theme, i18n, PWA shell |
+| 2 | Identity and users | Auth, sessions, personal API tokens, settings, admin users, isolation harness |
 | 3 | Currencies, rates, accounts and categories | Reference data and balances |
 | 4 | Transactions | Ledger, quick/full entry, history, search |
 | 5 | Offline and synchronization | Offline-first with safe multi-device sync |

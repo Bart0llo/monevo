@@ -1,6 +1,6 @@
 # Database Architecture
 
-**[Accepted]** PostgreSQL + Prisma ([ADR-0003](../decisions/ADR-0003-postgresql-and-prisma.md)). **[Proposed]** conventions. Logical schema: [data-model.md](../data/data-model.md). Relationships: [entity-relationships.md](../data/entity-relationships.md).
+**[Accepted]** PostgreSQL + Prisma ([ADR-0003](../decisions/ADR-0003-postgresql-and-prisma.md)), with the database hosted externally ([ADR-0015](../decisions/ADR-0015-external-postgresql.md); versions, connection, and privileges in [postgresql.md](../infrastructure/postgresql.md)). **[Proposed]** conventions. Logical schema: [data-model.md](../data/data-model.md). Relationships: [entity-relationships.md](../data/entity-relationships.md).
 
 ## 1. Conventions
 
@@ -18,6 +18,7 @@
 | Versioning | `version INT NOT NULL DEFAULT 1` on synced mutable tables. |
 | Text search | `unaccent` + `pg_trgm` extensions. A trigram GIN index on `transactions.description` (lowercased, unaccented) for "contains" search. |
 | Case-insensitive email | `citext` extension for `users.email`. |
+| Extensions | Only `citext`, `pg_trgm`, `unaccent` (trusted, from the standard distribution); no others without justification ([postgresql.md](../infrastructure/postgresql.md#extensions)). |
 
 <a id="composite-ownership-foreign-keys"></a>
 
@@ -96,6 +97,7 @@ Expected volume: ≤ 10 users × ≤ 50k transactions over years, which is trivi
 - Prisma 7 with `@prisma/adapter-pg` (node-postgres pool). Pool size 10 (env `DATABASE_POOL_SIZE`).
 - pg-boss uses its own small pool (size 3) against the same database (schema `pgboss`).
 - `statement_timeout` 30 s for API connections (set per pool connection), longer for backup and report jobs.
+- Direct or session-mode connections only; transaction-mode poolers are not supported. Total connection budget: [postgresql.md](../infrastructure/postgresql.md#connection-pooling).
 
 ## 7. Data lifecycle
 
@@ -109,6 +111,7 @@ Expected volume: ≤ 10 users × ≤ 50k transactions over years, which is trivi
 | Notifications | 180 days **[Proposed]** (read ones). Unread are kept |
 | Insights | Dismissed ones kept 180 days (prevents re-suggesting) |
 | Auth tokens | Purged 7 days after expiry or use |
+| Personal API tokens | 90 days after revocation or expiry ([api-tokens.md](api-tokens.md#1-token-model)) |
 | pg-boss jobs | pg-boss archive defaults (7 days) |
 
 User deletion (admin) is **[Deferred]** in UI. The schema already supports it via `ON DELETE CASCADE` from `users`, plus storage cleanup via `storage_deletions`.

@@ -6,7 +6,7 @@
 
 | Admins can | Admins cannot |
 |---|---|
-| List users with operational data (email, display name, role, status, created, last login, session count, storage used and quota) | See any user's accounts, transactions, categories, budgets, goals, pots, schedules, attachments, history, notifications, dashboard, or exports |
+| List users with operational data (email, display name, role, status, created, last login, session count, storage used and quota) | See any user's accounts, transactions, categories, budgets, goals, pots, schedules, attachments, history, notifications, dashboard, exports, or API tokens |
 | Activate and deactivate users, change roles | Impersonate a user or log in as them |
 | Generate a one-time password reset link for a user | Read or set a user's password |
 | Configure registration, quotas, upload limits, branding, rate provider, OIDC, backups | See per-user financial counts or amounts |
@@ -33,7 +33,7 @@ The admin UI has five tabs: Users, Settings, Storage, Backups, System ([user-exp
 
 `GET /admin/users?page&pageSize&q&status` (offset pagination), `GET /admin/users/:id`, `PATCH /admin/users/:id` (role, quota override), `POST /admin/users/:id/activate|deactivate`, `POST /admin/users/:id/password-reset-link`.
 
-- **Deactivate:** sets `status = DEACTIVATED`, revokes all sessions (sockets disconnected with `session:revoked`), deletes push subscriptions, and pauses jobs for the user (AUTO generation, reminders, alerts, insights skip deactivated users). Data is kept unchanged. **Activate** reverses it; AUTO schedules resume from the current date (no burst of back-filled occurrences: missed occurrences become overdue for confirmation).
+- **Deactivate:** sets `status = DEACTIVATED`, revokes all sessions (sockets disconnected with `session:revoked`) and all personal API tokens ([api-tokens.md](api-tokens.md#lifecycle-events)), deletes push subscriptions, and pauses jobs for the user (AUTO generation, reminders, alerts, insights skip deactivated users). Data is kept unchanged. **Activate** reverses it; AUTO schedules resume from the current date (no burst of back-filled occurrences: missed occurrences become overdue for confirmation).
 - **Password reset link:** a single-use `PASSWORD_RESET` token, valid 1 h, shown **once** to the admin to pass on out-of-band. It is the fallback when SMTP is not configured ([OQ-03](../planning/open-questions.md#oq-03-smtp-for-authentication-emails)).
 - **Create user:** not offered in v1 beyond the CLI `create-admin` and open registration. Invite links are **[Deferred]**.
 - **Delete user:** **[Deferred]** (schema supports it by cascade; see [database-architecture.md](database-architecture.md#7-data-lifecycle)).
@@ -83,6 +83,8 @@ Driver status and totals from `/admin/storage` ([file-storage.md](file-storage.m
 }
 ```
 
+`database.status` is `OK`, or `WARN` when the server's major version is newer than the newest supported one ([postgresql.md](../infrastructure/postgresql.md#supported-versions)).
+
 It also links to `/api/v1/docs` (if enabled) and shows the effective non-secret configuration (secrets as "set"/"not set"). There is no log viewer in the UI: logs go to stdout and are read with `docker compose logs` (R-ADM-06; see [monitoring-and-logging.md](../infrastructure/monitoring-and-logging.md)).
 
 ## 4. Maintenance mode
@@ -112,5 +114,5 @@ CLI commands log to stdout with the same redaction rules and never print secrets
 
 - Admin endpoint response schemas contain no financial fields (schema snapshot test).
 - A non-admin gets 403 on every admin route (iterated from the OpenAPI registry); sensitive actions without recent auth get `REAUTH_REQUIRED`.
-- Deactivation revokes sessions and stops jobs for the user (integration test with an injected clock).
+- Deactivation revokes sessions and API tokens and stops jobs for the user (integration test with an injected clock).
 - Last-admin protection.

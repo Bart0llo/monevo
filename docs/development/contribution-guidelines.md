@@ -5,14 +5,14 @@
 ## 1. Workflow
 
 - Work happens in **stages** ([implementation-stages.md](../planning/implementation-stages.md)). A stage starts only when the previous one is accepted by the user, and its prerequisites (including open questions marked "before Stage N" in [open-questions.md](../planning/open-questions.md)) are resolved.
-- Branches: `main` is always releasable. Work on `stage-<n>-<slug>` or `feat/<slug>`/`fix/<slug>` branches; merge via pull request after CI passes.
+- Branches: `main` is always releasable. Work on `stage-<n>-<slug>` or `feat/<slug>`/`fix/<slug>` branches; merge after `pnpm validate` passes locally (and `pnpm test:e2e` before a stage is submitted for acceptance). No CI platform is configured yet ([ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md)).
 - Commits: [Conventional Commits](https://www.conventionalcommits.org/) (`feat(transactions): …`, `fix(sync): …`, `docs: …`). One logical change per commit. Never commit secrets, `.env` files, or real financial data.
 - Pull requests describe what changed, which requirement IDs and docs it touches, how it was tested, and any open question it depends on.
 - Releases: SemVer tags `vX.Y.Z`; release notes state migrations, rollback compatibility, and required operator actions ([deployment.md](../infrastructure/deployment.md#upgrades)).
 
 ## 2. Definition of done (per change)
 
-- [ ] Lint, format, typecheck, unit, integration, OpenAPI, i18n, and docs checks pass.
+- [ ] `pnpm validate` passes locally (lint, format, typecheck, unit, integration, OpenAPI, i18n, and docs checks).
 - [ ] New behaviour has tests at the right level ([testing-strategy.md](testing-strategy.md)); bug fixes have a regression test.
 - [ ] New owned endpoints are covered by the isolation suite (automatic) and have OpenAPI registrations.
 - [ ] User-visible strings exist in `en` and `pl`.
@@ -30,7 +30,7 @@ The `docs/` tree is the source of truth ([docs/README.md](../README.md)). Rules:
 5. **Open questions.** A newly discovered uncertainty goes into [open-questions.md](../planning/open-questions.md) with a recommendation. When it is resolved, record the answer there and update the affected docs (and ADR if any).
 6. **Schema.** New or changed tables and columns update [data-model.md](../data/data-model.md) and, for relationships or deletion behaviour, [entity-relationships.md](../data/entity-relationships.md).
 7. **Variables.** New environment variables or runtime settings update [configuration.md](../infrastructure/configuration.md).
-8. **Links.** Relative links only; anchors must exist. `pnpm docs:check` (CI) verifies paths and anchors, accepting heading slugs and explicit `<a id="…">` anchors.
+8. **Links.** Relative links only; anchors must exist. `pnpm docs:check` (part of `pnpm validate`) verifies paths and anchors, accepting heading slugs and explicit `<a id="…">` anchors.
 9. **`CLAUDE.md`** stays short: it summarizes and links, it does not duplicate. Update it when a top-level rule changes.
 
 ## 4. Working with AI coding agents

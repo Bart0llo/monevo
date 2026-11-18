@@ -1,6 +1,6 @@
 # ADR-0006: User data isolation
 
-- **Status:** Accepted
+- **Status:** Accepted (amended by [ADR-0017](ADR-0017-personal-api-tokens.md))
 - **Date:** 2026-11-18
 
 ## Context

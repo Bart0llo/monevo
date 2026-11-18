@@ -1,6 +1,6 @@
 # Authentication and Sessions
 
-**[Proposed]**, see [ADR-0005](../decisions/ADR-0005-authentication-and-sessions.md). Confirm the implementation approach (own thin layer vs. better-auth) before Stage 2. This is the canonical document for session parameters. Covers R-AUTH-01..09.
+**[Proposed]**, see [ADR-0005](../decisions/ADR-0005-authentication-and-sessions.md). Confirm the implementation approach (own thin layer vs. better-auth) before Stage 2. This is the canonical document for session parameters. Covers R-AUTH-01..09. Personal API tokens for integrations are a separate credential type, canonical in [api-tokens.md](api-tokens.md) ([ADR-0017](../decisions/ADR-0017-personal-api-tokens.md)).
 
 ## 1. Account model
 
@@ -83,11 +83,11 @@ Session: id (UUID), userId, tokenHash (SHA-256 of the 32-byte random token, uniq
 
 **Token transport:**
 - Web: cookie `monevo_session` with `HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=<absolute>`. `__Host-` prefix when served over HTTPS at the root (default). `Secure` can only be disabled by an explicit `INSECURE_COOKIES=true` for local HTTP testing.
-- Native (future Android) / scripts: `POST /auth/login` with `clientType: "NATIVE"` returns `{ token }` once, sent as `Authorization: Bearer <token>`. Same session table, same revocation, same listing. Personal API tokens are **[Deferred]**.
+- Native (future Android) / scripts: `POST /auth/login` with `clientType: "NATIVE"` returns `{ token }` once, sent as `Authorization: Bearer <token>`. Same session table, same revocation, same listing. Integrations use personal API tokens instead (`Authorization: Bearer mnv_pat_…`, scoped permissions, no session; see [api-tokens.md](api-tokens.md)).
 
 **Rotation:** a new session token is issued on login, and the session is recreated after a password change and after OIDC linking. Session fixation is impossible because tokens are only ever created server-side after authentication.
 
-**Revocation:** `DELETE /me/sessions/:id` (any of the user's own sessions), `POST /me/sessions/revoke-others`, `POST /auth/logout` (current). Deactivation by admin revokes all sessions. A revoked session's sockets are disconnected (`session:revoked`). Revocation takes effect on the very next request because every request looks up the session (an indexed lookup by `tokenHash`, which is cheap at this scale).
+**Revocation:** `DELETE /me/sessions/:id` (any of the user's own sessions), `POST /me/sessions/revoke-others`, `POST /auth/logout` (current). Deactivation by admin revokes all sessions (and all personal API tokens). A revoked session's sockets are disconnected (`session:revoked`). Revocation takes effect on the very next request because every request looks up the session (an indexed lookup by `tokenHash`, which is cheap at this scale).
 
 **Device info shown:** device label, client type, auth method, created, last active, approximate location: **none** (no GeoIP, to avoid an external dependency and for privacy). The IP address is shown (last seen) and can be hidden by an instance setting. Sessions are purged 30 days after expiry or revocation.
 
@@ -101,11 +101,14 @@ Session: id (UUID), userId, tokenHash (SHA-256 of the 32-byte random token, uniq
 ## 6. Request authentication pipeline
 
 ```
-request → parse cookie/bearer → hash token → SELECT session JOIN user WHERE tokenHash = $1
-  → reject if revoked / expired / user DEACTIVATED → touch (throttled) → req.auth = { userId, role, sessionId, clientType }
+request → parse cookie/bearer
+  → bearer starts with "mnv_pat_" → personal API token path ([api-tokens.md](api-tokens.md#3-authentication))
+  → otherwise: hash token → SELECT session JOIN user WHERE tokenHash = $1
+  → reject if revoked / expired / user DEACTIVATED → touch (throttled)
+  → req.auth = { userId, role, credential: { type: SESSION, sessionId, clientType } }
   → CSRF check (cookie + unsafe method) → route
 ```
-`req.auth.userId` is the **only** source of the acting user (see [authorization-and-data-isolation.md](authorization-and-data-isolation.md)).
+`req.auth.userId` is the **only** source of the acting user, whichever credential authenticated the request (see [authorization-and-data-isolation.md](authorization-and-data-isolation.md)).
 
 ## 7. Admin bootstrap
 
@@ -116,4 +119,4 @@ request → parse cookie/bearer → hash token → SELECT session JOIN user WHER
 ## 8. API surface (summary)
 
 `/api/v1/auth/*`: `register`, `login`, `logout`, `session` (GET current + CSRF token), `password-reset/request|confirm`, `email/verify`, `oidc/start`, `oidc/callback`, `config` (public: registration mode, OIDC button label, instance branding).
-`/api/v1/me/*`: profile, `email-change`, `password`, `sessions`, `identities` (list, unlink), `oidc/link` (starts the link flow).
+`/api/v1/me/*`: profile, `email-change`, `password`, `sessions`, `identities` (list, unlink), `oidc/link` (starts the link flow), `api-tokens` ([api-tokens.md](api-tokens.md#5-token-management)).

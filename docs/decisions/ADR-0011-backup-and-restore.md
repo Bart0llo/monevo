@@ -22,7 +22,7 @@ A pg-boss job runs `pg_dump -Fc` (consistent snapshot), **then** copies the atta
 
 - Deleted attachments stay in storage for the grace period.
 - Admins can download all data ([OQ-04](../planning/open-questions.md#oq-04-admin-backup-access-vs-financial-privacy)).
-- `postgresql-client` in the image must match the server major.
+- The image's `pg_dump`/`pg_restore` are the newest supported PostgreSQL major, so they can back up every supported server ([postgresql.md](../infrastructure/postgresql.md#backup-client-tools)).
 
 ## Status
 

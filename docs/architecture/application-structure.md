@@ -13,10 +13,9 @@ monevo/
 ├── tsconfig.base.json
 ├── .nvmrc                       # 24
 ├── Dockerfile                   # single multi-stage image (Stage 1)
-├── docker-compose.yml           # production-style example (Stage 1)
-├── docker-compose.dev.yml       # dev: postgres, minio, mailpit
+├── docker-compose.yml           # production example: app only, external PostgreSQL (Stage 1)
+├── docker-compose.dev.yml       # dev only: local postgres, minio, mailpit
 ├── .env.example
-├── .github/workflows/ci.yml
 ├── apps/
 │   ├── server/                  # Express API + static hosting + jobs
 │   │   ├── prisma/

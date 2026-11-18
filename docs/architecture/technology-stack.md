@@ -1,6 +1,6 @@
 # Technology Stack
 
-Status markers: **[Accepted]** means fixed by the project brief. **[Proposed]** means recommended in Stage 0 and to be confirmed at or before the stage where it is first used (see [open-questions.md](../planning/open-questions.md)). Library-level justifications are in [planning/dependencies.md](../planning/dependencies.md).
+Status markers: **[Accepted]** means fixed by the project brief or confirmed by the user. **[Proposed]** means recommended in Stage 0 and to be confirmed at or before the stage where it is first used (see [open-questions.md](../planning/open-questions.md)). Library-level justifications are in [planning/dependencies.md](../planning/dependencies.md).
 
 ## Fixed choices [Accepted]
 
@@ -8,16 +8,20 @@ Status markers: **[Accepted]** means fixed by the project brief. **[Proposed]** 
 |---|---|
 | Frontend | React, TypeScript, Mantine UI, Recharts, i18next, PWA, IndexedDB |
 | Backend | Node.js, TypeScript, Express (not NestJS), Prisma ORM, PostgreSQL, REST, Socket.IO |
-| Infrastructure | Docker Compose. One application image (frontend + backend). PostgreSQL in a separate container. Files outside PostgreSQL. API at `/api/v1`. |
+| Infrastructure | Docker Compose. One application image (frontend + backend). PostgreSQL hosted externally, reached through `DATABASE_URL` ([ADR-0015](../decisions/ADR-0015-external-postgresql.md)). Files outside PostgreSQL. API at `/api/v1`. |
+| Runtime | **Node.js 24** in development and in the Docker image ([OQ-08](../planning/open-questions.md#oq-08-nodejs-and-postgresql-versions)) |
+| Repository | **pnpm** workspaces monorepo ([OQ-02](../planning/open-questions.md#oq-02-package-manager-and-repository-layout), [ADR-0012](../decisions/ADR-0012-monorepo-and-shared-packages.md)) |
+| Database versions | Maintained PostgreSQL majors supported by Prisma, minimum 17 ([postgresql.md](../infrastructure/postgresql.md#supported-versions)) |
+| CI | None selected yet **[Deferred]**; all checks run locally ([ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md), [OQ-07](../planning/open-questions.md#oq-07-ci-platform)) |
 
 ## Proposed choices [Proposed]
 
 ### Runtime and tooling
 | Area | Proposal | Notes |
 |---|---|---|
-| Node.js | **24 LTS** (current Active LTS) | Pin via `.nvmrc`/`engines` and the Docker base image. |
-| Package manager | **pnpm** (workspaces) | Strict dependency isolation and fast installs. Alternative: npm workspaces. Confirm before Stage 1. |
-| Repo layout | **Monorepo** (`apps/web`, `apps/server`, `packages/*`) | See [application-structure.md](application-structure.md), [ADR-0012](../decisions/ADR-0012-monorepo-and-shared-packages.md). |
+| Node.js | **24** (LTS) **[Accepted]** | Pin via `.nvmrc`/`engines` and the Docker base image (`node:24-slim`). |
+| Package manager | **pnpm** (workspaces) **[Accepted]** | Strict dependency isolation and fast installs. Version pinned via `package.json#packageManager` (corepack). |
+| Repo layout | **Monorepo** (`apps/web`, `apps/server`, `packages/*`, `e2e/`) **[Accepted]** | See [application-structure.md](application-structure.md), [ADR-0012](../decisions/ADR-0012-monorepo-and-shared-packages.md). |
 | Language | TypeScript `strict`, ESM throughout | |
 | Lint/format | ESLint (typescript-eslint) + Prettier | Biome is a viable alternative. Use ESLint for its custom-rule ecosystem (e.g. banning float money ops). |
 | Build: web | Vite | Standard for React and PWA (`vite-plugin-pwa`). |
@@ -30,7 +34,7 @@ Status markers: **[Accepted]** means fixed by the project brief. **[Proposed]** 
 | Validation and contracts | **Zod 4**, shared in `@monevo/contracts` | One schema source for runtime validation, TS types, and OpenAPI. |
 | OpenAPI | `@asteasolutions/zod-to-openapi` (Zod 4 compatible) + `swagger-ui-express` | OpenAPI 3.1 at `/api/v1/openapi.json`, UI at `/api/v1/docs`. |
 | ORM | **Prisma 7** with the `@prisma/adapter-pg` driver adapter | Raw SQL in migrations for CHECK constraints, partial indexes, composite FKs where Prisma's schema DSL is insufficient. Verify the exact major version at Stage 1. |
-| Database | **PostgreSQL 17** | `pg_dump` client in the app image must match the server major version. 18 is acceptable if pinned consistently. |
+| Database | **External PostgreSQL**, minimum major 17 **[Accepted]** | Supported range, TLS, pooling, and the `pg_dump` client version are canonical in [postgresql.md](../infrastructure/postgresql.md). |
 | Decimal math | **decimal.js** (via `@monevo/domain` money wrapper) | Prisma's `Decimal` is decimal.js, so no conversion layer is needed. |
 | Password hashing | **argon2** (node-argon2, argon2id) | |
 | OIDC | **openid-client** (v6+) | Certified relying-party library. Authorization Code + PKCE. |
@@ -67,11 +71,11 @@ Status markers: **[Accepted]** means fixed by the project brief. **[Proposed]** 
 | Level | Proposal |
 |---|---|
 | Unit | **Vitest** (all packages), **fast-check** for property tests of money and recurrence |
-| API integration | Vitest + **Supertest** against a real PostgreSQL (CI service container locally via docker compose `db-test`, or **Testcontainers**) |
-| S3 integration | MinIO container (CI service / Testcontainers) |
+| API integration | Vitest + **Supertest** against a real PostgreSQL (local docker compose `db-test` container, or **Testcontainers**) |
+| S3 integration | MinIO container (docker compose / Testcontainers) |
 | Frontend | Vitest + Testing Library. `fake-indexeddb` for sync engine tests |
 | E2E | **Playwright** against the built Docker image via compose |
-| CI | GitHub Actions (or Forgejo/Gitea Actions, which use a compatible syntax). See [OQ-07](../planning/open-questions.md#oq-07-ci-platform). |
+| CI | **[Deferred]** No platform yet; `pnpm validate` and `pnpm test:e2e` run locally ([ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md), [testing-strategy.md](../development/testing-strategy.md#5-local-validation)). |
 
 ## Explicitly not used
 

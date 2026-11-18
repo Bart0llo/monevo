@@ -22,6 +22,7 @@ This document consolidates the entity sketches from the architecture documents i
 | `user_identities` | auth | yes | no | [authentication.md](../architecture/authentication.md#1-account-model) |
 | `auth_tokens` | auth | yes | no | [authentication.md](../architecture/authentication.md#1-account-model) |
 | `sessions` | auth | yes | no | [authentication.md](../architecture/authentication.md#4-sessions) |
+| `api_tokens` | auth | yes | no | [api-tokens.md](../architecture/api-tokens.md#1-token-model) |
 | `app_settings` | system / admin | no (instance) | no | [configuration.md](../infrastructure/configuration.md#runtime-settings-app_settings) |
 | `currencies` | currencies | no (reference) | static mirror in `@monevo/domain` | [multi-currency.md](../architecture/multi-currency.md#currency-reference-data) |
 | `exchange_rates` | currencies | optional (`userId` null = provider) | yes (subset) | [multi-currency.md](../architecture/multi-currency.md#4-rate-storage) |
@@ -126,6 +127,21 @@ Unique `(issuer, subject)` and `(userId, issuer)`.
 | csrfSecret | bytea? | WEB only |
 | revokedAt | timestamptz? | |
 | revokedReason | text? | `LOGOUT`, `USER_REVOKED`, `PASSWORD_CHANGED`, `DEACTIVATED`, `RESTORE`, `EVICTED` |
+
+### api_tokens
+| Column | Type | Notes |
+|---|---|---|
+| name | text | 1–100 characters, user-chosen, renamable |
+| tokenHash | bytea | SHA-256 of the full token, unique; never returned by the API |
+| displayPrefix | text | `mnv_pat_` + first 6 random characters, for recognition in the list |
+| permissions | text[] | catalogue values from [api-tokens.md](../architecture/api-tokens.md#4-permission-catalogue), validated on create, immutable |
+| expiresAt | timestamptz? | null = no expiration |
+| lastUsedAt | timestamptz? | throttled write (5 min) |
+| lastUsedIp | inet? | display can be disabled by an instance setting |
+| revokedAt | timestamptz? | |
+| revokedReason | text? | `USER_REVOKED`, `DEACTIVATED`, `RESTORE` |
+
+`updatedAt` changes only on rename; no `version` (not synced). Status (`ACTIVE`, `EXPIRED`, `REVOKED`) is derived. Index `(userId, createdAt)`. Revoked and expired rows are purged 90 days after revocation or expiry.
 
 ### app_settings
 Instance-wide runtime settings, one row per key. The key list and defaults are canonical in [configuration.md](../infrastructure/configuration.md#runtime-settings-app_settings).
@@ -235,7 +251,10 @@ No `version` and no timestamps of their own: postings are always written with th
 | at | timestamptz | |
 | actorType | enum `USER`, `SYSTEM_SCHEDULE`, `IMPORT` | |
 | actorUserId | uuid? | |
+| credentialType | enum? `SESSION`, `API_TOKEN` | null for `SYSTEM_SCHEDULE` and `IMPORT` |
 | sessionId | uuid? | no FK (sessions are purged) |
+| apiTokenId | uuid? | no FK (tokens are purged); set when `credentialType = API_TOKEN` |
+| apiTokenName | text? | copied at write time |
 | deviceLabel | text? | copied at write time |
 | clientChangedAt | timestamptz? | from the sync mutation |
 | changes | jsonb | shape per action in [financial-domain-model.md](../architecture/financial-domain-model.md#transaction-history-audit) |

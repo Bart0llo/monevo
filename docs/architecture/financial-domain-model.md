@@ -154,9 +154,11 @@ Defined in [scheduling-and-calendar.md](scheduling-and-calendar.md). These are t
 
 ```
 TransactionAudit: id, userId, transactionId (no FK – survives deletion), action: CREATE | UPDATE | DELETE,
-                  at (Instant), actorType: USER | SYSTEM_SCHEDULE | IMPORT, actorUserId?, sessionId?,
+                  at (Instant), actorType: USER | SYSTEM_SCHEDULE | IMPORT, actorUserId?,
+                  credentialType?: SESSION | API_TOKEN, sessionId?, apiTokenId?, apiTokenName?,
                   deviceLabel?, clientChangedAt?, changes (JSONB)
 ```
+- Changes made with a personal API token have `actorType = USER`, `credentialType = API_TOKEN`, the token's ID, and a copy of its name, so the history clearly shows "via API token *name*" ([api-tokens.md](api-tokens.md#6-audit-and-logging)).
 - `CREATE`: `changes` holds a compact summary `{type, occurredOn, amount, currency, accountId(s)}`, not the full record.
 - `UPDATE`: `changes = { field: { old, new } }` for changed fields only. Postings are flattened into stable keys (`source.amount`, `destination.accountId`, …). Custom fields appear as `customFields.<definitionId>`. Attachment add or remove is recorded as `attachments: {added: [filename], removed: [filename]}`.
 - `DELETE`: minimal record `{type, occurredOn, amount, currency, accountId(s), categoryId?}`. **No** description, notes, custom fields, or attachment contents. The transaction row, postings, and attachments are physically deleted.

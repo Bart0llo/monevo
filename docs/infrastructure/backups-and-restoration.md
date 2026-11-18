@@ -53,7 +53,7 @@ Job `backups.run` (pg-boss, singleton: only one backup at a time; also triggered
 
 1. Insert a `backups` row (`RUNNING`, trigger) ([data-model.md](../data/data-model.md#backups)).
 2. Check free space in `BACKUP_PATH` (estimate = DB size + attachment total × 1.1). Fail early with a clear error if insufficient.
-3. `pg_dump --format=custom --no-owner --no-privileges` using `postgresql-client-17` in the app image, streaming into a temp dir under `BACKUP_PATH/.tmp/`. A long `statement_timeout` is used for this connection.
+3. `pg_dump --format=custom --no-owner --no-privileges` using the app image's client tools (newest supported major, [postgresql.md](postgresql.md#backup-client-tools)) over `DATABASE_URL`, streaming into a temp dir under `BACKUP_PATH/.tmp/`. A long `statement_timeout` is used for this connection.
 4. Read the attachment list from the dump's snapshot (`pg_dump --snapshot` shares an exported snapshot with the listing query, so the list matches the dump exactly). Copy each `READY` object through the storage driver into `attachments/`, verifying size and SHA-256 while streaming. A missing or mismatching object fails the backup (listed in the error) instead of producing a silently incomplete archive.
 5. Write `manifest.json`, build the tar, optionally encrypt ([Encryption](#encryption)), `fsync`, and atomically rename to the final name. Files are created with mode `0600`.
 6. Optional remote copy to the S3 target (`remoteStatus`); a remote failure does not fail the local backup but is reported.
@@ -113,7 +113,7 @@ Steps:
 5. Run `prisma migrate deploy` (for backups from an older version).
 6. Restore attachments: write files from the archive into the storage driver (keys are identical; existing identical objects are skipped by size + SHA-256). Objects not referenced by the restored database are **not** deleted immediately: the orphan sweep (`storage.orphanSweep`) runs right after the restore with its normal 24 h age guard, and the `storage_deletions` rows from the dump continue normally.
 7. Recompute `users.storage_used_bytes` from the restored `attachments` table.
-8. **Invalidate all sessions** (`revokedReason = RESTORE`) and disconnect all sockets. Every device must log in again and re-bootstrap its local database (the sync cursor of the old data is meaningless; the restore sets `system.instanceEpoch` in `app_settings` to the pre-restore value + 1, which is higher than any epoch a client can hold so clients with an older epoch get `410 SYNC_RESYNC_REQUIRED`). Unsynced client outbox entries are kept on the device and shown to the user as conflicts to review after login ([offline-and-synchronization.md](../architecture/offline-and-synchronization.md)).
+8. **Invalidate all sessions and revoke all personal API tokens** (`revokedReason = RESTORE`; a restored database could otherwise bring back tokens revoked after the backup, [api-tokens.md](../architecture/api-tokens.md#lifecycle-events)) and disconnect all sockets. Every device must log in again and re-bootstrap its local database (the sync cursor of the old data is meaningless; the restore sets `system.instanceEpoch` in `app_settings` to the pre-restore value + 1, which is higher than any epoch a client can hold so clients with an older epoch get `410 SYNC_RESYNC_REQUIRED`). Unsynced client outbox entries are kept on the device and shown to the user as conflicts to review after login ([offline-and-synchronization.md](../architecture/offline-and-synchronization.md)).
 9. **Re-scan `BACKUP_PATH`**: the restored `backups` table reflects the moment of the backup, so the service re-adds rows (status `SUCCEEDED`, manifest from the archive or sidecar) for archives found on disk that are missing from the table, and marks rows whose files no longer exist as missing.
 10. Leave maintenance mode, resume jobs, and log `event: backup.restored` with the archive name and manifest summary.
 
@@ -130,5 +130,5 @@ Restore with the S3 driver and `includeS3Attachments = false`: step 6 is skipped
 - Integration (real Postgres + local driver and MinIO): backup then restore round-trip equals the original (row counts, checksums, files); attachments deleted after the dump are still in the archive; a corrupted dump or file fails validation; a backup from a newer migration is refused.
 - Retention with an injected clock.
 - Pre-upgrade hook: pending migration → backup created; backup failure → migration not applied.
-- Restore invalidates sessions and forces client re-bootstrap (E2E).
+- Restore invalidates sessions, revokes API tokens, and forces client re-bootstrap (E2E).
 - A restore drill is part of the Stage 15 acceptance criteria and the release checklist ([implementation-stages.md](../planning/implementation-stages.md#stage-15-backups-restore-and-admin-operations)).

@@ -1,6 +1,6 @@
 # Monevo Documentation
 
-This directory is the **source of truth** for Monevo, a self-hosted personal finance application. (Monevo is a working name; see [open questions](planning/open-questions.md#oq-01-product-name).) If the code and these documents disagree, treat it as a defect. Either the code is wrong, or the decision changed and the documents must be updated in the same change.
+This directory is the **source of truth** for Monevo, a self-hosted personal finance application. If the code and these documents disagree, treat it as a defect. Either the code is wrong, or the decision changed and the documents must be updated in the same change.
 
 Start with the root [`CLAUDE.md`](../CLAUDE.md) for the short operational summary.
 
@@ -34,6 +34,7 @@ Every document uses the same markers to keep requirements, decisions, and ideas 
 - [architecture/database-architecture.md](architecture/database-architecture.md): PostgreSQL/Prisma conventions, constraints, migrations
 - [architecture/api-design.md](architecture/api-design.md): REST conventions, errors, pagination, idempotency, OpenAPI, realtime
 - [architecture/authentication.md](architecture/authentication.md): local auth, OIDC, sessions, account linking
+- [architecture/api-tokens.md](architecture/api-tokens.md): personal API tokens, permissions, integration authentication
 - [architecture/authorization-and-data-isolation.md](architecture/authorization-and-data-isolation.md): ownership enforcement, admin separation
 - [architecture/financial-domain-model.md](architecture/financial-domain-model.md): transactions, postings, transfers, pots, goals
 - [architecture/multi-currency.md](architecture/multi-currency.md): money representation, exchange rates, conversion and rounding
@@ -55,6 +56,7 @@ Every document uses the same markers to keep requirements, decisions, and ideas 
 ### Infrastructure
 - [infrastructure/docker-compose.md](infrastructure/docker-compose.md): image and compose design
 - [infrastructure/deployment.md](infrastructure/deployment.md): VPS/homelab deployment, reverse proxy, upgrades
+- [infrastructure/postgresql.md](infrastructure/postgresql.md): external PostgreSQL: versions, connection, TLS, pooling, privileges
 - [infrastructure/backups-and-restoration.md](infrastructure/backups-and-restoration.md): consistent DB and file backups
 - [infrastructure/configuration.md](infrastructure/configuration.md): environment variables and runtime settings
 - [infrastructure/monitoring-and-logging.md](infrastructure/monitoring-and-logging.md): logs, health, status
@@ -62,7 +64,7 @@ Every document uses the same markers to keep requirements, decisions, and ideas 
 ### Development
 - [development/development-setup.md](development/development-setup.md): local environment
 - [development/coding-conventions.md](development/coding-conventions.md): code rules (money, dates, errors, modules)
-- [development/testing-strategy.md](development/testing-strategy.md): test pyramid, tools, CI
+- [development/testing-strategy.md](development/testing-strategy.md): test pyramid, tools, local validation
 - [development/internationalization.md](development/internationalization.md): i18n, localization, time zones in UI
 - [development/contribution-guidelines.md](development/contribution-guidelines.md): workflow and documentation maintenance
 
@@ -87,6 +89,9 @@ Some topics touch several documents. To avoid contradictions, each fact has exac
 | Balance/budget/report formulas | [data/financial-calculations.md](data/financial-calculations.md) |
 | Transaction/transfer/pot model | [architecture/financial-domain-model.md](architecture/financial-domain-model.md) |
 | Session lifetimes and cookie settings | [architecture/authentication.md](architecture/authentication.md) |
+| Personal API token format and permission catalogue | [architecture/api-tokens.md](architecture/api-tokens.md) |
 | Sync protocol and conflict rules | [architecture/offline-and-synchronization.md](architecture/offline-and-synchronization.md) |
 | Environment variables | [infrastructure/configuration.md](infrastructure/configuration.md) |
+| PostgreSQL versions, connection, TLS, pooling | [infrastructure/postgresql.md](infrastructure/postgresql.md) |
+| Validation commands (no CI yet) | [development/testing-strategy.md](development/testing-strategy.md#5-local-validation) |
 | Stage contents | [planning/implementation-stages.md](planning/implementation-stages.md) |

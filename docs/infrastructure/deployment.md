@@ -7,8 +7,9 @@
 | Item | Minimum | Comfortable |
 |---|---|---|
 | CPU | 1 vCPU (amd64 or arm64) | 2 vCPU |
-| RAM | 1 GB (app ~250 MB + PostgreSQL) | 2 GB |
+| RAM | 1 GB for the app container (~250 MB) and the OS | 2 GB |
 | Disk | 5 GB + attachments + backups (backups need roughly `(DB + attachments) × keepLast`) | SSD |
+| Database | An external PostgreSQL server in the supported range, with a dedicated database and owning role ([postgresql.md](postgresql.md)) | Low latency to the app host (same host or LAN) |
 | Software | Docker Engine 24+ with the Compose plugin | |
 | Network | A domain name and a reverse proxy with TLS (required for PWA install, service workers, Web Push and `Secure` cookies) | |
 
@@ -16,13 +17,14 @@ Target scale: a household or small group (≤ 10 users). One app container, no h
 
 ## First installation
 
-1. Create a directory (e.g. `/opt/monevo`) with `docker-compose.yml` and `.env.example` from the release.
-2. `cp .env.example .env`, set `APP_URL`, `POSTGRES_PASSWORD`, the matching `DATABASE_URL`, and `APP_ENCRYPTION_KEY` (`docker compose run --rm app node dist/cli.js generate-key`). Store `.env` securely and **keep a copy outside the server** ([backups-and-restoration.md](backups-and-restoration.md#what-is-not-in-a-backup)).
-3. Configure the [reverse proxy](#reverse-proxy).
-4. `docker compose up -d`, then `docker compose logs -f app` until `server listening`.
-5. Create the admin: either open `APP_URL` and register (the first user becomes admin), or, recommended for an internet-facing instance, run `docker compose exec app node dist/cli.js create-admin --email you@example.com` **before** exposing the site, or set `BOOTSTRAP_ADMIN_EMAIL` ([authentication.md](../architecture/authentication.md#7-admin-bootstrap)).
-6. In the admin panel: check System status, set branding, confirm the backup schedule, and optionally configure OIDC.
-7. Run a manual backup and download it once to confirm the procedure works.
+1. Prepare the external PostgreSQL: a dedicated database and owning role, network access from this host, and TLS if the connection leaves the host or a trusted private network ([postgresql.md](postgresql.md#deployment-checklist)).
+2. Create a directory (e.g. `/opt/monevo`) with `docker-compose.yml` and `.env.example` from the release.
+3. `cp .env.example .env`, set `APP_URL`, `DATABASE_URL` (pointing at the external database), and `APP_ENCRYPTION_KEY` (`docker compose run --rm app node dist/cli.js generate-key`). Store `.env` securely and **keep a copy outside the server** ([backups-and-restoration.md](backups-and-restoration.md#what-is-not-in-a-backup)).
+4. Configure the [reverse proxy](#reverse-proxy).
+5. `docker compose up -d`, then `docker compose logs -f app` until `server listening` (the entrypoint first waits for the database and applies migrations).
+6. Create the admin: either open `APP_URL` and register (the first user becomes admin), or, recommended for an internet-facing instance, run `docker compose exec app node dist/cli.js create-admin --email you@example.com` **before** exposing the site, or set `BOOTSTRAP_ADMIN_EMAIL` ([authentication.md](../architecture/authentication.md#7-admin-bootstrap)).
+7. In the admin panel: check System status (including the database version), set branding, confirm the backup schedule, and optionally configure OIDC.
+8. Run a manual backup and download it once to confirm the procedure works.
 
 ## Reverse proxy
 
@@ -55,13 +57,12 @@ Without HTTPS, browsers disable service workers and push on non-localhost origin
 
 | Data | Default volume | Back up? |
 |---|---|---|
-| PostgreSQL | `pgdata` | via Monevo backups (not by copying the directory of a running server) |
 | Attachments | `attachments` | via Monevo backups |
 | Backups | `backups` | **copy off the host** (S3 target or the host's own backup tool, e.g. restic/borg over the volume directory) |
 
-Named volumes are recommended. For bind mounts, create the directories and `chown -R 1000:1000` them for `attachments` and `backups` (the app runs as uid 1000); PostgreSQL manages its own directory permissions.
+Named volumes are recommended. For bind mounts, create the directories and `chown -R 1000:1000` them for `attachments` and `backups` (the app runs as uid 1000).
 
-Putting `backups` on a different disk than `pgdata` and `attachments` is recommended.
+The database lives on the external PostgreSQL server and is backed up by Monevo backups ([backups-and-restoration.md](backups-and-restoration.md)); provider snapshots are an optional extra ([postgresql.md](postgresql.md#backup-client-tools)). Putting `backups` on a different disk than `attachments` (and than the database server's storage) is recommended.
 
 ## Upgrades
 
@@ -69,7 +70,7 @@ Monevo is updated manually (no self-update, out of scope).
 
 1. Read the release notes. They state whether the release contains migrations and whether a rollback without restore is possible ([database-architecture.md](../architecture/database-architecture.md#5-migrations)).
 2. Take a manual backup (admin UI or `docker compose exec app node dist/cli.js backup`) and copy it off the host. The app also takes an automatic [pre-upgrade backup](backups-and-restoration.md#pre-upgrade-backup) when migrations are pending.
-3. Change the image tag in `docker-compose.yml` (pin exact versions; avoid `:latest` in production), then `docker compose pull && docker compose up -d`.
+3. Change the image tag in `docker-compose.yml` (pin exact versions; avoid `:latest` in production) and get the new image: build it locally from the release tag until a registry exists ([docker-compose.md](docker-compose.md#1-image)), or `docker compose pull` once one does. Then `docker compose up -d`.
 4. Watch `docker compose logs -f app`: migrations, then `server listening`. Check the admin System tab (version, pending migrations = 0, jobs).
 5. Clients pick up the new web app on their next load (the service worker shows an "update available" prompt). The API keeps `v1` compatibility, so older cached clients keep working ([api-design.md](../architecture/api-design.md)).
 
@@ -80,12 +81,12 @@ Monevo is updated manually (no self-update, out of scope).
 
 ### PostgreSQL major upgrades
 
-Changing `postgres:17` to a new major needs a dump/restore (or `pg_upgrade`); the app image's `postgresql-client` must match. This is a documented, deliberate operation in the release notes of the Monevo version that switches majors ([OQ-08](../planning/open-questions.md#oq-08-nodejs-and-postgresql-versions)), never an automatic one. The supported path: Monevo backup → stop → new empty `pgdata` with the new major → CLI restore.
+PostgreSQL is external, so its major upgrades are done by the database operator or provider, never automatically by Monevo. The target major must be in the range the running Monevo version supports. Procedure and requirements: [postgresql.md](postgresql.md#major-upgrades).
 
 ## Operational checklist
 
 - [ ] `APP_URL` is HTTPS and the site loads with a valid certificate.
-- [ ] Port 5432 is not reachable from outside (`db` has no published ports).
+- [ ] The external PostgreSQL accepts connections only from the Monevo host, over TLS when the connection leaves the host or a trusted network ([postgresql.md](postgresql.md#deployment-checklist)).
 - [ ] `.env` and `APP_ENCRYPTION_KEY` are stored outside the server.
 - [ ] Registration is `DISABLED` after creating the intended users (default after the first admin).
 - [ ] Backups succeed (admin Backups tab) and copies leave the host.

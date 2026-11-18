@@ -55,6 +55,7 @@ erDiagram
     USERS ||--o{ USER_IDENTITIES : "OIDC links"
     USERS ||--o{ AUTH_TOKENS : "single-use tokens"
     USERS ||--o{ SESSIONS : "devices"
+    USERS ||--o{ API_TOKENS : "integrations"
     SESSIONS |o--o{ PUSH_SUBSCRIPTIONS : "registered from"
     USERS ||--o{ NOTIFICATIONS : receives
     USERS ||--o{ NOTIFICATION_PREFERENCES : "per type"
@@ -91,6 +92,7 @@ erDiagram
 | **Pot allocation** | Never deleted (append-only); correct with a reverse allocation. | Service (no delete command) |
 | **Savings goal** | Schedules lose `savingsGoalId`. | Service |
 | **Session** (revoke/purge) | Push subscriptions registered from it deleted by the revoke service; FK `SET NULL` covers the purge path. | Service + `SET NULL` |
+| **API token** (revoke/purge) | Revocation only sets `revokedAt`; the purge deletes the row. Audit rows keep `apiTokenId` (no FK) and the copied name. | Service |
 | **Attachment** | Row deleted, `storage_deletions` row inserted in the same transaction, quota released, audit `attachments.removed`. | Service |
 | **Alert rule, report definition, notification, insight, template** | Leaf entities, no dependants. | n/a |
 | **Exchange rate** | No dependants (postings hold snapshots, INV-6). | n/a |

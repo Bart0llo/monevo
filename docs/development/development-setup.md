@@ -1,11 +1,11 @@
 # Development Setup
 
-**[Proposed]**. Tooling depends on [OQ-02](../planning/open-questions.md#oq-02-package-manager-and-repository-layout) (pnpm workspaces) and [OQ-08](../planning/open-questions.md#oq-08-nodejs-and-postgresql-versions) (Node 24, PostgreSQL 17). Nothing here exists until Stage 1 ([implementation-stages.md](../planning/implementation-stages.md#stage-1-foundation)); this is the target developer experience.
+**[Accepted]** pnpm workspaces monorepo ([OQ-02](../planning/open-questions.md#oq-02-package-manager-and-repository-layout), [ADR-0012](../decisions/ADR-0012-monorepo-and-shared-packages.md)), Node.js 24, and external PostgreSQL ([OQ-08](../planning/open-questions.md#oq-08-nodejs-and-postgresql-versions), [postgresql.md](../infrastructure/postgresql.md)); validation runs locally, with no CI platform ([ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md)). **[Proposed]** details below. Nothing here exists until Stage 1 ([implementation-stages.md](../planning/implementation-stages.md#stage-1-foundation)); this is the target developer experience.
 
 ## 1. Prerequisites
 
 - Node.js 24 (`.nvmrc`; use nvm, fnm, or mise). Corepack enabled (`corepack enable`), which provides the pinned pnpm version from `package.json#packageManager`.
-- Docker with the Compose plugin (for PostgreSQL, MinIO, Mailpit, and E2E).
+- Docker with the Compose plugin (for the local development PostgreSQL, MinIO, Mailpit, and E2E).
 - Git. An editor with ESLint, Prettier, and TypeScript support.
 
 ## 2. First run
@@ -24,12 +24,12 @@ Open `http://localhost:5173`. The Vite dev server proxies `/api` (including the 
 
 | Service | Port (host) | Purpose |
 |---|---|---|
-| `db` | `127.0.0.1:5432` | Development database `monevo_dev` |
+| `db` | `127.0.0.1:5432` | Development database `monevo_dev` (PostgreSQL at the minimum supported major) |
 | `db-test` | `127.0.0.1:5433` | Disposable database for integration tests (tmpfs, `fsync=off`) |
 | `minio` | `127.0.0.1:9000` (API), `9001` (console) | S3 driver testing (`STORAGE_DRIVER=s3`) |
 | `mailpit` | `127.0.0.1:1025` (SMTP), `8025` (UI) | Catches verification and reset emails |
 
-All ports bind to localhost only.
+All ports bind to localhost only. These PostgreSQL containers are a development convenience only; production always uses an external PostgreSQL ([postgresql.md](../infrastructure/postgresql.md)). Instead of the dev `db`, `DATABASE_URL` in `.env.development` may point to any reachable PostgreSQL in the supported range.
 
 ## 4. Root scripts
 
@@ -49,6 +49,7 @@ All ports bind to localhost only.
 | `pnpm openapi:check` | Regenerate the OpenAPI document and diff it against the committed snapshot |
 | `pnpm i18n:check` | Missing/unused translation keys ([internationalization.md](internationalization.md#tooling)) |
 | `pnpm docs:check` | Relative link and anchor check for `docs/` and `CLAUDE.md` (`scripts/check-doc-links.mjs`) |
+| `pnpm validate` | All local checks: lint, format check, typecheck, i18n, docs, unit/component/sync, integration, OpenAPI snapshot ([testing-strategy.md](testing-strategy.md#5-local-validation)). Must pass before every merge. |
 
 ## 5. Working on specific areas
 

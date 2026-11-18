@@ -2,7 +2,7 @@
 
 ## Summary
 
-Monevo is a **modular monolith**: one Node.js process (Express) serves the React PWA as static files, the REST API under `/api/v1`, the Socket.IO realtime endpoint, and in-process background jobs. PostgreSQL is the system of record. Attachment content lives in a storage backend (a local volume or S3-compatible storage). The browser keeps a replica of the user's data in IndexedDB for offline use and synchronizes through a cursor-based sync API.
+Monevo is a **modular monolith**: one Node.js process (Express) serves the React PWA as static files, the REST API under `/api/v1`, the Socket.IO realtime endpoint, and in-process background jobs. PostgreSQL, hosted externally and reached through `DATABASE_URL`, is the system of record. Attachment content lives in a storage backend (a local volume or S3-compatible storage). The browser keeps a replica of the user's data in IndexedDB for offline use and synchronizes through a cursor-based sync API.
 
 ```
                     ┌──────────────────────── Browser / PWA ────────────────────────┐
@@ -26,10 +26,10 @@ Monevo is a **modular monolith**: one Node.js process (Express) serves the React
 │  Job runner (pg-boss, in-process): recurring generation, reminders, alerts, backups, cleanup   │
 │  Storage driver: local FS (/data/attachments) | S3 client                                       │
 └───────────────┬───────────────────────────────────────────────┬─────────────────────────────────┘
-                │ internal Docker network                       │
+                │ DATABASE_URL (TLS off-host)                   │
         ┌───────▼────────┐                             ┌────────▼─────────┐
-        │ PostgreSQL 17  │                             │ S3/MinIO (opt.)  │
-        │ (volume)       │                             │ or local volume  │
+        │ PostgreSQL ≥17 │                             │ S3/MinIO (opt.)  │
+        │ (external)     │                             │ or local volume  │
         └────────────────┘                             └──────────────────┘
 External (outbound only): OIDC provider · exchange rate provider · Web Push services · SMTP (auth emails)
 ```
@@ -40,6 +40,7 @@ External (outbound only): OIDC provider · exchange rate provider · Web Push se
 |---|---|---|
 | Backend framework | Express 5 modular monolith, not NestJS | [ADR-0001](../decisions/ADR-0001-express-modular-monolith.md) |
 | Packaging | One application image; Postgres separate | [ADR-0002](../decisions/ADR-0002-single-application-image.md) |
+| Database hosting | External PostgreSQL via `DATABASE_URL`, no database in the Monevo stack | [ADR-0015](../decisions/ADR-0015-external-postgresql.md) |
 | Persistence | PostgreSQL + Prisma, raw SQL migrations for constraints | [ADR-0003](../decisions/ADR-0003-postgresql-and-prisma.md) |
 | API | REST `/api/v1`, Zod-defined contracts → OpenAPI 3.1 | [ADR-0004](../decisions/ADR-0004-rest-api-versioning-and-contracts.md) |
 | Auth | Local + one OIDC provider, server-side opaque sessions | [ADR-0005](../decisions/ADR-0005-authentication-and-sessions.md) |
@@ -52,6 +53,8 @@ External (outbound only): OIDC provider · exchange rate provider · Web Push se
 | Repo | pnpm workspaces monorepo with shared contracts/domain packages | [ADR-0012](../decisions/ADR-0012-monorepo-and-shared-packages.md) |
 | Scheduling | Scheduled transactions + computed occurrences; pg-boss job runner | [ADR-0013](../decisions/ADR-0013-scheduled-transactions-and-jobs.md) |
 | Savings pots | Allocations, not transactions | [ADR-0014](../decisions/ADR-0014-virtual-savings-pots.md) |
+| Validation | Local validation scripts; CI platform deferred | [ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md) |
+| API tokens | Opaque hashed personal API tokens with per-resource permissions | [ADR-0017](../decisions/ADR-0017-personal-api-tokens.md) |
 
 ## Module map
 
@@ -60,7 +63,7 @@ Backend modules (each one owns its tables, services, routes, and contracts; see 
 | Module | Responsibility | Depends on |
 |---|---|---|
 | `system` | Health, version, config loading | n/a |
-| `auth` | Login, registration, sessions, OIDC, tokens, email flows | `users` |
+| `auth` | Login, registration, sessions, OIDC, personal API tokens, single-use tokens, email flows | `users` |
 | `users` | User profile, settings (locale, tz, base currency) | n/a |
 | `admin` | Admin endpoints (users status, settings, status) | `users`, `auth`, `storage`, `backups` |
 | `currencies` | Currency reference, exchange rates, providers, conversion service | n/a |
@@ -103,6 +106,6 @@ Pure, framework-free logic (money math, conversion, recurrence expansion, budget
 
 1. **One write path:** REST endpoints and sync mutations call the same command handlers. There is no duplicate validation or business logic.
 2. **One DB transaction per command,** including audit, change log, and idempotency record. Side effects (sockets, push, storage deletion) happen after commit, driven by durable records or jobs.
-3. **Authorization from the session only:** handlers receive `ctx.userId` from the authenticated session, and repositories require it.
+3. **Authorization from the authenticated credential only:** handlers receive `ctx.userId` from the session or personal API token, and repositories require it. Tokens are further limited by their permissions ([api-tokens.md](api-tokens.md)).
 4. **Exact money everywhere:** see [multi-currency.md](multi-currency.md).
 5. **Actual vs. projected separation:** projections are computed on demand and never written to transaction tables.

@@ -30,7 +30,7 @@ Infrastructure    infra/*           prisma client, storage drivers, mailer, push
 
 Rules:
 - Routes contain no business logic. Services contain no `req`/`res`. Repositories contain no business rules.
-- A service method takes `(ctx: RequestContext, input: ValidatedDto)`. `ctx` carries `userId`, `role`, `sessionId`, `requestId`, `actor` (`USER` | `SYSTEM_SCHEDULE` | `IMPORT`).
+- A service method takes `(ctx: RequestContext, input: ValidatedDto)`. `ctx` carries `userId`, `role`, `credential` (`SESSION` with `sessionId`, or `API_TOKEN` with `apiTokenId`, name, and permissions; [api-tokens.md](api-tokens.md)), `requestId`, `actor` (`USER` | `SYSTEM_SCHEDULE` | `IMPORT`).
 - Jobs construct a `SystemContext` for a specific `userId` and call the same services.
 
 ## 3. Command pattern (single write path)
@@ -91,7 +91,7 @@ Anything that must not be lost is written to a table **inside** the transaction 
 | `storage.purgeDeleted` | hourly | Physically delete storage objects whose grace period has passed |
 | `storage.orphanSweep` | daily | Remove stale PENDING uploads and orphan objects |
 | `sync.purgeTombstones` | daily | Tombstone retention + idempotency record expiry |
-| `sessions.purge` | daily | Remove expired or revoked sessions after retention |
+| `sessions.purge` | daily | Remove expired or revoked sessions and personal API tokens after retention |
 | `backups.run` | admin-configured cron | Automatic backups and retention cleanup |
 | `exports.build` | on demand | Generate user export files |
 | `user.baseCurrencyChange` | on demand | Recompute snapshots |

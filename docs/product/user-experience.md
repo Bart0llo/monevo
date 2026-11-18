@@ -50,7 +50,7 @@ On first login after registration:
 ## Interaction rules
 
 - **Optimistic UI:** offline-capable actions apply instantly, and the item shows a small "pending sync" marker until confirmed. Errors surface as a non-blocking notice with a link to the sync panel.
-- **Destructive actions** (delete transaction, delete category, restore backup, revoke session) require confirmation that names the consequence. Transaction deletion explicitly says it is permanent.
+- **Destructive actions** (delete transaction, delete category, restore backup, revoke session, revoke API token) require confirmation that names the consequence. Transaction deletion explicitly says it is permanent.
 - **Forms:** validation messages come from translation keys. Server validation errors map onto fields by path.
 - **Money input:** locale-aware decimal separator (`,` for Polish), no float parsing (the input string goes straight to the decimal type), and a currency selector next to the amount when relevant.
 - **Dates:** user-local calendar dates. The time picker is optional and hidden in quick entry.

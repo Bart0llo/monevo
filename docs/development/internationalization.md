@@ -26,7 +26,7 @@ Initial language: the browser's `navigator.languages`, falling back to English. 
 
 ### Tooling
 
-`pnpm i18n:check` (CI): every key used in code exists in `en` and `pl`; no unused keys; placeholders match across languages; plural forms complete for each language. English is the source language; a missing Polish key fails CI.
+`pnpm i18n:check` (part of `pnpm validate`): every key used in code exists in `en` and `pl`; no unused keys; placeholders match across languages; plural forms complete for each language. English is the source language; a missing Polish key fails validation.
 
 ## 3. Number and money formatting
 
@@ -66,4 +66,4 @@ No code changes are needed beyond registration; this is how the architecture "al
 
 - Unit: money parse/format in `pl` and `en` (grouping, separators, negative amounts, zero-decimal currencies like JPY, three-decimal like KWD); LocalDate display never shifts a day across time zones.
 - E2E runs the core journey in both Polish and English.
-- `i18n:check` in CI.
+- `i18n:check` in `pnpm validate`.

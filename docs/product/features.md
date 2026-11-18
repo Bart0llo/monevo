@@ -136,7 +136,7 @@ Drag and drop or pick multiple files in full entry and transaction detail, with 
 A header indicator shows: synced, syncing, offline (N pending), or error/conflicts. The sync panel shows the pending changes list, last successful sync, "sync now", errors with explanations, and a **conflict resolution** view (side-by-side comparison; keep mine, keep server, or edit merged).
 
 ## Settings
-Profile (name, email change with verification, password change), language, time zone, base currency, week start, date format preference, theme (light/dark/system), reminder time, notification preferences, push devices, active sessions (revoke), linked OIDC identity (link/unlink), custom fields, templates, export/import, storage usage.
+Profile (name, email change with verification, password change), language, time zone, base currency, week start, date format preference, theme (light/dark/system), reminder time, notification preferences, push devices, active sessions (revoke), personal API tokens (create with name, permissions, and optional expiration; list with created, expires, last used, and status; rename; revoke; see [api-tokens.md](../architecture/api-tokens.md#5-token-management)), linked OIDC identity (link/unlink), custom fields, templates, export/import, storage usage.
 
 ## Import / export
 *R-EXP-01..03 · design: [import-export.md](../architecture/import-export.md)*

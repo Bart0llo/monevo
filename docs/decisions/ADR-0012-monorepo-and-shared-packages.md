@@ -1,6 +1,6 @@
 # ADR-0012: Monorepo and shared packages
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-11-18
 
 ## Context
@@ -9,7 +9,7 @@ The server and web app share DTO schemas, money and date logic, recurrence expan
 
 ## Decision
 
-A **pnpm workspaces monorepo**: `apps/server`, `apps/web`, `packages/contracts` (Zod DTOs, error codes, sync envelopes), `packages/domain` (pure financial and date logic), `packages/i18n` (translations), and `e2e/`. Packages are consumed as TypeScript source (`workspace:*`), not published. Details: [application-structure.md](../architecture/application-structure.md). Confirm with [OQ-02](../planning/open-questions.md#oq-02-package-manager-and-repository-layout).
+A **pnpm workspaces monorepo**: `apps/server`, `apps/web`, `packages/contracts` (Zod DTOs, error codes, sync envelopes), `packages/domain` (pure financial and date logic), `packages/i18n` (translations), and `e2e/`. Packages are consumed as TypeScript source (`workspace:*`), not published. Details: [application-structure.md](../architecture/application-structure.md). Confirmed by [OQ-02](../planning/open-questions.md#oq-02-package-manager-and-repository-layout) (closed).
 
 ## Alternatives considered
 
@@ -19,9 +19,9 @@ A **pnpm workspaces monorepo**: `apps/server`, `apps/web`, `packages/contracts` 
 
 ## Consequences
 
-- One CI pipeline and one lockfile.
+- One validation pipeline (`pnpm validate`, run locally until a CI platform is chosen; [ADR-0016](ADR-0016-local-validation-ci-deferred.md)) and one lockfile.
 - Dependency rules between packages must be enforced (lint).
 
 ## Status
 
-Proposed. Confirm before the stage that first depends on it (see [open-questions.md](../planning/open-questions.md)); until then it is the default.
+Accepted (user decision on OQ-02, 2026-11-18).

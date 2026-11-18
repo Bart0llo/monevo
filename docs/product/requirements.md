@@ -179,6 +179,22 @@ This is the **canonical scope list**. Each requirement has a stable ID, which is
 | R-API-02 | Documented auth, authorization, validation, error format, pagination, filtering, sorting, idempotency, versioning policy, rate limiting, realtime. |
 | R-API-03 | DTOs are separate from Prisma models. |
 
+## Personal API tokens
+
+Design: [api-tokens.md](../architecture/api-tokens.md).
+
+| ID | Requirement |
+|---|---|
+| R-TOK-01 | Users create multiple personal API tokens, each with a custom name, so separate integrations and use cases get separate tokens. |
+| R-TOK-02 | Each token has granular permissions configured per resource type. Read and write permissions are granted independently, and each resource offers only the operations it actually supports. |
+| R-TOK-03 | A token can have an optional expiration date. |
+| R-TOK-04 | Users see their tokens with name, creation date, expiration date, last-used timestamp, and status, and can revoke any token at any time. Revocation immediately prevents further use. |
+| R-TOK-05 | Tokens are generated with a cryptographically secure, standard method. The complete token is shown only once, after creation. Only a secure hash is stored, and stored hashes are never exposed through the API. |
+| R-TOK-06 | Every token belongs to exactly one user. Its permissions never exceed the owner's, are enforced on the backend, and strict user data isolation applies to every token-authenticated request. |
+| R-TOK-07 | Tokens never grant access to administrative functionality, interactive sessions, password management, or session management. |
+| R-TOK-08 | Token usage metadata (at least the last-used timestamp) is recorded. Operations authenticated by a token are clearly identified in transaction change history and relevant audit records. |
+| R-TOK-09 | Tokens are an additional authentication method for the versioned REST API and do not replace local authentication or OIDC. The API documentation explains the mechanism, the token format, and how integrations authenticate. Token management is available in the user interface and, with an interactive session, through the API. |
+
 ## Security
 
 | ID | Requirement |
@@ -191,10 +207,10 @@ This is the **canonical scope list**. Each requirement has a stable ID, which is
 
 | ID | Requirement |
 |---|---|
-| R-INF-01 | Docker Compose deployment: **one application image** (Express serves the built frontend, the API, and Socket.IO) plus a separate PostgreSQL container. |
-| R-INF-02 | Only the application port is exposed. PostgreSQL is not public. |
+| R-INF-01 | Docker Compose deployment: **one application image** (Express serves the built frontend, the API, and Socket.IO). PostgreSQL is a separate, **externally hosted** database reached through `DATABASE_URL`; the Compose stack does not require a PostgreSQL container (amended by [ADR-0015](../decisions/ADR-0015-external-postgresql.md)). |
+| R-INF-02 | Only the application port is exposed. PostgreSQL is not public: the operator restricts database access to the Monevo host and uses TLS off-host ([postgresql.md](../infrastructure/postgresql.md)). |
 | R-INF-03 | Suitable for a VPS, a homelab, and typical Docker Compose environments. Manual updates via Compose. |
-| R-INF-04 | CI runs the relevant automated tests. |
+| R-INF-04 | The relevant automated tests run through local validation scripts (`pnpm validate`, `pnpm test:e2e`); running them in CI is **[Deferred]** until a CI platform is chosen (amended by [ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md), [OQ-07](../planning/open-questions.md#oq-07-ci-platform)). |
 
 ## Out of scope
 
@@ -218,4 +234,4 @@ This is the **canonical scope list**. Each requirement has a stable ID, which is
 
 ## Deferred (possible later, design must not block)
 
-**[Deferred]**: native Android client, additional OIDC providers (one at a time remains the rule until revisited), additional rate and storage providers, optional AI-assisted analysis, personal API tokens for scripting, offline attachment upload queue, PDF report export, PostgreSQL row-level security as defense in depth, user self-service account deletion.
+**[Deferred]**: native Android client, additional OIDC providers (one at a time remains the rule until revisited), additional rate and storage providers, optional AI-assisted analysis, offline attachment upload queue, PDF report export, PostgreSQL row-level security as defense in depth, user self-service account deletion.

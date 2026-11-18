@@ -1,12 +1,12 @@
 # API Design
 
-**[Accepted]** REST + `/api/v1` + OpenAPI. **[Proposed]** conventions. See [ADR-0004](../decisions/ADR-0004-rest-api-versioning-and-contracts.md). Covers R-API-01..03 and R-GEN-03.
+**[Accepted]** REST + `/api/v1` + OpenAPI. **[Proposed]** conventions. See [ADR-0004](../decisions/ADR-0004-rest-api-versioning-and-contracts.md). Covers R-API-01..03, R-GEN-03, and the API part of R-TOK-09.
 
 ## 1. Principles
 
 - The API is a **product**, not an internal detail of the web app. The web app, a future Android app, and scripts use the same endpoints.
 - Contracts are defined once as **Zod schemas in `@monevo/contracts`**. They provide runtime validation, TS types (client and server), and the OpenAPI 3.1 spec.
-- **DTOs ≠ Prisma models.** Every module has explicit mappers. Internal columns (`tokenHash`, `storageKey`, `passwordHash`, `_internal` flags) never leak.
+- **DTOs ≠ Prisma models.** Every module has explicit mappers. Internal columns (`tokenHash` of sessions and API tokens, `storageKey`, `passwordHash`, `_internal` flags) never leak.
 - Resource-oriented URLs, JSON bodies, standard HTTP semantics.
 
 ## 2. Base paths
@@ -30,7 +30,7 @@
 | Dates | `LocalDate` = `"YYYY-MM-DD"`. Instants = RFC 3339 UTC (`"2026-11-18T10:00:00.000Z"`). Field names: `…On` for LocalDate, `…At` for instants. |
 | Enums | `UPPER_SNAKE` strings. |
 | Nulls | Optional fields are omitted or null consistently per schema. Updates use `PATCH` with partial bodies, where `null` clears a field. |
-| Versioning | `version` integer on mutable resources. `PATCH`/`DELETE` accept `If-Match: "<version>"` (or `version` in the body). A mismatch returns `409 VERSION_CONFLICT` with the current resource. Web clients use sync push instead. |
+| Versioning | `version` integer on mutable resources. `PATCH`/`DELETE` accept `If-Match: "<version>"` (or `version` in the body); for personal API tokens it is required ([api-tokens.md](api-tokens.md#3-authentication)). A mismatch returns `409 VERSION_CONFLICT` with the current resource. Web clients use sync push instead. |
 | Timestamps | `createdAt`, `updatedAt` on all mutable resources. |
 
 ## 4. Error format
@@ -51,7 +51,7 @@ RFC 9457 **Problem Details** (`application/problem+json`) with stable machine co
 }
 ```
 - `code` values come from the `ErrorCode` enum in `@monevo/contracts`. The frontend translates `code`/`errors[].code` via i18n keys (`errors.<CODE>`). `title`/`message` are English fallbacks for developers and integrators.
-- Status mapping: 400 malformed, 401 `UNAUTHENTICATED`, 403 `FORBIDDEN`/`CSRF_INVALID`/`REAUTH_REQUIRED`, 404 `NOT_FOUND` (also for foreign IDs), 409 `VERSION_CONFLICT`/`ID_CONFLICT`/`IDEMPOTENCY_KEY_REUSED`/`SETTING_LOCKED_BY_ENV` ([configuration.md](../infrastructure/configuration.md)), 410 `SYNC_RESYNC_REQUIRED`, 413 `PAYLOAD_TOO_LARGE`/`QUOTA_EXCEEDED`, 415, 422 validation and domain-rule violations (`ACCOUNT_ARCHIVED`, `CATEGORY_TYPE_MISMATCH`, …), 429 `RATE_LIMITED`, 503 `MAINTENANCE` (instance) / `MAINTENANCE_USER` (per-user base currency change), 500 `INTERNAL` (no stack traces).
+- Status mapping: 400 malformed, 401 `UNAUTHENTICATED`/`API_TOKEN_EXPIRED`/`API_TOKEN_REVOKED`, 403 `FORBIDDEN`/`CSRF_INVALID`/`REAUTH_REQUIRED`/`API_TOKEN_NOT_ALLOWED`/`API_TOKEN_PERMISSION_DENIED` ([api-tokens.md](api-tokens.md#3-authentication)), 404 `NOT_FOUND` (also for foreign IDs), 409 `VERSION_CONFLICT`/`ID_CONFLICT`/`IDEMPOTENCY_KEY_REUSED`/`SETTING_LOCKED_BY_ENV` ([configuration.md](../infrastructure/configuration.md)), 410 `SYNC_RESYNC_REQUIRED`, 428 `PRECONDITION_REQUIRED` (token-authenticated update without `If-Match`), 413 `PAYLOAD_TOO_LARGE`/`QUOTA_EXCEEDED`, 415, 422 validation and domain-rule violations (`ACCOUNT_ARCHIVED`, `CATEGORY_TYPE_MISMATCH`, …), 429 `RATE_LIMITED`, 503 `MAINTENANCE` (instance) / `MAINTENANCE_USER` (per-user base currency change), 500 `INTERNAL` (no stack traces).
 
 ## 5. Pagination, filtering, sorting
 
@@ -70,16 +70,23 @@ RFC 9457 **Problem Details** (`application/problem+json`) with stable machine co
 
 ## 7. Authentication
 
-- Cookie session (web) or `Authorization: Bearer <session token>` (native, scripts). See [authentication.md](authentication.md).
-- CSRF header on cookie-authenticated unsafe methods.
-- OpenAPI declares both security schemes (`cookieAuth`, `bearerAuth`).
+Three credentials, all resolved to the same `userId` ([authentication.md](authentication.md#6-request-authentication-pipeline)):
+
+| Credential | Header | Used by |
+|---|---|---|
+| Session cookie | `Cookie: __Host-monevo_session=…` + `X-CSRF-Token` on unsafe methods | Web app |
+| Session bearer token | `Authorization: Bearer <session token>` | Native clients ([authentication.md](authentication.md#4-sessions)) |
+| Personal API token | `Authorization: Bearer mnv_pat_…` | External integrations and scripts, limited to the token's permissions ([api-tokens.md](api-tokens.md)) |
+
+- CSRF header on cookie-authenticated unsafe methods only.
+- OpenAPI declares three security schemes (`cookieAuth`, `bearerAuth`, `apiToken`). Token-enabled operations list `apiToken` and their required permissions (`x-monevo-permissions`), and `info.description` explains how integrations authenticate ([api-tokens.md](api-tokens.md#7-api-documentation)).
 
 ## 8. Endpoint map (v1, indicative)
 
 | Area | Endpoints |
 |---|---|
 | Auth | `/auth/register`, `/auth/login`, `/auth/logout`, `/auth/session`, `/auth/password-reset/*`, `/auth/email/verify`, `/auth/oidc/start`, `/auth/oidc/callback`, `/auth/config` |
-| Me | `/me`, `/me/settings`, `/me/email-change`, `/me/password`, `/me/sessions[/:id]`, `/me/identities[/:id]`, `/me/storage`, `/me/push-subscriptions[/:id]`, `/me/base-currency-change` |
+| Me | `/me`, `/me/settings`, `/me/email-change`, `/me/password`, `/me/sessions[/:id]`, `/me/identities[/:id]`, `/me/storage`, `/me/push-subscriptions[/:id]`, `/me/base-currency-change`, `/me/api-tokens[/:id]` |
 | Currencies | `/currencies`, `/exchange-rates` (GET query by pair/date; POST manual), `/exchange-rates/resolve` (on-demand fetch), `/exchange-rates/missing` + `/exchange-rates/missing/resolve` |
 | Accounts | `/accounts[/:id]`, `/accounts/:id/archive`, `/accounts/:id/unarchive`, `/accounts/balances?asOf=` |
 | Categories | `/categories[/:id]`, `/categories/reorder`, `/categories/:id/delete` (POST with reassignment body) |
@@ -102,7 +109,7 @@ RFC 9457 **Problem Details** (`application/problem+json`) with stable machine co
 - The major version is in the path: `/api/v1`. **Additive** changes (new endpoints, new optional fields, new enum values documented as extensible) are allowed within v1. Clients must ignore unknown fields.
 - **Breaking** changes (removing or renaming fields, changing semantics or types, tightening validation of existing fields) require `/api/v2`. v1 is then kept for at least 6 months or two minor releases, with `Deprecation` and `Sunset` headers on deprecated endpoints.
 - The OpenAPI document has `info.version` = the app semver. Contract changes are noted in `CHANGELOG.md`.
-- A CI check diffs the generated OpenAPI against the committed snapshot (`apps/server/openapi.snapshot.json`), so contract changes are always reviewed deliberately. An `oasdiff` breaking-change check is **[Proposed]**.
+- `pnpm openapi:check` (part of the local `pnpm validate`) diffs the generated OpenAPI against the committed snapshot (`apps/server/openapi.snapshot.json`), so contract changes are always reviewed deliberately. An `oasdiff` breaking-change check is **[Proposed]**.
 - Enum extensibility: enums that may grow (notification types, widget types, insight types) are documented as "open". Clients must handle unknown values gracefully.
 
 ## 10. Realtime

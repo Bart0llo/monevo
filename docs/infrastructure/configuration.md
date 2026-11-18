@@ -35,8 +35,8 @@ Rules:
 
 | Variable | Default | Required | Description |
 |---|---|---|---|
-| `DATABASE_URL` *(secret)* | none | **yes** | `postgresql://monevo:<password>@db:5432/monevo`. The role must own the schema and must not be a superuser ([security.md](../architecture/security.md#database)). |
-| `DATABASE_POOL_SIZE` | `10` | no | API connection pool size. pg-boss uses its own pool of 3 ([database-architecture.md](../architecture/database-architecture.md#6-connection-management)). |
+| `DATABASE_URL` *(secret)* | none | **yes** | Connection string of the **external** PostgreSQL, e.g. `postgresql://monevo:<password>@<db-host>:5432/monevo?sslmode=verify-full&sslrootcert=/run/secrets/postgres-ca.pem`. No host or credentials are built in. Supported versions, TLS parameters, pooling, and the required role privileges (owns the database, not a superuser) are canonical in [postgresql.md](postgresql.md). Also used by `pg_dump`/`pg_restore` for backups. |
+| `DATABASE_POOL_SIZE` | `10` | no | API connection pool size. pg-boss uses its own pool of 3 ([database-architecture.md](../architecture/database-architecture.md#6-connection-management)). The total connection budget is in [postgresql.md](postgresql.md#connection-pooling). |
 
 ### HTTP and security
 
@@ -108,10 +108,6 @@ Rules:
 | `RATE_PROVIDER` | none (setting default `frankfurter`) | no | `frankfurter` or `nbp`. Locks `rates.provider` ([multi-currency.md](../architecture/multi-currency.md)). |
 | `SYNC_TOMBSTONE_RETENTION_DAYS` | `90` | no | Change-log tombstone retention ([offline-and-synchronization.md](../architecture/offline-and-synchronization.md)). Clients offline longer must re-bootstrap. |
 
-### Variables for the database container
-
-Not read by the app; listed so the compose `.env` is complete ([docker-compose.md](docker-compose.md)): `POSTGRES_DB` (`monevo`), `POSTGRES_USER` (`monevo`), `POSTGRES_PASSWORD` *(secret, required)*. `DATABASE_URL` must match them.
-
 <a id="runtime-settings-app_settings"></a>
 
 ## 3. Runtime settings (app_settings)
@@ -155,12 +151,11 @@ A documented example ships as `.env.example` in Stage 1. Minimum for a working i
 ```
 APP_URL=https://money.example.com
 APP_ENCRYPTION_KEY=<output of: docker compose run --rm app node dist/cli.js generate-key>
-POSTGRES_PASSWORD=<long random>
-DATABASE_URL=postgresql://monevo:<same password>@db:5432/monevo
+DATABASE_URL=postgresql://monevo:<password>@<db-host>:5432/monevo?sslmode=verify-full&sslrootcert=/run/secrets/postgres-ca.pem
 ```
 
 ## 5. Testing
 
 - Config schema unit tests: every default, every invalid value produces a message naming the variable, `X` and `X_FILE` together fail, size suffix parsing.
 - Settings precedence integration test: env-locked keys reject `PATCH /admin/settings` with `SETTING_LOCKED_BY_ENV`.
-- A CI check fails if a variable is read in code but missing from this document (grep of `config` schema keys vs. this table, added in Stage 1).
+- A check in `pnpm validate` fails if a variable is read in code but missing from this document (grep of `config` schema keys vs. this table, added in Stage 1; [testing-strategy.md](../development/testing-strategy.md#5-local-validation)).

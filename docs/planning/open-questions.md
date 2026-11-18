@@ -1,19 +1,19 @@
 # Open Questions
 
-Unresolved decisions and assumptions. Each entry has a recommendation, which the documentation already follows as **[Proposed]**, and a deadline: the stage that must not start before the question is answered. When a question is resolved, record the answer under it, change its status to **Resolved**, and update the affected documents (and the ADR, if one exists) in the same change ([contribution-guidelines.md](../development/contribution-guidelines.md#3-documentation-maintenance)).
+Unresolved decisions and assumptions. Each entry has a recommendation, which the documentation already follows as **[Proposed]**, and a deadline: the stage that must not start before the question is answered. Statuses: **Open** (unanswered), **Closed** (answered; the decision is recorded under the question), **Deferred** (consciously postponed; does not block the stage named). When a question is closed, record the answer under it, change its status to **Closed**, and update the affected documents (and the ADR, if one exists) in the same change ([contribution-guidelines.md](../development/contribution-guidelines.md#3-documentation-maintenance)).
 
 ## Summary
 
 | ID | Question | Recommendation | Confirm before | Status |
 |---|---|---|---|---|
-| [OQ-01](#oq-01-product-name) | Product name | Keep "Monevo" as a working name | Stage 1 | Open |
-| [OQ-02](#oq-02-package-manager-and-repository-layout) | Package manager and repository layout | pnpm workspaces monorepo | Stage 1 | Open |
+| [OQ-01](#oq-01-product-name) | Product name | **Decided:** Monevo | Stage 1 | Closed |
+| [OQ-02](#oq-02-package-manager-and-repository-layout) | Package manager and repository layout | **Decided:** pnpm workspaces monorepo | Stage 1 | Closed |
 | [OQ-03](#oq-03-smtp-for-authentication-emails) | SMTP for authentication emails | Optional SMTP; admin reset link as fallback | Stage 2 | Open |
 | [OQ-04](#oq-04-admin-backup-access-vs-financial-privacy) | Admin backup access vs financial privacy | Accept operator trust + optional encryption | Stage 15 | Open |
 | [OQ-05](#oq-05-changing-the-base-currency) | Changing the base currency | Allow, as a recompute job | Stage 3 | Open |
 | [OQ-06](#oq-06-authentication-implementation) | Authentication implementation | Own thin layer on vetted primitives | Stage 2 | Open |
-| [OQ-07](#oq-07-ci-platform) | CI platform | GitHub Actions (Forgejo-compatible syntax) | Stage 1 | Open |
-| [OQ-08](#oq-08-nodejs-and-postgresql-versions) | Node.js and PostgreSQL versions | Node 24 LTS, PostgreSQL 17 | Stage 1 | Open |
+| [OQ-07](#oq-07-ci-platform) | CI platform | **Decided:** none for now; local validation ([ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md)) | Later (does not block) | Deferred |
+| [OQ-08](#oq-08-nodejs-and-postgresql-versions) | Node.js and PostgreSQL versions | **Decided:** Node.js 24; external PostgreSQL via `DATABASE_URL`, maintained majors, minimum 17 | Stage 1 | Closed |
 | [OQ-09](#oq-09-offline-attachment-uploads) | Offline attachment uploads | Online-only in v1 (deferred) | Stage 6 | Open |
 | [OQ-10](#oq-10-refunds) | Refunds | Enter as INCOME in v1 | Stage 4 | Open |
 | [OQ-11](#oq-11-history-retention-for-deleted-transactions) | History retention for deleted transactions | Retain prior audit entries | Stage 4 | Open |
@@ -27,20 +27,21 @@ Unresolved decisions and assumptions. Each entry has a recommendation, which the
 | [OQ-19](#oq-19-spending-estimate-method) | Spending estimate method | Median daily spend over 90 days per category | Stage 11 | Open |
 | [OQ-20](#oq-20-default-execution-mode) | Default execution mode | `CONFIRM` | Stage 7 | Open |
 | [OQ-21](#oq-21-local-database-library) | Local database library | Dexie 4 | Stage 5 | Open |
+| [OQ-22](#oq-22-api-token-permission-catalogue-and-lifecycle) | API token permission catalogue and lifecycle | Catalogue and defaults in api-tokens.md | Stage 2 | Open |
 
-**Must be confirmed before Stage 1:** OQ-01, OQ-02, OQ-07, OQ-08. **Before Stage 2:** OQ-03, OQ-06.
+**Before Stage 1:** nothing open (OQ-01, OQ-02, OQ-08 closed; OQ-07 deferred, 2026-11-18). **Before Stage 2:** OQ-03, OQ-06, OQ-22.
 
 ## Questions
 
 ### OQ-01: Product name
 
-"Monevo" is a working name. It appears in the image name, cookie name (`__Host-monevo_session`), package scope (`@monevo/*`), and the default instance name. Renaming after Stage 1 is a mechanical but wide change (and changing the cookie name logs everyone out).
-
-**Recommendation:** decide before Stage 1; check for trademark and domain conflicts. Operators can rename their instance anyway (branding, R-GEN-06).
+**Status: Closed (2026-11-18).** **Decision:** the product name is **Monevo**, used consistently in all documentation with no alternative or placeholder names. Technical identifiers follow it: image `monevo`, cookie `__Host-monevo_session`, package scope `@monevo/*`, environment prefix `MONEVO_` (e.g. `MONEVO_SKIP_PRE_UPGRADE_BACKUP`), file formats `monevo-backup` and `monevo-export`, and the default instance name `Monevo`. Operators can still rename their own instance (branding, R-GEN-06).
 
 ### OQ-02: Package manager and repository layout
 
-**Recommendation:** pnpm workspaces monorepo with `apps/server`, `apps/web`, `packages/contracts|domain|i18n`, `e2e/` ([application-structure.md](../architecture/application-structure.md), [ADR-0012](../decisions/ADR-0012-monorepo-and-shared-packages.md)). Alternative: npm workspaces (fewer tools, weaker isolation). Separate repositories are not recommended: the shared contracts and domain packages would need publishing.
+**Status: Closed (2026-11-18).** **Decision:** pnpm, in a pnpm workspaces monorepo, as described below and in [ADR-0012](../decisions/ADR-0012-monorepo-and-shared-packages.md) (now Accepted). The workspace itself is created in Stage 1.
+
+**Original recommendation:** pnpm workspaces monorepo with `apps/server`, `apps/web`, `packages/contracts|domain|i18n`, `e2e/` ([application-structure.md](../architecture/application-structure.md), [ADR-0012](../decisions/ADR-0012-monorepo-and-shared-packages.md)). Alternative: npm workspaces (fewer tools, weaker isolation). Separate repositories are not recommended: the shared contracts and domain packages would need publishing.
 
 ### OQ-03: SMTP for authentication emails
 
@@ -68,11 +69,15 @@ R-ADM-05 says admin privileges never grant access to financial data, but R-BAK-0
 
 ### OQ-07: CI platform
 
-**Recommendation:** GitHub Actions with workflows kept compatible with Forgejo/Gitea Actions; images on GHCR (or the Forgejo registry). The choice affects the registry name in [docker-compose.md](../infrastructure/docker-compose.md) and the CI files in Stage 1 ([testing-strategy.md](../development/testing-strategy.md#5-ci-pipeline)).
+**Status: Deferred (2026-11-18).** **Decision:** no CI platform is introduced for the initial development phase: no GitHub Actions, Woodpecker CI, or other service, no cloud CI dependency, usage limits, or paid runners. Tests, linting, type checking, and the other checks run locally through `pnpm validate` and `pnpm test:e2e` ([ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md), [testing-strategy.md](../development/testing-strategy.md#5-local-validation)). A platform (and the image registry) can be chosen later as a thin wrapper around the same scripts, without significant changes to the architecture or the workflow.
+
+**Original recommendation (not adopted for now):** GitHub Actions with workflows kept compatible with Forgejo/Gitea Actions; images on GHCR (or the Forgejo registry). The choice affects the registry name in [docker-compose.md](../infrastructure/docker-compose.md) and the CI files in Stage 1 ([testing-strategy.md](../development/testing-strategy.md#5-local-validation)).
 
 ### OQ-08: Node.js and PostgreSQL versions
 
-**Recommendation:** Node.js 24 LTS and PostgreSQL 17 ([technology-stack.md](../architecture/technology-stack.md)). PostgreSQL 18 is acceptable if pinned consistently (server image and `postgresql-client` in the app image must have the same major). Major upgrades later follow [deployment.md](../infrastructure/deployment.md#postgresql-major-upgrades).
+**Status: Closed (2026-11-18).** **Decision:** Node.js 24 in development and in the Docker image. PostgreSQL is **externally hosted**: Monevo connects through `DATABASE_URL`, the Compose stack has no mandatory PostgreSQL container, and nothing provider-specific is hard-coded. Supported: maintained PostgreSQL majors supported by Prisma, minimum 17, never an end-of-life major. Connection, TLS, pooling, and deployment requirements: [postgresql.md](../infrastructure/postgresql.md); decision record: [ADR-0015](../decisions/ADR-0015-external-postgresql.md).
+
+**Original recommendation (superseded):** Node.js 24 LTS and PostgreSQL 17 ([technology-stack.md](../architecture/technology-stack.md)). PostgreSQL 18 is acceptable if pinned consistently (server image and `postgresql-client` in the app image must have the same major). Major upgrades later follow [deployment.md](../infrastructure/deployment.md#postgresql-major-upgrades).
 
 ### OQ-09: Offline attachment uploads
 
@@ -127,3 +132,9 @@ R-ADM-05 says admin privileges never grant access to financial data, but R-BAK-0
 ### OQ-21: Local database library
 
 **Recommendation:** Dexie 4 with `dexie-react-hooks` (live queries, schema versioning, bulk operations) ([frontend-architecture.md](../architecture/frontend-architecture.md)). Alternative: `idb` (smaller, but the sync engine would need its own query and migration helpers). The brief leaves this not finalized; confirm before Stage 5.
+
+### OQ-22: API token permission catalogue and lifecycle
+
+Personal API tokens are in scope (R-TOK-01..09, decided 2026-11-18). The design details that the requirements leave open follow the recommendation as **[Proposed]** ([api-tokens.md](../architecture/api-tokens.md), [ADR-0017](../decisions/ADR-0017-personal-api-tokens.md)).
+
+**Recommendation:** the permission catalogue in [api-tokens.md](../architecture/api-tokens.md#4-permission-catalogue) (read and write per resource, with "also requires" for cross-resource writes); never available to tokens: auth, account and credential management, sessions, token management, push subscriptions, notification preferences, admin, sync, realtime, dashboard layout, and export/import; permissions fixed at creation (rename only); at most 50 active tokens per user; expiration optional with a 90-day UI default; creation requires a recent authentication; tokens revoked on deactivation and backup restore but kept on password change or reset; `If-Match` required for token updates and deletes. Alternatives: allow export/import or dashboard access with dedicated permissions; editable permissions; a mandatory maximum lifetime; revoking tokens on password reset. Confirm before Stage 2.

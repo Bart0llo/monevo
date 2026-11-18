@@ -1,6 +1,6 @@
 # ADR-0002: Single application image
 
-- **Status:** Accepted
+- **Status:** Accepted (amended by [ADR-0015](ADR-0015-external-postgresql.md): PostgreSQL is external; the client tools are the newest supported major)
 - **Date:** 2026-11-18
 
 ## Context

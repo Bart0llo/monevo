@@ -38,7 +38,7 @@ Monevo extends that familiar experience with:
 5. **Works offline.** The app stays usable without a network and never silently loses changes.
 6. **Manual-first.** Transactions are entered by the user, quickly. There is no bank sync, no OCR, and no statement import in the initial version.
 7. **The user's own structure.** No predefined categories, no forced budgeting method, no fixed account types.
-8. **Simple to host.** One application image and one PostgreSQL container. Only one public port.
+8. **Simple to host.** One application image and an external PostgreSQL database. Only one public port.
 9. **Built to grow, not over-built.** A modular monolith with clear boundaries and an API ready for a future Android client, without speculative infrastructure.
 
 ## Non-goals (initial version)

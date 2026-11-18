@@ -1,6 +1,6 @@
 # Docker Image and Compose
 
-**[Accepted]** one application image plus a separate PostgreSQL container, only the application port exposed (R-INF-01, R-INF-02, [ADR-0002](../decisions/ADR-0002-single-application-image.md)). **[Proposed]** details below. The actual `Dockerfile` and `docker-compose.yml` are written in Stage 1 ([implementation-stages.md](../planning/implementation-stages.md)); this document is their specification.
+**[Accepted]** one application image, only the application port exposed, and PostgreSQL hosted externally and reached through `DATABASE_URL` (R-INF-01, R-INF-02, [ADR-0002](../decisions/ADR-0002-single-application-image.md), [ADR-0015](../decisions/ADR-0015-external-postgresql.md)). The production compose stack contains **no PostgreSQL service** ([postgresql.md](postgresql.md)). **[Proposed]** details below. The actual `Dockerfile` and `docker-compose.yml` are written in Stage 1 ([implementation-stages.md](../planning/implementation-stages.md)); this document is their specification.
 
 ## 1. Image
 
@@ -10,7 +10,7 @@
 |---|---|---|
 | `deps` | `node:24-slim` | Enables corepack (pnpm), `pnpm fetch` with the lockfile (cached layer). |
 | `build` | `deps` | `pnpm install --offline --frozen-lockfile`, `prisma generate`, builds `packages/*`, `apps/web` (Vite) and `apps/server` (tsup), then `pnpm deploy --prod` of the server into `/out`. |
-| `runtime` | `node:24-slim` (pinned by digest) | Installs `tini`, `ca-certificates`, and `postgresql-client-17` (from the PGDG apt repository, for `pg_dump`/`pg_restore`); copies `/out` (server bundle, production `node_modules`, Prisma engine/migrations) and the web build into `/app`. |
+| `runtime` | `node:24-slim` (pinned by digest) | Installs `tini`, `ca-certificates`, and the PostgreSQL client tools of the newest supported major (from the PGDG apt repository, for `pg_dump`/`pg_restore`; see [postgresql.md](postgresql.md#backup-client-tools)); copies `/out` (server bundle, production `node_modules`, Prisma engine/migrations) and the web build into `/app`. |
 
 No build tools, compilers, or package caches are left in the runtime image. Native modules (`argon2`) are built in `build` for the same base, so the ABI matches.
 
@@ -29,27 +29,26 @@ No build tools, compilers, or package caches are left in the runtime image. Nati
 | Build args | `APP_VERSION`, `GIT_COMMIT`, `BUILD_DATE` (exposed in `/admin/system`) |
 | Stop | SIGTERM; graceful shutdown within 25 s ([backend-architecture.md](../architecture/backend-architecture.md#1-process-layout)) |
 
-Image name: `ghcr.io/<owner>/monevo:<version>` plus `:<major>.<minor>` and `:latest` tags (registry depends on [OQ-07](../planning/open-questions.md#oq-07-ci-platform)). Architectures: `linux/amd64` and `linux/arm64` (homelab ARM boards).
+Image name: `monevo:<version>` plus `:<major>.<minor>` tags. The public registry and automated publishing are decided together with the CI platform ([OQ-07](../planning/open-questions.md#oq-07-ci-platform), deferred; [ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md)). Until then, images are built locally from a release tag (`docker build -t monevo:<version> .`, or `build:` in the compose file). Architectures: `linux/amd64` and `linux/arm64` (homelab ARM boards), built with `docker buildx`.
 
 ### Entrypoint
 
 `/app/docker-entrypoint.sh` (run by tini):
 
 1. If the first argument is a CLI command (e.g. `node dist/cli.js restore …`), execute it and exit. This is how `docker compose run --rm app node dist/cli.js …` works without starting the server.
-2. Otherwise: `node dist/cli.js migrate` (waits up to 60 s for the database, takes the [pre-upgrade backup](backups-and-restoration.md#pre-upgrade-backup) if migrations are pending, then `prisma migrate deploy`). Failure → exit non-zero; compose restarts according to its policy and the logs say why.
+2. Otherwise: `node dist/cli.js migrate` (waits up to 60 s for the external database and checks its version ([postgresql.md](postgresql.md#supported-versions)), takes the [pre-upgrade backup](backups-and-restoration.md#pre-upgrade-backup) if migrations are pending, then `prisma migrate deploy`). Failure → exit non-zero; compose restarts according to its policy and the logs say why.
 3. `exec node dist/main.js`.
 
-Migrations never run concurrently: Prisma uses an advisory lock, and there is only one app container.
+Migrations never run concurrently: Prisma uses an advisory lock, and there is only one app container. This is one reason transaction-mode connection poolers are not supported ([postgresql.md](postgresql.md#connection-pooling)).
 
 ## 2. Compose services
 
 | Service | Image | Network | Ports | Volumes | Notes |
 |---|---|---|---|---|---|
-| `app` | `monevo` | `internal` + `proxy` (or `default`) | `3000` published (or only to the proxy network) | `attachments:/data/attachments`, `backups:/data/backups` | `depends_on: db (service_healthy)`, `restart: unless-stopped` |
-| `db` | `postgres:17` (pinned minor) | `internal` only | **none** | `pgdata:/var/lib/postgresql/data` | healthcheck `pg_isready`, `restart: unless-stopped` |
+| `app` | `monevo` | `default` (or the proxy's external network), plus `internal` when `minio` is used | `3000` published on `127.0.0.1` (or only to the proxy network) | `attachments:/data/attachments`, `backups:/data/backups` | `restart: unless-stopped`; read-only certificate mounts for database TLS if needed ([postgresql.md](postgresql.md#tls)) |
 | `minio` *(optional profile `s3`)* | `minio/minio` (pinned) | `internal` only | none (console optional on localhost) | `minio:/data` | Only for operators who want S3 semantics on one host; most deployments use the local driver or an external S3 |
 
-The `internal` network is `internal: true` (no outbound access); the app reaches the internet (OIDC, rates, push, SMTP) through its second network.
+There is **no `db` service**. The app connects to the external PostgreSQL named in `DATABASE_URL`, through its default network or an external Docker network shared with the database ([postgresql.md](postgresql.md#connection)). The `internal` network (`internal: true`, no outbound access) exists only for the optional `minio` service; the app reaches the database and the internet (OIDC, rates, push, SMTP) through its default network.
 
 ### Hardening applied to `app`
 
@@ -72,9 +71,9 @@ All variables come from an `.env` file next to the compose file (or Docker secre
 | File | Purpose |
 |---|---|
 | `Dockerfile` | Multi-stage build above |
-| `docker-compose.yml` | Production example: `app` + `db` (+ `minio` profile) |
-| `docker-compose.dev.yml` | Development: `db` (+ `db-test`, `minio`, `mailpit`) only; the app runs on the host ([development-setup.md](../development/development-setup.md)) |
-| `docker-compose.e2e.yml` | CI/E2E: built image + `db` + `minio` + `mailpit` for Playwright ([testing-strategy.md](../development/testing-strategy.md)) |
+| `docker-compose.yml` | Production example: `app` only (+ `minio` profile); PostgreSQL is external |
+| `docker-compose.dev.yml` | Development only: disposable local PostgreSQL containers `db` and `db-test`, plus `minio` and `mailpit`; the app runs on the host ([development-setup.md](../development/development-setup.md)). Not a production database. |
+| `docker-compose.e2e.yml` | Local E2E: built image + a disposable PostgreSQL test fixture + `minio` + `mailpit` for Playwright ([testing-strategy.md](../development/testing-strategy.md)) |
 | `.env.example` | Documented minimal configuration |
 | `.dockerignore` | Excludes `node_modules`, `.git`, test artifacts, local `.env` |
 
@@ -84,6 +83,6 @@ TLS terminates at a reverse proxy chosen by the operator (Caddy, Traefik, nginx)
 
 ## 5. Testing
 
-- CI builds the image for both architectures and runs the E2E suite against it ([testing-strategy.md](../development/testing-strategy.md)).
-- A container smoke test: start with `read_only`, non-root, no capabilities; health becomes ready; `pg_dump --version` major equals the `db` major.
-- Image vulnerability scan (Trivy or the registry's scanner) on release builds; non-blocking for unfixed low severity.
+- `pnpm test:e2e` builds the image for the host architecture and runs the E2E suite against it locally ([testing-strategy.md](../development/testing-strategy.md#5-local-validation)). Release builds for both architectures are made locally with `docker buildx`.
+- A container smoke test: start with `read_only`, non-root, no capabilities; health becomes ready; the `pg_dump --version` major equals the newest supported PostgreSQL major ([postgresql.md](postgresql.md#backup-client-tools)).
+- Image vulnerability scan (Trivy, run locally) on release builds; non-blocking for unfixed low severity.

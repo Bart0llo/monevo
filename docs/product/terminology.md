@@ -12,6 +12,8 @@ These terms are used precisely across code, API, UI copy (via translation keys),
 | Local account | n/a | A user with a password credential. |
 | Identity | `UserIdentity` | A link between a user and an external OIDC subject (`issuer` + `subject`). |
 | Session | `Session` | A server-side record that represents one logged-in device or client. It is identified to the client by an opaque random token. |
+| Personal API token | `ApiToken` | A named, user-created credential (`mnv_pat_…`) that lets an external integration call the REST API on the user's behalf, limited to the permissions chosen for it. It is not a session and never grants admin, session, or password access. Shown once; only its hash is stored. Also "API token". |
+| Permission | n/a | One `<resource>:<operation>` entry granted to a personal API token, for example `transactions:read`. |
 | Device | n/a | A human-readable description of a session's client (browser, OS, app), derived from the User-Agent and an optional user-provided name. |
 
 ## Money and currency

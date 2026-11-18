@@ -48,7 +48,9 @@ Non-goals: peer-to-peer sync, CRDTs, offline authentication of a never-logged-in
 | Attachment (metadata only) | none offline (delete online-only in v1) | Content is fetched on demand and cached by the service worker LRU (≤ 50 MB) |
 | Notification | mark read (offline-queued) | Pulled through the same change log |
 
-Not synced (online-only via TanStack Query with a persisted cache for last-seen viewing): reports, server-side forecast, transaction history, sessions, admin, export/import, backups.
+Not synced (online-only via TanStack Query with a persisted cache for last-seen viewing): reports, server-side forecast, transaction history, sessions, personal API tokens, admin, export/import, backups.
+
+Changes made by integrations with personal API tokens go through the same commands, so they reach devices through the normal change log; tokens cannot use `/sync/*` or realtime ([api-tokens.md](api-tokens.md#never-available-to-tokens)).
 
 ## 4. Identifiers and versions
 

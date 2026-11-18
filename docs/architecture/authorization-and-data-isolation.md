@@ -1,6 +1,6 @@
 # Authorization and Data Isolation
 
-**[Accepted]**, see [ADR-0006](../decisions/ADR-0006-user-data-isolation.md). Covers R-SEC-01, R-ADM-05, R-GEN-04.
+**[Accepted]**, see [ADR-0006](../decisions/ADR-0006-user-data-isolation.md). Covers R-SEC-01, R-ADM-05, R-GEN-04, and the isolation part of R-TOK-06.
 
 ## 1. Model
 
@@ -9,14 +9,17 @@ There are exactly two authorization dimensions:
 1. **Ownership:** every financial or user-owned record belongs to exactly one user, and only that user can read or write it. There is no sharing, delegation, or impersonation.
 2. **Role:** `USER` or `ADMIN`. `ADMIN` unlocks `/api/v1/admin/*` endpoints, which handle operational data only.
 
+Requests authenticated by a **personal API token** add a third, narrowing check: the token's permissions. A token acts as its owner, always with the effective role `USER`, and only for operations its permissions cover; it can never do more than the owner ([api-tokens.md](api-tokens.md#3-authentication)).
+
 **Admin ≠ data access.** No endpoint, including admin endpoints, returns another user's financial records (transactions, accounts, categories, budgets, goals, pots, schedules, attachments, history, notifications, dashboard, exports). Admin endpoints may return *operational* per-user data only: email, display name, role, status, created, last login, storage used and quota, session count. Aggregate counts (number of users, total storage) are fine. Per-user financial counts (for example "user X has 1 234 transactions") are **not** exposed.
 
 > Operator note: anyone with shell or database access to the server (including via backups) can technically read all data. "Admin" here means the application role. Server-level trust is documented in [security.md](security.md#threat-model) and [OQ-04](../planning/open-questions.md#oq-04-admin-backup-access-vs-financial-privacy).
 
 ## 2. Enforcement layers
 
-### Layer 1: identity from the session only
-- `req.auth.userId` is set by the auth middleware from the session. Route handlers pass a `RequestContext { userId, role, sessionId, requestId }` to services.
+### Layer 1: identity from the authenticated credential only
+- `req.auth.userId` is set by the auth middleware from the session or the personal API token. Route handlers pass a `RequestContext { userId, role, credential, requestId }` to services (`credential` is the session or the API token, [backend-architecture.md](backend-architecture.md#2-layers)).
+- Token-authenticated requests pass the permission check ([api-tokens.md](api-tokens.md#4-permission-catalogue)) before any resource lookup, then follow the same layers below.
 - Request DTOs **never** contain `userId`. Contract schemas use `.strict()`, so an injected `userId` field is a validation error.
 
 ### Layer 2: user-scoped repositories
@@ -36,6 +39,7 @@ There are exactly two authorization dimensions:
 - Sync: B's pull never returns A's changes. B's push with A's entity IDs → `NOT_FOUND`/`ID_CONFLICT`.
 - Attachments: B cannot download A's attachment by ID.
 - Admin: an admin calling user-data endpoints sees only their own data. Admin endpoints contain no financial fields (schema snapshot test).
+- Tokens: the isolation suite also runs with B authenticated by a full-permission API token, and a permission suite checks every route's token permissions ([api-tokens.md](api-tokens.md#8-testing)).
 
 ### Postgres row-level security
 **[Deferred]**, a candidate for defense in depth. With Prisma it requires setting `app.user_id` per transaction (`SET LOCAL` inside interactive transactions), which complicates connection handling and every query path. Composite FKs plus scoped repositories plus automated isolation tests give strong guarantees at lower complexity. This will be revisited if a second data-access path (for example a reporting connection) is added.
@@ -44,6 +48,7 @@ There are exactly two authorization dimensions:
 
 - Middleware `requireRole('ADMIN')` on the admin router. Sensitive admin actions (deactivate user, change OIDC, restore backup, generate reset link) also require a recent authentication (≤ 15 min, otherwise `REAUTH_REQUIRED`).
 - Role changes take effect on the next request (role is read from the DB with the session, not cached in a token).
+- Personal API tokens never reach admin routes, even when the owner is an admin.
 
 ## 4. Cross-entity rules (enforced in services)
 

@@ -51,7 +51,7 @@ Canonical rules: [authorization-and-data-isolation.md](../architecture/authoriza
 
 - Follow [api-design.md](../architecture/api-design.md): plural kebab-case paths, camelCase JSON, cursor pagination, RFC 9457 problems with `code`, `If-Match` versions, `Idempotency-Key` on creates.
 - Every route registers its OpenAPI definition next to the router (`*.openapi.ts`). A route without a registration fails a test.
-- Breaking changes to `v1` are not allowed; the OpenAPI snapshot diff in CI flags removals and type changes.
+- Breaking changes to `v1` are not allowed; the OpenAPI snapshot diff (`pnpm openapi:check`) flags removals and type changes.
 
 ## 7. Database
 

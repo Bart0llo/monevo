@@ -5,44 +5,46 @@ Canonical description of stage contents ([docs/README.md](../README.md#canonical
 Rules for every stage:
 
 - A stage starts only after the previous stage it depends on is **accepted by the user** and the open questions listed under its prerequisites are resolved ([open-questions.md](open-questions.md)).
-- Each stage ends with: all CI checks green, the stage's tests written and passing, docs updated for anything that changed ([contribution-guidelines.md](../development/contribution-guidelines.md#2-definition-of-done-per-change)), a short stage report, and the user's manual acceptance.
+- Each stage ends with: `pnpm validate` passing locally (and `pnpm test:e2e`; no CI platform yet, [ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md)), the stage's tests written and passing, docs updated for anything that changed ([contribution-guidelines.md](../development/contribution-guidelines.md#2-definition-of-done-per-change)), a short stage report, and the user's manual acceptance.
+- Every stage that adds API routes also adds their API token permissions or lists them as never available to tokens ([api-tokens.md](../architecture/api-tokens.md#4-permission-catalogue)); the permission suite enforces it.
 - Features from later stages are not built early. Out-of-scope items are never built ([requirements.md](../product/requirements.md#out-of-scope)).
 - Each stage keeps the app deployable: the Docker image builds, migrations apply, and the E2E smoke test passes.
 
 ## Stage 0: Discovery, architecture and documentation
 
-**Status:** completed (awaiting acceptance). **Deliverables:** `CLAUDE.md` and the complete `docs/` tree, including ADR-0001..0014 and the open questions. No code.
+**Status:** completed, awaiting final acceptance. OQ-01, OQ-02, OQ-08 closed; OQ-07 deferred. **Deliverables:** `CLAUDE.md` and the complete `docs/` tree, including ADR-0001..0017 and the open questions. No code.
 
 ## Stage 1: Foundation
 
 - **Objective:** a running, deployable skeleton with every cross-cutting mechanism in place.
-- **Prerequisites:** Stage 0 accepted; [OQ-01](open-questions.md#oq-01-product-name), [OQ-02](open-questions.md#oq-02-package-manager-and-repository-layout), [OQ-07](open-questions.md#oq-07-ci-platform), [OQ-08](open-questions.md#oq-08-nodejs-and-postgresql-versions) resolved.
+- **Prerequisites:** Stage 0 accepted; [OQ-01](open-questions.md#oq-01-product-name), [OQ-02](open-questions.md#oq-02-package-manager-and-repository-layout), [OQ-08](open-questions.md#oq-08-nodejs-and-postgresql-versions) closed; [OQ-07](open-questions.md#oq-07-ci-platform) deferred (does not block).
 - **Features and deliverables:**
   - Monorepo (`apps/server`, `apps/web`, `packages/contracts|domain|i18n`, `e2e/`), TypeScript strict, ESLint (including custom rules `no-float-money`, `no-ambient-time`, `no-unscoped-prisma`), Prettier, root scripts ([development-setup.md](../development/development-setup.md#4-root-scripts)).
   - Express app factory, config loading with Zod and `*_FILE` ([configuration.md](../infrastructure/configuration.md)), pino logging with redaction, request IDs, helmet, problem+json error handler, health endpoints, OpenAPI registry with Swagger UI, static web hosting with SPA fallback.
   - Prisma setup with the first migration: `app_settings`, ISO 4217 `currencies` seed. pg-boss started with a no-op job. Graceful shutdown.
   - `@monevo/domain` money type and currency table with tests.
-  - Dockerfile, `docker-compose.yml`, `docker-compose.dev.yml`, `docker-compose.e2e.yml`, `.env.example`, entrypoint with migrations ([docker-compose.md](../infrastructure/docker-compose.md)).
-  - CI pipeline ([testing-strategy.md](../development/testing-strategy.md#5-ci-pipeline)) including `docs:check`, OpenAPI snapshot, i18n check.
+  - Dockerfile, `docker-compose.yml` (app only; external PostgreSQL via `DATABASE_URL`, [postgresql.md](../infrastructure/postgresql.md)), `docker-compose.dev.yml`, `docker-compose.e2e.yml`, `.env.example`, entrypoint with migrations ([docker-compose.md](../infrastructure/docker-compose.md)).
+  - Local validation scripts `pnpm validate` and `pnpm test:e2e` ([testing-strategy.md](../development/testing-strategy.md#5-local-validation)) including `docs:check`, OpenAPI snapshot, i18n check. No CI platform configuration.
   - Web shell: Mantine 8 theme (light/dark/system), app layout with navigation placeholders, React Router, i18next with `en`/`pl`, PWA manifest and installable service worker (app shell only).
 - **Tests:** domain money unit + property tests; health/readiness integration; config validation; container smoke test; one Playwright test (app loads, theme switch, language switch).
-- **Acceptance criteria:** `docker compose up` on a clean host serves the app over the proxy; `/api/v1/docs` shows the OpenAPI document; CI is green; the PWA is installable in Chromium.
+- **Acceptance criteria:** `docker compose up` on a clean host, with `DATABASE_URL` pointing at a supported external PostgreSQL, serves the app over the proxy; `/api/v1/docs` shows the OpenAPI document; `pnpm validate` and `pnpm test:e2e` pass locally; the PWA is installable in Chromium.
 - **Requirements:** R-GEN-01, R-GEN-02, R-GEN-05, R-GEN-07, R-API-01, R-INF-01..04, R-CUR-07 (foundation).
 
 ## Stage 2: Identity and users
 
 - **Objective:** users can register, log in, manage sessions and settings; admins can manage users; isolation is enforced and tested from the first owned table.
-- **Prerequisites:** Stage 1; [OQ-03](open-questions.md#oq-03-smtp-for-authentication-emails), [OQ-06](open-questions.md#oq-06-authentication-implementation) resolved.
+- **Prerequisites:** Stage 1; [OQ-03](open-questions.md#oq-03-smtp-for-authentication-emails), [OQ-06](open-questions.md#oq-06-authentication-implementation), [OQ-22](open-questions.md#oq-22-api-token-permission-catalogue-and-lifecycle) resolved.
 - **Features and deliverables:**
   - Local registration and login (argon2id), sessions (cookie + Bearer), CSRF, rate limits, logout, session list and revocation, password change ([authentication.md](../architecture/authentication.md)).
   - SMTP flows: email verification, password reset, email change; admin-generated reset link fallback.
   - First-user admin bootstrap, CLI `create-admin`, `reset-password-link`, `set-role`, `generate-key`; `BOOTSTRAP_ADMIN_EMAIL`.
   - Admin: users list, activate/deactivate (revokes sessions), roles, registration mode, recent-auth requirement ([administration.md](../architecture/administration.md)).
   - `user_settings` and onboarding (language, time zone, base currency selection), settings screen.
-  - Isolation test harness iterating the OpenAPI registry; admin-route 403 suite.
-- **Tests:** auth flows (integration, Mailpit in E2E), session expiry with an injected clock, CSRF, rate limit, last-admin protection, isolation harness self-test.
-- **Acceptance criteria:** two users on one instance cannot see each other's settings or sessions; a deactivated user is logged out everywhere; password reset works with and without SMTP.
-- **Requirements:** R-AUTH-01..04, R-AUTH-07..09, R-ADM-01, R-ADM-05, R-GEN-04, R-GEN-08, R-GEN-09, R-SEC-01..03.
+  - Personal API tokens ([api-tokens.md](../architecture/api-tokens.md)): `api_tokens` table, token authentication path, permission framework (catalogue in `@monevo/contracts`, `x-monevo-permissions` in OpenAPI, the never-available list), management endpoints and Settings → API tokens screen, `apiToken` security scheme and "Authenticating integrations" API docs. `profile:read` is the first token-enabled permission; each later stage adds the permissions of its own routes.
+  - Isolation test harness iterating the OpenAPI registry (session and token authentication); admin-route 403 suite; API token permission suite.
+- **Tests:** auth flows (integration, Mailpit in E2E), session expiry with an injected clock, CSRF, rate limit, last-admin protection, isolation harness self-test, API token lifecycle (create, use, expire, revoke, deactivation) and permission suite self-test.
+- **Acceptance criteria:** two users on one instance cannot see each other's settings, sessions, or API tokens; a deactivated user is logged out everywhere and their tokens stop working; password reset works with and without SMTP; a token is shown once, works only within its permissions, and fails immediately after revocation; a token cannot reach admin, session, or password endpoints.
+- **Requirements:** R-AUTH-01..04, R-AUTH-07..09, R-ADM-01, R-ADM-05, R-GEN-04, R-GEN-08, R-GEN-09, R-SEC-01..03, R-TOK-01..09 (framework; per-resource permissions follow in later stages).
 
 ## Stage 3: Currencies, rates, accounts and categories
 
