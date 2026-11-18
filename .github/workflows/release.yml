@@ -1,0 +1,167 @@
+# Phase B of a Monevo release in github-actions mode (docs/development/releasing.md).
+# Publishes a release that release-it already prepared locally: it never runs release-it and never
+# changes the version, CHANGELOG.md, commits or tags. Triggered only by pushed tags; does nothing
+# unless the repository variable RELEASE_MODE is "github-actions" (missing/empty/invalid = manual).
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions: {}
+
+# One release at a time, never cancelled halfway through a publication.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+env:
+  IMAGE_REGISTRY: ghcr.io
+  IMAGE_NAME: monevo
+
+jobs:
+  mode:
+    name: Check RELEASE_MODE
+    runs-on: ubuntu-latest
+    permissions: {}
+    outputs:
+      publish: ${{ steps.mode.outputs.publish }}
+    steps:
+      - id: mode
+        env:
+          RELEASE_MODE: ${{ vars.RELEASE_MODE }}
+        run: |
+          mode="${RELEASE_MODE,,}"
+          mode="${mode//[[:space:]]/}"
+          if [ "$mode" = "github-actions" ]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+            echo "RELEASE_MODE=github-actions: publishing $GITHUB_REF_NAME."
+          else
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+            if [ -n "$mode" ] && [ "$mode" != "manual" ]; then
+              echo "::warning::Invalid RELEASE_MODE '$RELEASE_MODE'; using manual."
+            fi
+            echo "::notice::RELEASE_MODE is manual (or unset): $GITHUB_REF_NAME is not published by GitHub Actions."
+          fi
+
+  verify:
+    name: Verify and validate
+    needs: mode
+    if: needs.mode.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+          # Full history, branches and tags: needed to check the release commit and origin/master.
+          fetch-depth: 0
+      # actions/checkout can replace the pushed annotated tag with a lightweight one; restore it.
+      - run: git fetch --force origin "refs/tags/${GITHUB_REF_NAME}:refs/tags/${GITHUB_REF_NAME}"
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Verify tag, canonical version and release commit
+        run: node scripts/release/cli.mjs verify-tag "$GITHUB_REF_NAME"
+      - name: pnpm validate
+        env:
+          # Throwaway PostgreSQL for the integration tests (development-setup.md).
+          TESTCONTAINERS: 'true'
+        run: pnpm validate
+      - name: Install Playwright browser
+        run: pnpm --filter @monevo/e2e exec playwright install --with-deps chromium
+      - name: pnpm test:e2e
+        run: pnpm test:e2e
+
+  publish:
+    name: Build and push image
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.image }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - id: meta
+        run: |
+          version="$(node scripts/release/cli.mjs version)"
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version."
+            exit 1
+          fi
+          owner="${GITHUB_REPOSITORY_OWNER,,}"
+          {
+            echo "version=$version"
+            echo "owner=$owner"
+            echo "image=$IMAGE_REGISTRY/$owner/$IMAGE_NAME"
+            echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "$GITHUB_OUTPUT"
+      - uses: docker/setup-qemu-action@v4
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ${{ env.IMAGE_REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Refuse to overwrite an existing version tag
+        env:
+          IMAGE_OWNER: ${{ steps.meta.outputs.owner }}
+        run: node scripts/release/cli.mjs image assert-unpublished
+      - uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ${{ steps.meta.outputs.image }}:${{ github.ref_name }}
+            ${{ steps.meta.outputs.image }}:latest
+          build-args: |
+            APP_VERSION=${{ steps.meta.outputs.version }}
+            GIT_COMMIT=${{ github.sha }}
+            BUILD_DATE=${{ steps.meta.outputs.created }}
+            SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  github-release:
+    name: Create GitHub Release
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: Create the release (once)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMAGE: ${{ needs.publish.outputs.image }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" > /dev/null 2>&1; then
+            echo "::error::GitHub Release $GITHUB_REF_NAME already exists; not creating a duplicate."
+            exit 1
+          fi
+          node scripts/release/cli.mjs notes "${GITHUB_REF_NAME#v}" > "$RUNNER_TEMP/notes.md"
+          printf '\n\nImage: `%s:%s` (also `latest`)\n' "$IMAGE" "$GITHUB_REF_NAME" >> "$RUNNER_TEMP/notes.md"
+          # --verify-tag: never create a tag; --generate-notes appends GitHub's generated notes.
+          gh release create "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --verify-tag \
+            --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/notes.md" --generate-notes

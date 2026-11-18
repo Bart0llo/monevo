@@ -114,9 +114,10 @@ These are baked into the image at build time. Operators do not set them; they ar
 
 | Variable | Default | Required | Description |
 |---|---|---|---|
-| `APP_VERSION` | `dev` | no | Build argument → env. Reported in the startup log and as the OCI `org.opencontainers.image.version` label. `pnpm test:e2e` passes it to the build. |
+| `APP_VERSION` | `dev` | no | Build argument → env. Reported in the startup log and as the OCI `org.opencontainers.image.version` label. Release builds and `pnpm test:e2e` pass the root `package.json` version ([releasing.md](../development/releasing.md#canonical-version)). |
 | `GIT_COMMIT` | `unknown` | no | Build argument → env. Reported in the startup log; OCI `revision` label. |
 | `BUILD_DATE` | `unknown` | no | Build argument → env. OCI `created` label. |
+| `SOURCE_URL` | empty | no | Build argument only (not an env variable). OCI `source` and `url` labels; release builds pass the repository URL. |
 | `CHECKPOINT_DISABLE` | `1` (image) | no | Disables the Prisma CLI's telemetry and update check, which would otherwise try to write to the read-only root filesystem and phone home during `migrate`. |
 
 ### Development only
@@ -125,6 +126,7 @@ These are baked into the image at build time. Operators do not set them; they ar
 |---|---|---|---|
 | `VITE_PWA_DEV` | unset | no | Web dev server only (`apps/web`, read by Vite). `true` enables the service worker under `pnpm dev`; it is never in the production image. |
 | `TEST_DATABASE_URL`, `TESTCONTAINERS` | see [development-setup.md](../development/development-setup.md) | no | Integration-test database selection. |
+| `RELEASE_MODE`, `IMAGE_*`, `GHCR_TOKEN`, `GHCR_USERNAME`, `YES`, and the other release tooling variables | see [releasing.md](../development/releasing.md#variables) | no | Release tooling only (`make` targets); never read by the application. |
 
 <a id="runtime-settings-app_settings"></a>
 

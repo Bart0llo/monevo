@@ -5,10 +5,10 @@
 ## 1. Workflow
 
 - Work happens in **stages** ([implementation-stages.md](../planning/implementation-stages.md)). A stage starts only when the previous one is accepted by the user, and its prerequisites (including open questions marked "before Stage N" in [open-questions.md](../planning/open-questions.md)) are resolved.
-- Branches: `main` is always releasable. Work on `stage-<n>-<slug>` or `feat/<slug>`/`fix/<slug>` branches; merge after `pnpm validate` passes locally (and `pnpm test:e2e` before a stage is submitted for acceptance). No CI platform is configured yet ([ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md)).
+- Branches: `master` is always releasable and is the only release branch. Work on `stage-<n>-<slug>` or `feat/<slug>`/`fix/<slug>` branches; merge after `pnpm validate` passes locally (and `pnpm test:e2e` before a stage is submitted for acceptance). No CI platform is configured yet ([ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md)).
 - Commits: [Conventional Commits](https://www.conventionalcommits.org/) (`feat(transactions): …`, `fix(sync): …`, `docs: …`). One logical change per commit. Never commit secrets, `.env` files, or real financial data.
 - Pull requests describe what changed, which requirement IDs and docs it touches, how it was tested, and any open question it depends on.
-- Releases: SemVer tags `vX.Y.Z`; release notes state migrations, rollback compatibility, and required operator actions ([deployment.md](../infrastructure/deployment.md#upgrades)).
+- Releases: prepared with `make release` (release-it: version, `CHANGELOG.md`, commit, annotated SemVer tag `vX.Y.Z`), then published manually or by the release workflow ([releasing.md](releasing.md)). Release notes state migrations, rollback compatibility, and required operator actions ([deployment.md](../infrastructure/deployment.md#upgrades)).
 
 ## 2. Definition of done (per change)
 

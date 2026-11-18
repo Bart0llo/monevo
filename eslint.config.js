@@ -78,7 +78,8 @@ export default defineConfig(
   js.configs.recommended,
   {
     files: CODE,
-    ignores: ['eslint.config.js'],
+    // Root tool configuration files are not part of any boundaries element.
+    ignores: ['eslint.config.js', '.release-it.js'],
     plugins: { boundaries, 'import-x': importX },
     settings: {
       'import-x/resolver-next': [createTypeScriptImportResolver({ alwaysTryTypes: true })],

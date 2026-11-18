@@ -68,6 +68,7 @@ Every document uses the same markers to keep requirements, decisions, and ideas 
 - [development/testing-strategy.md](development/testing-strategy.md): test pyramid, tools, local validation
 - [development/internationalization.md](development/internationalization.md): i18n, localization, time zones in UI
 - [development/contribution-guidelines.md](development/contribution-guidelines.md): workflow and documentation maintenance
+- [development/releasing.md](development/releasing.md): release preparation, publishing modes, Docker image tags
 
 ### Planning
 - [planning/roadmap.md](planning/roadmap.md): stage overview and dependency graph
@@ -96,4 +97,5 @@ Some topics touch several documents. To avoid contradictions, each fact has exac
 | Environment variables | [infrastructure/configuration.md](infrastructure/configuration.md) |
 | PostgreSQL versions, connection, TLS, pooling | [infrastructure/postgresql.md](infrastructure/postgresql.md) |
 | Validation commands (no CI yet) | [development/testing-strategy.md](development/testing-strategy.md#5-local-validation) |
+| Release procedure, version, image name and tags | [development/releasing.md](development/releasing.md) |
 | Stage contents | [planning/implementation-stages.md](planning/implementation-stages.md) |

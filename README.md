@@ -15,6 +15,8 @@ docker compose up -d      # builds the image, applies migrations, starts the app
 
 Put a TLS-terminating reverse proxy in front of it ([deployment.md](docs/infrastructure/deployment.md)). The API documentation is served at `/api/v1/docs`.
 
+Published images: `ghcr.io/<owner>/monevo:vX.Y.Z` ([releasing.md](docs/development/releasing.md)).
+
 More: [docker-compose.md](docs/infrastructure/docker-compose.md), [configuration.md](docs/infrastructure/configuration.md), [backups-and-restoration.md](docs/infrastructure/backups-and-restoration.md).
 
 ## Develop
@@ -29,5 +31,7 @@ pnpm dev
 pnpm validate        # all local checks
 pnpm test:e2e        # builds the image and runs Playwright against it
 ```
+
+Releases: `make help` and [releasing.md](docs/development/releasing.md).
 
 The documentation in [docs/](docs/README.md) is the source of truth for requirements, architecture, and decisions.

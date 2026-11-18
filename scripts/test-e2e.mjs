@@ -77,7 +77,8 @@ try {
     ...COMPOSE,
     'build',
     '--build-arg',
-    `APP_VERSION=${JSON.parse(readFileSync(resolve(ROOT, 'apps/server/package.json'), 'utf8')).version}`,
+    // Canonical application version (docs/development/releasing.md#canonical-version).
+    `APP_VERSION=${JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf8')).version}`,
     '--build-arg',
     `GIT_COMMIT=${gitCommit.status === 0 ? gitCommit.stdout.trim() : 'unknown'}`,
     '--build-arg',

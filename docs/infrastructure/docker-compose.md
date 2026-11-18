@@ -25,11 +25,11 @@ No build tools, compilers, or package caches are left in the runtime image. Nati
 | Volumes | `/data/attachments` (local storage driver), `/data/backups` (backups and user exports) |
 | Writable paths | only `/data/*` and `/tmp` (tmpfs). Root filesystem read-only. |
 | Healthcheck | `node dist/healthcheck.js` → `GET http://127.0.0.1:3000/api/v1/health/ready`, interval 30 s, timeout 5 s, start period 120 s (migrations and pre-upgrade backup may take a while), retries 3 |
-| Labels | OCI labels: version, revision (commit), created, source, license |
-| Build args | `APP_VERSION`, `GIT_COMMIT`, `BUILD_DATE` (exposed in `/admin/system`) |
+| Labels | OCI labels: title, description, version, revision (commit), created, source, url; license once [OQ-17](../planning/open-questions.md#oq-17-license) is decided |
+| Build args | `APP_VERSION`, `GIT_COMMIT`, `BUILD_DATE` (exposed in `/admin/system`), `SOURCE_URL` (labels only) ([configuration.md](configuration.md#set-by-the-image-not-operator-configuration)). Declared after the apt layer, so a new version does not invalidate it. |
 | Stop | SIGTERM; graceful shutdown within 25 s ([backend-architecture.md](../architecture/backend-architecture.md#1-process-layout)) |
 
-Image name: `monevo:<version>` plus `:<major>.<minor>` tags. The public registry and automated publishing are decided together with the CI platform ([OQ-07](../planning/open-questions.md#oq-07-ci-platform), deferred; [ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md)). Until then, images are built locally from a release tag (`docker build -t monevo:<version> .`, or `build:` in the compose file). Architectures: `linux/amd64` and `linux/arm64` (homelab ARM boards), built with `docker buildx`.
+Published image: `ghcr.io/<owner>/monevo:vX.Y.Z` (immutable) plus `latest`, for `linux/amd64` and `linux/arm64` (homelab ARM boards), built with `docker buildx` ([ADR-0019](../decisions/ADR-0019-release-management.md), proposed). Tags, registry rules, and the publishing procedure are canonical in [releasing.md](../development/releasing.md#docker-images). The example `docker-compose.yml` also has `build: .`, so the image can still be built locally from a checkout of a release tag; operators who pull from the registry set `image:` to the exact `vX.Y.Z` ([deployment.md](deployment.md#upgrades)).
 
 ### Entrypoint
 
@@ -83,6 +83,6 @@ TLS terminates at a reverse proxy chosen by the operator (Caddy, Traefik, nginx)
 
 ## 5. Testing
 
-- `pnpm test:e2e` builds the image for the host architecture and runs the E2E suite against it locally ([testing-strategy.md](../development/testing-strategy.md#5-local-validation)). Release builds for both architectures are made locally with `docker buildx`.
+- `pnpm test:e2e` builds the image for the host architecture and runs the E2E suite against it locally ([testing-strategy.md](../development/testing-strategy.md#5-local-validation)). Release builds for both architectures are made with `docker buildx`, locally or by the release workflow ([releasing.md](../development/releasing.md#8-multi-architecture-builds)).
 - A container smoke test: start with `read_only`, non-root, no capabilities; health becomes ready; the `pg_dump --version` major equals the newest supported PostgreSQL major ([postgresql.md](postgresql.md#backup-client-tools)).
 - Image vulnerability scan (Trivy, run locally) on release builds; non-blocking for unfixed low severity.

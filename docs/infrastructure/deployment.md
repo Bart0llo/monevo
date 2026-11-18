@@ -18,7 +18,7 @@ Target scale: a household or small group (≤ 10 users). One app container, no h
 ## First installation
 
 1. Prepare the external PostgreSQL: a dedicated database and owning role, network access from this host, and TLS if the connection leaves the host or a trusted private network ([postgresql.md](postgresql.md#deployment-checklist)).
-2. Create a directory (e.g. `/opt/monevo`) with `docker-compose.yml` and `.env.example` from the release.
+2. Create a directory (e.g. `/opt/monevo`) with `docker-compose.yml` and `.env.example` from the release. To use the published image instead of building locally, set `image: ghcr.io/<owner>/monevo:vX.Y.Z` and remove `build:` ([releasing.md](../development/releasing.md#docker-images)).
 3. `cp .env.example .env`, set `APP_URL`, `DATABASE_URL` (pointing at the external database), and `APP_ENCRYPTION_KEY` (`docker compose run --rm app node dist/cli.js generate-key`). Store `.env` securely and **keep a copy outside the server** ([backups-and-restoration.md](backups-and-restoration.md#what-is-not-in-a-backup)).
 4. Configure the [reverse proxy](#reverse-proxy).
 5. `docker compose up -d`, then `docker compose logs -f app` until `server listening` (the entrypoint first waits for the database and applies migrations).
@@ -70,7 +70,7 @@ Monevo is updated manually (no self-update, out of scope).
 
 1. Read the release notes. They state whether the release contains migrations and whether a rollback without restore is possible ([database-architecture.md](../architecture/database-architecture.md#5-migrations)).
 2. Take a manual backup (admin UI or `docker compose exec app node dist/cli.js backup`) and copy it off the host. The app also takes an automatic [pre-upgrade backup](backups-and-restoration.md#pre-upgrade-backup) when migrations are pending.
-3. Change the image tag in `docker-compose.yml` (pin exact versions; avoid `:latest` in production) and get the new image: build it locally from the release tag until a registry exists ([docker-compose.md](docker-compose.md#1-image)), or `docker compose pull` once one does. Then `docker compose up -d`.
+3. Set the new tag in `docker-compose.yml` (`image: ghcr.io/<owner>/monevo:vX.Y.Z`; pin exact versions and avoid `:latest` in production, so an upgrade is always a deliberate step), then `docker compose pull` and `docker compose up -d`. Alternatively, build the image locally from a checkout of the release tag (`docker compose build`). Image names and tags: [releasing.md](../development/releasing.md#docker-images).
 4. Watch `docker compose logs -f app`: migrations, then `server listening`. Check the admin System tab (version, pending migrations = 0, jobs).
 5. Clients pick up the new web app on their next load (the service worker shows an "update available" prompt). The API keeps `v1` compatibility, so older cached clients keep working ([api-design.md](../architecture/api-design.md)).
 

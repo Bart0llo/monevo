@@ -64,8 +64,10 @@ Start `db-test` with `docker compose -f docker-compose.dev.yml up -d db-test` be
 | `pnpm db:seed:dev` | Optional demo data for one dev user (development only, never in migrations or production) |
 | `pnpm openapi:check` | Regenerate the OpenAPI document and diff it against the committed snapshot |
 | `pnpm i18n:check` | Missing/unused translation keys ([internationalization.md](internationalization.md#tooling)) |
+| `pnpm test:release` | Unit tests of the release tooling helpers (`scripts/release/`) |
+| `pnpm release` / `pnpm release:check` | Prepare a release with release-it / check release prerequisites only ([releasing.md](releasing.md); usually via `make release` and `make release-check`) |
 | `pnpm docs:check` | Relative link and anchor check for `docs/` and `CLAUDE.md` (`scripts/check-doc-links.mjs`) |
-| `pnpm validate` | All local checks: lint, format check, typecheck, i18n, docs, unit/component/sync, integration, OpenAPI snapshot ([testing-strategy.md](testing-strategy.md#5-local-validation)). Must pass before every merge. |
+| `pnpm validate` | All local checks: lint, format check, typecheck, i18n, docs, unit/component/sync, release tooling, integration, OpenAPI snapshot ([testing-strategy.md](testing-strategy.md#5-local-validation)). Must pass before every merge. |
 
 ## 5. Working on specific areas
 

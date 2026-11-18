@@ -55,6 +55,7 @@ External (outbound only): OIDC provider · exchange rate provider · Web Push se
 | Scheduling | Scheduled transactions + computed occurrences; pg-boss job runner | [ADR-0013](../decisions/ADR-0013-scheduled-transactions-and-jobs.md) |
 | Savings pots | Allocations, not transactions | [ADR-0014](../decisions/ADR-0014-virtual-savings-pots.md) |
 | Validation | Local validation scripts; CI platform deferred | [ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md) |
+| Releases (proposed) | release-it locally; image on GHCR, published manually or by an opt-in publish-only workflow | [ADR-0019](../decisions/ADR-0019-release-management.md) |
 | API tokens | Opaque hashed personal API tokens with per-resource permissions | [ADR-0017](../decisions/ADR-0017-personal-api-tokens.md) |
 
 ## Module map

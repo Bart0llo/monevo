@@ -65,18 +65,20 @@ Registration and first-user admin; onboarding; account and category setup; quick
 pnpm validate
  ├─ db:generate (prisma generate) · lint · format:check · typecheck · i18n:check · docs:check
  ├─ unit + component + sync client (coverage report, domain threshold enforced; unit tests again with TZ=Pacific/Auckland)
+ ├─ test:release (release tooling helpers)
  ├─ integration (local db-test PostgreSQL from docker-compose.dev.yml, or Testcontainers; S3 server pending OQ-23)
  └─ openapi:check (snapshot diff)
 
 pnpm test:e2e
  └─ build image (host architecture) ─► e2e (Playwright, traces on failure)
 
-release only (manual): integration against the newest supported PostgreSQL major, multi-arch build (docker buildx), image scan (Trivy)
+release only: integration against the newest supported PostgreSQL major, multi-arch build (docker buildx), image scan (Trivy); see releasing.md
 ```
 
-- `pnpm validate` must pass before every merge to `main`. `pnpm test:e2e` must pass before a stage is submitted for acceptance and before a release. Stage reports list what ran and the results.
+- `pnpm validate` must pass before every merge to `master`. `pnpm test:e2e` must pass before a stage is submitted for acceptance and before a release. Stage reports list what ran and the results.
 - `pnpm audit --prod` runs before releases: low/moderate findings are non-blocking; high/critical findings block unless reviewed ([security.md](../architecture/security.md#dependencies)).
 - Flaky tests are quarantined with an issue link, never silently retried forever.
+- Releases are prepared and published as described in [releasing.md](releasing.md). In GitHub Actions mode, the publish-only release workflow runs `pnpm validate` and `pnpm test:e2e` again for the tag ([ADR-0019](../decisions/ADR-0019-release-management.md)); it is not a merge gate.
 - A CI platform can be added later as a thin wrapper that runs the same scripts and compose files, without changing the architecture or this workflow.
 
 ## 6. Manual verification

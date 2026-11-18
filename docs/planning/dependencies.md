@@ -65,7 +65,7 @@ Dev: `vite`, `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library
 
 ## Workspace tooling
 
-`pnpm`, `eslint` + `typescript-eslint` + `eslint-plugin-react-hooks` + `eslint-plugin-i18next` (6.x, verified with ESLint 10 in Stage 1) + `eslint-plugin-boundaries` (Stage 1: package dependency rules and backend module entry points from application-structure.md) + `eslint-plugin-import-x` (`import-x/order`; the maintained fork of `eslint-plugin-import`, which does not support ESLint 10) + `eslint-import-resolver-typescript`, `@eslint/js`, `globals`, `cross-env` (the `test:tz` run), `prettier`, `i18next-parser` (or a custom key checker), a tiny link checker script for `docs:check` (no dependency).
+`pnpm`, `eslint` + `typescript-eslint` + `eslint-plugin-react-hooks` + `eslint-plugin-i18next` (6.x, verified with ESLint 10 in Stage 1) + `eslint-plugin-boundaries` (Stage 1: package dependency rules and backend module entry points from application-structure.md) + `eslint-plugin-import-x` (`import-x/order`; the maintained fork of `eslint-plugin-import`, which does not support ESLint 10) + `eslint-import-resolver-typescript`, `@eslint/js`, `globals`, `cross-env` (the `test:tz` run), `prettier`, `release-it` + `@release-it/conventional-changelog` (release preparation: version, `CHANGELOG.md`, tag; [releasing.md](../development/releasing.md)), `i18next-parser` (or a custom key checker), a tiny link checker script for `docs:check` (no dependency).
 
 ## Rejected or avoided
 

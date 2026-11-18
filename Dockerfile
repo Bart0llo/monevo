@@ -26,18 +26,6 @@ RUN pnpm --filter @monevo/web build \
 
 # --- runtime ---
 FROM ${NODE_IMAGE} AS runtime
-ARG APP_VERSION=dev
-ARG GIT_COMMIT=unknown
-ARG BUILD_DATE=unknown
-
-LABEL org.opencontainers.image.title="Monevo" \
-      org.opencontainers.image.description="Self-hosted, offline-first personal finance PWA" \
-      org.opencontainers.image.version="${APP_VERSION}" \
-      org.opencontainers.image.revision="${GIT_COMMIT}" \
-      org.opencontainers.image.created="${BUILD_DATE}" \
-      org.opencontainers.image.source="https://github.com/Bart0llo/monevo"
-# org.opencontainers.image.licenses is added once the license is chosen (OQ-17).
-
 # PostgreSQL client tools of the newest supported major from PGDG, for pg_dump/pg_restore
 # (docs/infrastructure/postgresql.md#backup-client-tools).
 ADD --checksum=sha256:0144068502a1eddd2a0280ede10ef607d1ec592ce819940991203941564e8e76 \
@@ -52,6 +40,22 @@ RUN apt-get update \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p /data/attachments /data/backups \
  && chown -R 1000:1000 /data
+
+# Release metadata (docs/development/releasing.md#docker-images). Declared after the apt layer so
+# a new version or build date does not invalidate it.
+ARG APP_VERSION=dev
+ARG GIT_COMMIT=unknown
+ARG BUILD_DATE=unknown
+ARG SOURCE_URL=""
+
+LABEL org.opencontainers.image.title="Monevo" \
+      org.opencontainers.image.description="Self-hosted, offline-first personal finance PWA" \
+      org.opencontainers.image.version="${APP_VERSION}" \
+      org.opencontainers.image.revision="${GIT_COMMIT}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.source="${SOURCE_URL}" \
+      org.opencontainers.image.url="${SOURCE_URL}"
+# org.opencontainers.image.licenses is added once the license is chosen (OQ-17).
 
 ENV NODE_ENV=production \
     APP_VERSION=${APP_VERSION} \

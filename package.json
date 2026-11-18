@@ -1,5 +1,6 @@
 {
   "name": "monevo",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@12.21.0",
@@ -24,10 +25,14 @@
     "openapi:check": "pnpm --filter @monevo/server openapi:check",
     "i18n:check": "node scripts/check-i18n.mjs",
     "docs:check": "node scripts/check-doc-links.mjs",
-    "validate": "pnpm db:generate && pnpm lint && pnpm format:check && pnpm typecheck && pnpm i18n:check && pnpm docs:check && pnpm test && pnpm test:tz && pnpm test:integration && pnpm openapi:check"
+    "validate": "pnpm db:generate && pnpm lint && pnpm format:check && pnpm typecheck && pnpm i18n:check && pnpm docs:check && pnpm test && pnpm test:release && pnpm test:tz && pnpm test:integration && pnpm openapi:check",
+    "test:release": "vitest run --config scripts/release/vitest.config.mjs",
+    "release": "release-it",
+    "release:check": "node scripts/release/cli.mjs check"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.0",
+    "@release-it/conventional-changelog": "^12.0.2",
     "cross-env": "^10.0.0",
     "eslint": "^10.15.0",
     "eslint-import-resolver-typescript": "^4.4.5",
@@ -37,6 +42,7 @@
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.14.0",
     "prettier": "^3.10.1",
+    "release-it": "^21.1.2",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.73.0",
     "vitest": "^5.1.1"

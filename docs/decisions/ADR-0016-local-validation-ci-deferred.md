@@ -1,6 +1,6 @@
 # ADR-0016: Local validation; CI platform deferred
 
-- **Status:** Accepted
+- **Status:** Accepted (amendment proposed in [ADR-0019](ADR-0019-release-management.md): image registry and release publishing)
 - **Date:** 2026-11-18
 
 ## Context

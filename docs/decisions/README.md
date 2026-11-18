@@ -21,9 +21,10 @@ Significant or hard-to-reverse decisions are recorded here as ADRs. The summary 
 | [ADR-0013](ADR-0013-scheduled-transactions-and-jobs.md) | Scheduled transactions and jobs | Proposed |
 | [ADR-0014](ADR-0014-virtual-savings-pots.md) | Virtual savings pots | Accepted |
 | [ADR-0015](ADR-0015-external-postgresql.md) | External PostgreSQL | Accepted (amended by ADR-0018) |
-| [ADR-0016](ADR-0016-local-validation-ci-deferred.md) | Local validation; CI platform deferred | Accepted |
+| [ADR-0016](ADR-0016-local-validation-ci-deferred.md) | Local validation; CI platform deferred | Accepted (amendment proposed in ADR-0019) |
 | [ADR-0017](ADR-0017-personal-api-tokens.md) | Personal API tokens | Proposed |
 | [ADR-0018](ADR-0018-postgresql-16-minimum.md) | PostgreSQL 16 as the minimum supported major | Accepted |
+| [ADR-0019](ADR-0019-release-management.md) | Release management and image publishing | Proposed |
 
 ## Process
 
@@ -32,7 +33,7 @@ Significant or hard-to-reverse decisions are recorded here as ADRs. The summary 
 3. ADRs are **append-only**. To change a decision, write a new ADR that **supersedes** the old one and set the old one's status to `Superseded by ADR-NNNN`. Only typo fixes and status changes edit an existing ADR.
 4. Update the affected architecture documents and [overview.md](../architecture/overview.md#key-architectural-decisions) in the same change ([contribution-guidelines.md](../development/contribution-guidelines.md#3-documentation-maintenance)).
 
-Statuses: `Proposed`, `Accepted`, `Accepted (amended by ADR-NNNN)` (a later ADR replaces part of it), `Proposed (extended by ADR-NNNN)` (a later ADR adds to it without replacing it), `Superseded by ADR-NNNN`, `Rejected`.
+Statuses: `Proposed`, `Accepted`, `Accepted (amended by ADR-NNNN)` (a later ADR replaces part of it), `Proposed (extended by ADR-NNNN)` (a later ADR adds to it without replacing it), `Accepted (amendment proposed in ADR-NNNN)` (a proposed ADR would replace part of it once accepted), `Superseded by ADR-NNNN`, `Rejected`.
 
 ## Template
 
