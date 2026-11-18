@@ -1,3 +1,4 @@
+import compression from 'compression';
 import express, { type Express } from 'express';
 import type { Config } from './config/env.js';
 import { accessLog } from './http/access-log.js';
@@ -10,7 +11,10 @@ import { healthRouter, type ReadinessChecker } from './modules/health/index.js';
 import { API_BASE_PATH, buildOpenApiDocument } from './openapi/document.js';
 import { openApiRouter } from './openapi/routes.js';
 
-export type AppConfig = Pick<Config, 'appUrl' | 'trustProxy' | 'corsAllowedOrigins' | 'apiDocsEnabled'>;
+export type AppConfig = Pick<
+  Config,
+  'appUrl' | 'trustProxy' | 'corsAllowedOrigins' | 'apiDocsEnabled' | 'httpCompression'
+>;
 
 export interface AppDeps {
   readonly config: AppConfig;
@@ -31,6 +35,8 @@ export function createApp(deps: AppDeps): Express {
   app.use(requestId());
   app.use(accessLog(deps.logger));
   app.use(securityHeaders({ https: deps.config.appUrl.protocol === 'https:' }));
+  // Off by default: the reverse proxy normally compresses (backend-architecture.md).
+  if (deps.config.httpCompression) app.use(compression());
 
   const api = express.Router();
   api.use(cors(deps.config.corsAllowedOrigins));

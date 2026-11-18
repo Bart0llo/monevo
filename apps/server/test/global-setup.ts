@@ -1,7 +1,9 @@
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { TestProject } from 'vitest/node';
 import pg from 'pg';
+import type { TestProject } from 'vitest/node';
 
 // Builds a template database once (all migrations applied); every test file clones it
 // (testing-strategy.md#4-test-data-and-environment). Uses the local `db-test` container from
@@ -46,12 +48,20 @@ export default async function setup(project: TestProject): Promise<() => Promise
   await admin.query(`CREATE DATABASE ${TEMPLATE_DB}`);
   await admin.end();
 
-  const result = spawnSync('pnpm', ['exec', 'prisma', 'migrate', 'deploy'], {
+  // Run the Prisma CLI with the current Node binary: spawning `pnpm` directly fails on Windows (pnpm.cmd).
+  const require = createRequire(import.meta.url);
+  const prismaBin = join(dirname(require.resolve('prisma/package.json')), 'build', 'index.js');
+  const result = spawnSync(process.execPath, [prismaBin, 'migrate', 'deploy'], {
     cwd: fileURLToPath(new URL('..', import.meta.url)),
-    env: { ...process.env, DATABASE_URL: withDatabase(adminUrl, TEMPLATE_DB), PRISMA_HIDE_UPDATE_MESSAGE: '1' },
+    env: {
+      ...process.env,
+      DATABASE_URL: withDatabase(adminUrl, TEMPLATE_DB),
+      PRISMA_HIDE_UPDATE_MESSAGE: '1',
+    },
     encoding: 'utf8',
   });
-  if (result.status !== 0) throw new Error(`prisma migrate deploy failed:\n${result.stdout}\n${result.stderr}`);
+  if (result.status !== 0)
+    throw new Error(`prisma migrate deploy failed:\n${result.stdout}\n${result.stderr}`);
 
   project.provide('adminDatabaseUrl', adminUrl);
   return async () => {

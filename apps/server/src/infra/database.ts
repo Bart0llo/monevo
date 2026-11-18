@@ -32,13 +32,19 @@ export function versionTooNewMessage(major: number): string {
 export function listMigrationNames(migrationsDir: string): string[] {
   if (!existsSync(migrationsDir)) return [];
   return readdirSync(migrationsDir, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && existsSync(join(migrationsDir, entry.name, 'migration.sql')))
+    .filter(
+      (entry) =>
+        entry.isDirectory() && existsSync(join(migrationsDir, entry.name, 'migration.sql')),
+    )
     .map((entry) => entry.name)
     .sort();
 }
 
 /** Shipped migrations not yet finished in the database. `finished === null`: no migrations table. */
-export function pendingMigrations(shipped: readonly string[], finished: readonly string[] | null): string[] {
+export function pendingMigrations(
+  shipped: readonly string[],
+  finished: readonly string[] | null,
+): string[] {
   if (finished === null) return [...shipped];
   const done = new Set(finished);
   return shipped.filter((name) => !done.has(name));
@@ -63,7 +69,10 @@ export async function readFinishedMigrations(prisma: PrismaClient): Promise<stri
 export async function ping(prisma: PrismaClient, timeoutMs: number): Promise<void> {
   let timer: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`database ping timed out after ${timeoutMs} ms`)), timeoutMs);
+    timer = setTimeout(
+      () => reject(new Error(`database ping timed out after ${timeoutMs} ms`)),
+      timeoutMs,
+    );
   });
   try {
     await Promise.race([prisma.$queryRaw`SELECT 1`, timeout]);

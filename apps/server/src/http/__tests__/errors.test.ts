@@ -20,7 +20,14 @@ function appThrowing(error: unknown) {
 describe('errorHandler', () => {
   it('maps ZodError to 422 VALIDATION_FAILED with field paths', async () => {
     const schema = z.object({
-      postings: z.array(z.object({ amount: z.string().refine(() => false, { params: { code: 'AMOUNT_PRECISION' }, message: 'Too many decimals' }) })),
+      postings: z.array(
+        z.object({
+          amount: z.string().refine(() => false, {
+            params: { code: 'AMOUNT_PRECISION' },
+            message: 'Too many decimals',
+          }),
+        }),
+      ),
       name: z.string(),
     });
     const result = schema.safeParse({ postings: [{ amount: '1' }, { amount: '1.234' }], name: 5 });

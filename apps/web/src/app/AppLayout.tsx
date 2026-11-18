@@ -1,7 +1,7 @@
 import { AppShell, Burger, Group, NavLink, Text, Title } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
-import { Link, Outlet, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { Link, Outlet, useLocation } from 'react-router';
 import { ColorSchemeMenu } from './ColorSchemeMenu';
 import { LanguageMenu } from './LanguageMenu';
 import { NAV_ITEMS, isActivePath } from './navigation';
@@ -21,7 +21,13 @@ export function AppLayout() {
       <AppShell.Header>
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group gap="sm" wrap="nowrap">
-            <Burger opened={opened} onClick={toggle} hiddenFrom="sm" size="sm" aria-label={t('nav.toggle')} />
+            <Burger
+              opened={opened}
+              onClick={toggle}
+              hiddenFrom="sm"
+              size="sm"
+              aria-label={t('nav.toggle')}
+            />
             <Title order={1} size="h3">
               {t('app.name')}
             </Title>

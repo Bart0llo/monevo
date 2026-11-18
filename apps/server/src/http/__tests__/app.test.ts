@@ -1,9 +1,9 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { ProblemSchema } from '@monevo/contracts';
 import request from 'supertest';
 import { describe, expect, it } from 'vitest';
+import { ProblemSchema } from '@monevo/contracts';
 import { type AppConfig, createApp } from '../../app.js';
 import type { ReadinessResult } from '../../modules/health/index.js';
 import { captureLogger } from '../../test-support/logger.js';
@@ -13,10 +13,13 @@ const CONFIG: AppConfig = {
   trustProxy: 'loopback',
   corsAllowedOrigins: [],
   apiDocsEnabled: true,
+  httpCompression: false,
 };
 const READY: ReadinessResult = { database: true, migrations: true, lifecycle: true };
 
-function makeApp(options: { readiness?: ReadinessResult; config?: Partial<AppConfig>; webRoot?: string } = {}) {
+function makeApp(
+  options: { readiness?: ReadinessResult; config?: Partial<AppConfig>; webRoot?: string } = {},
+) {
   const { logger, lines } = captureLogger();
   const app = createApp({
     config: { ...CONFIG, ...options.config },
@@ -47,13 +50,18 @@ describe('health', () => {
 
   it('readiness returns ok when every check passes', async () => {
     const { app } = makeApp();
-    expect((await request(app).get('/api/v1/health/ready').expect(200)).body).toEqual({ status: 'ok' });
+    expect((await request(app).get('/api/v1/health/ready').expect(200)).body).toEqual({
+      status: 'ok',
+    });
   });
 
   it('readiness returns 503 listing only failing checks', async () => {
     const { app } = makeApp({ readiness: { database: false, migrations: true, lifecycle: false } });
     const res = await request(app).get('/api/v1/health/ready').expect(503);
-    expect(res.body).toEqual({ status: 'unavailable', checks: { database: 'fail', lifecycle: 'fail' } });
+    expect(res.body).toEqual({
+      status: 'unavailable',
+      checks: { database: 'fail', lifecycle: 'fail' },
+    });
   });
 
   it('logs health requests at debug and other requests at info, without query strings', async () => {
@@ -61,7 +69,12 @@ describe('health', () => {
     await request(app).get('/api/v1/health?probe=secret');
     await request(app).get('/api/v1/nope?q=secret');
     const access = lines().filter((line) => line['msg'] === 'request');
-    expect(access[0]).toMatchObject({ level: 'debug', method: 'GET', route: '/api/v1/health', status: 200 });
+    expect(access[0]).toMatchObject({
+      level: 'debug',
+      method: 'GET',
+      route: '/api/v1/health',
+      status: 200,
+    });
     expect(access[1]).toMatchObject({ level: 'info', status: 404 });
     expect(typeof access[0]?.['durationMs']).toBe('number');
     expect(JSON.stringify(access)).not.toContain('secret');
@@ -72,14 +85,18 @@ describe('request id', () => {
   it('generates a UUIDv7 when none is sent', async () => {
     const { app } = makeApp();
     const res = await request(app).get('/api/v1/health');
-    expect(res.headers['x-request-id']).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    expect(res.headers['x-request-id']).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/,
+    );
   });
 
   it('echoes a valid incoming id and replaces an invalid one', async () => {
     const { app } = makeApp();
-    expect((await request(app).get('/api/v1/health').set('X-Request-Id', 'proxy-req-0001')).headers['x-request-id']).toBe(
-      'proxy-req-0001',
-    );
+    expect(
+      (await request(app).get('/api/v1/health').set('X-Request-Id', 'proxy-req-0001')).headers[
+        'x-request-id'
+      ],
+    ).toBe('proxy-req-0001');
     const bad = await request(app).get('/api/v1/health').set('X-Request-Id', 'bad id <script>');
     expect(bad.headers['x-request-id']).not.toBe('bad id <script>');
   });
@@ -88,17 +105,27 @@ describe('request id', () => {
 describe('problem+json', () => {
   it('unknown API paths return a 404 problem, never the SPA', async () => {
     const { app } = makeApp({ webRoot: makeWebRoot() });
-    const res = await request(app).get('/api/v1/does-not-exist').set('Accept', 'text/html').expect(404);
+    const res = await request(app)
+      .get('/api/v1/does-not-exist')
+      .set('Accept', 'text/html')
+      .expect(404);
     expect(res.headers['content-type']).toMatch(/^application\/problem\+json/);
     const body = ProblemSchema.parse(res.body);
-    expect(body).toMatchObject({ code: 'NOT_FOUND', status: 404, type: 'https://monevo.app/problems/not-found' });
+    expect(body).toMatchObject({
+      code: 'NOT_FOUND',
+      status: 404,
+      type: 'https://monevo.app/problems/not-found',
+    });
     expect(body.requestId).toBe(res.headers['x-request-id']);
     await request(app).get('/api').expect(404);
   });
 
   it('malformed JSON returns 400 MALFORMED_REQUEST', async () => {
     const { app } = makeApp();
-    const res = await request(app).post('/api/v1/health').set('Content-Type', 'application/json').send('{"a":');
+    const res = await request(app)
+      .post('/api/v1/health')
+      .set('Content-Type', 'application/json')
+      .send('{"a":');
     expect(res.status).toBe(400);
     expect(res.body.code).toBe('MALFORMED_REQUEST');
   });
@@ -115,7 +142,10 @@ describe('problem+json', () => {
 
   it('unsupported charsets return 415 UNSUPPORTED_MEDIA_TYPE', async () => {
     const { app } = makeApp();
-    const res = await request(app).post('/api/v1/health').set('Content-Type', 'application/json; charset=latin-9').send('{}');
+    const res = await request(app)
+      .post('/api/v1/health')
+      .set('Content-Type', 'application/json; charset=latin-9')
+      .send('{}');
     expect(res.status).toBe(415);
     expect(res.body.code).toBe('UNSUPPORTED_MEDIA_TYPE');
   });
@@ -142,7 +172,9 @@ describe('security headers and CORS', () => {
     const { app } = makeApp({ config: { appUrl: new URL('http://localhost:3100') } });
     const res = await request(app).get('/api/v1/health');
     expect(res.headers['strict-transport-security']).toBeUndefined();
-    expect(String(res.headers['content-security-policy'])).not.toContain('upgrade-insecure-requests');
+    expect(String(res.headers['content-security-policy'])).not.toContain(
+      'upgrade-insecure-requests',
+    );
   });
 
   it('sends no CORS headers by default', async () => {
@@ -156,7 +188,9 @@ describe('security headers and CORS', () => {
     const ok = await request(app).get('/api/v1/health').set('Origin', 'https://app.example.com');
     expect(ok.headers['access-control-allow-origin']).toBe('https://app.example.com');
     expect(ok.headers['access-control-allow-credentials']).toBeUndefined();
-    const other = await request(app).get('/api/v1/health').set('Origin', 'https://evil.example.com');
+    const other = await request(app)
+      .get('/api/v1/health')
+      .set('Origin', 'https://evil.example.com');
     expect(other.headers['access-control-allow-origin']).toBeUndefined();
     const preflight = await request(app)
       .options('/api/v1/health')
@@ -185,6 +219,27 @@ describe('OpenAPI', () => {
   });
 });
 
+describe('HTTP_COMPRESSION', () => {
+  it('leaves responses uncompressed by default', async () => {
+    const { app } = makeApp();
+    const res = await request(app)
+      .get('/api/v1/openapi.json')
+      .set('Accept-Encoding', 'gzip')
+      .expect(200);
+    expect(res.headers['content-encoding']).toBeUndefined();
+  });
+
+  it('compresses responses when enabled', async () => {
+    const { app } = makeApp({ config: { httpCompression: true } });
+    const res = await request(app)
+      .get('/api/v1/openapi.json')
+      .set('Accept-Encoding', 'gzip')
+      .expect(200);
+    expect(res.headers['content-encoding']).toBe('gzip');
+    expect(res.body.openapi).toBe('3.1.0');
+  });
+});
+
 describe('static web app', () => {
   it('serves hashed assets as immutable and the shell files as no-cache', async () => {
     const { app } = makeApp({ webRoot: makeWebRoot() });
@@ -200,7 +255,9 @@ describe('static web app', () => {
     const res = await request(app).get('/transactions/123').set('Accept', 'text/html').expect(200);
     expect(res.text).toContain('<title>Monevo</title>');
     expect(res.headers['cache-control']).toBe('no-cache');
-    expect((await request(app).get('/').set('Accept', 'text/html').expect(200)).text).toContain('Monevo');
+    expect((await request(app).get('/').set('Accept', 'text/html').expect(200)).text).toContain(
+      'Monevo',
+    );
   });
 
   it('does not fall back for non-HTML requests or non-GET methods', async () => {

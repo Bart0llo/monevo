@@ -18,7 +18,13 @@ export function accessLog(logger: Logger): RequestHandler {
     res.on('finish', () => {
       const route = routePattern(req);
       const durationMs = Number((process.hrtime.bigint() - started) / 1000n) / 1000;
-      const entry = { requestId: req.requestId, method: req.method, route, status: res.statusCode, durationMs };
+      const entry = {
+        requestId: req.requestId,
+        method: req.method,
+        route,
+        status: res.statusCode,
+        durationMs,
+      };
       if (route?.startsWith('/api/v1/health')) logger.debug(entry, 'request');
       else logger.info(entry, 'request');
     });

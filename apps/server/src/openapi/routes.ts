@@ -11,7 +11,10 @@ export function openApiRouter(document: OpenApiDocument): Router {
   router.use(
     '/docs',
     swaggerUi.serveFiles(document),
-    swaggerUi.setup(document, { customSiteTitle: 'Monevo API', swaggerOptions: { url: undefined } }),
+    swaggerUi.setup(document, {
+      customSiteTitle: 'Monevo API',
+      swaggerOptions: { url: undefined },
+    }),
   );
   return router;
 }

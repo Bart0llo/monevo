@@ -29,11 +29,20 @@ const rule = {
     type: 'problem',
     docs: { description: 'Disallow converting money values to JS floats' },
     messages: {
-      conversion: '`{{fn}}` turns the money value `{{name}}` into a float. Use `parseDecimal`/`money()` from @monevo/domain.',
-      toFixed: '`.toFixed()` on `{{name}}` implies float money. Use `roundToCurrency`/`moneyToDecimalString` from @monevo/domain.',
-      literal: 'Money value `{{name}}` assigned a float literal. Use a decimal string such as "{{raw}}".',
+      conversion:
+        '`{{fn}}` turns the money value `{{name}}` into a float. Use `parseDecimal`/`money()` from @monevo/domain.',
+      toFixed:
+        '`.toFixed()` on `{{name}}` implies float money. Use `roundToCurrency`/`moneyToDecimalString` from @monevo/domain.',
+      literal:
+        'Money value `{{name}}` assigned a float literal. Use a decimal string such as "{{raw}}".',
     },
-    schema: [{ type: 'object', properties: { namePattern: { type: 'string' } }, additionalProperties: false }],
+    schema: [
+      {
+        type: 'object',
+        properties: { namePattern: { type: 'string' } },
+        additionalProperties: false,
+      },
+    ],
   },
   create(context) {
     const pattern = new RegExp(context.options[0]?.namePattern ?? DEFAULT_PATTERN, 'i');
@@ -44,13 +53,15 @@ const rule = {
       return name !== undefined && pattern.test(name) ? name : undefined;
     };
     /** @param {import('estree').Node} node */
-    const isFloatLiteral = (node) => node.type === 'Literal' && typeof node.value === 'number' && !Number.isInteger(node.value);
+    const isFloatLiteral = (node) =>
+      node.type === 'Literal' && typeof node.value === 'number' && !Number.isInteger(node.value);
 
     return {
       CallExpression(node) {
         const callee = node.callee;
         let fn;
-        if (callee.type === 'Identifier' && ['parseFloat', 'Number'].includes(callee.name)) fn = callee.name;
+        if (callee.type === 'Identifier' && ['parseFloat', 'Number'].includes(callee.name))
+          fn = callee.name;
         if (
           callee.type === 'MemberExpression' &&
           callee.object.type === 'Identifier' &&
@@ -65,7 +76,11 @@ const rule = {
           if (name) context.report({ node, messageId: 'conversion', data: { fn, name } });
           return;
         }
-        if (callee.type === 'MemberExpression' && callee.property.type === 'Identifier' && callee.property.name === 'toFixed') {
+        if (
+          callee.type === 'MemberExpression' &&
+          callee.property.type === 'Identifier' &&
+          callee.property.name === 'toFixed'
+        ) {
           const name = moneyName(callee.object);
           if (name) context.report({ node, messageId: 'toFixed', data: { name } });
         }
@@ -78,19 +93,34 @@ const rule = {
       VariableDeclarator(node) {
         if (node.init && isFloatLiteral(node.init)) {
           const name = moneyName(node.id);
-          if (name) context.report({ node: node.init, messageId: 'literal', data: { name, raw: node.init.raw } });
+          if (name)
+            context.report({
+              node: node.init,
+              messageId: 'literal',
+              data: { name, raw: node.init.raw },
+            });
         }
       },
       Property(node) {
         if (isFloatLiteral(node.value) && !node.computed) {
           const name = moneyName(node.key);
-          if (name) context.report({ node: node.value, messageId: 'literal', data: { name, raw: node.value.raw } });
+          if (name)
+            context.report({
+              node: node.value,
+              messageId: 'literal',
+              data: { name, raw: node.value.raw },
+            });
         }
       },
       AssignmentExpression(node) {
         if (isFloatLiteral(node.right)) {
           const name = moneyName(node.left);
-          if (name) context.report({ node: node.right, messageId: 'literal', data: { name, raw: node.right.raw } });
+          if (name)
+            context.report({
+              node: node.right,
+              messageId: 'literal',
+              data: { name, raw: node.right.raw },
+            });
         }
       },
     };

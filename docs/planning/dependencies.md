@@ -23,11 +23,12 @@
 | `argon2` | argon2id password hashing | Maintained native binding, OWASP-recommended algorithm |
 | `openid-client` 6 | OIDC relying party | OpenID-certified, PKCE/nonce/state handled correctly |
 | `helmet` | Security headers | Standard |
+| `compression` | Optional in-app response compression (`HTTP_COMPRESSION=true`) | Express's standard middleware; off by default because the reverse proxy compresses |
 | `express-rate-limit` | Rate limiting | Simple, memory store suffices for one process |
 | `cookie-parser` (or Express built-in parsing) | Session cookie reading | Minimal |
 | `socket.io` 4 | Realtime pokes | Required by the brief |
 | `pg-boss` | Durable jobs and cron in PostgreSQL | No Redis; transactional enqueue; singleton jobs ([ADR-0013](../decisions/ADR-0013-scheduled-transactions-and-jobs.md)) |
-| `pino`, `pino-http` | Structured logging with redaction | Fast, JSON, redaction built in |
+| `pino` | Structured logging with redaction | Fast, JSON, redaction built in. Stage 1 writes the access log with a small middleware instead of `pino-http` (one less dependency, stable field names) |
 | `nodemailer` | SMTP for auth emails | De facto standard |
 | `web-push` | Web Push with VAPID | Standard, implements payload encryption |
 | `busboy` | Streaming multipart parsing | Streams to storage without temp files; byte limits |
@@ -37,10 +38,10 @@
 | `ua-parser-js` | Session device descriptions | Small, maintained; check its license version (v2 is AGPL/commercial, v1 is MIT) against OQ-17 |
 | `age-encryption` (typage) | Backup encryption **[Proposed]** | Implementation of the age format by its author; no custom crypto ([OQ-14](open-questions.md#oq-14-backup-encryption)) |
 | `tar-stream` | Streaming backup archives | Streams without loading archives into memory |
-| `uuid` (v7) or `uuidv7` | Time-ordered IDs | UUIDv7 for client-generated IDs (index locality) |
+| `uuidv7` | Time-ordered IDs (chosen in Stage 1) | UUIDv7 for client-generated IDs (index locality) |
 | `commander` | CLI argument parsing | Small, well known |
 
-Dev/build: `typescript`, `tsx` (watch), `tsup`, `vitest`, `supertest`, `@testcontainers/postgresql`, `fast-check`.
+Dev/build: `typescript`, `tsx` (watch), `tsup`, `vitest`, `@vitest/coverage-v8`, `supertest`, `@testcontainers/postgresql`, `fast-check`, `dotenv-cli` (loads `.env.development` for the Prisma `db:*` scripts), `pino-pretty` (readable dev logs).
 
 ## Web (`apps/web`)
 
@@ -54,16 +55,16 @@ Dev/build: `typescript`, `tsx` (watch), `tsup`, `vitest`, `supertest`, `@testcon
 | `dexie` 4, `dexie-react-hooks` | IndexedDB local database | Live queries, versioned schema ([OQ-21](open-questions.md#oq-21-local-database-library)) |
 | `socket.io-client` | Realtime pokes | Matches the server |
 | `i18next`, `react-i18next`, `i18next-browser-languagedetector` | i18n | Required (i18next) |
-| `vite-plugin-pwa` (Workbox) | Service worker, manifest | Standard for Vite PWAs; `injectManifest` for push |
+| `vite-plugin-pwa` (Workbox) | Service worker, manifest | Standard for Vite PWAs; `injectManifest` for push. The custom worker uses `workbox-precaching` and `workbox-routing`; the page uses `workbox-window` (through the plugin's `registerSW`); `workbox-build` is the plugin's build-time peer |
 | `@dnd-kit/core`, `@dnd-kit/sortable` | Dashboard drag and drop | Accessible (keyboard), no grid engine needed |
 | `@tabler/icons-react` | Icons | Mantine's companion set; category icons |
 | `zod`, `decimal.js`, `date-fns` | via shared packages | Shared with the server |
 
-Dev: `vite`, `@vitejs/plugin-react`, `@testing-library/react`, `msw`, `fake-indexeddb`, `@playwright/test`, `@axe-core/playwright`.
+Dev: `vite`, `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event`, `jsdom` (Vitest environment), `msw`, `fake-indexeddb`, `@playwright/test`, `@axe-core/playwright`.
 
 ## Workspace tooling
 
-`pnpm`, `eslint` + `typescript-eslint` + `eslint-plugin-react-hooks` + `eslint-plugin-i18next` + `eslint-plugin-boundaries`, `prettier`, `i18next-parser` (or a custom key checker), a tiny link checker script for `docs:check` (no dependency).
+`pnpm`, `eslint` + `typescript-eslint` + `eslint-plugin-react-hooks` + `eslint-plugin-i18next` (6.x, verified with ESLint 10 in Stage 1) + `eslint-plugin-boundaries` (Stage 1: package dependency rules and backend module entry points from application-structure.md) + `eslint-plugin-import-x` (`import-x/order`; the maintained fork of `eslint-plugin-import`, which does not support ESLint 10) + `eslint-import-resolver-typescript`, `@eslint/js`, `globals`, `cross-env` (the `test:tz` run), `prettier`, `i18next-parser` (or a custom key checker), a tiny link checker script for `docs:check` (no dependency).
 
 ## Rejected or avoided
 

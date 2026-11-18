@@ -18,9 +18,12 @@ describe('parseSize', () => {
     expect(parseSize(input)).toBe(expected);
   });
 
-  it.each(['', 'MB', '1.5MB', '-1', '10TB', 'ten', '99999999999999999GiB'])('rejects %j', (input) => {
-    expect(parseSize(input)).toBeUndefined();
-  });
+  it.each(['', 'MB', '1.5MB', '-1', '10TB', 'ten', '99999999999999999GiB'])(
+    'rejects %j',
+    (input) => {
+      expect(parseSize(input)).toBeUndefined();
+    },
+  );
 });
 
 describe('parseBoolean', () => {

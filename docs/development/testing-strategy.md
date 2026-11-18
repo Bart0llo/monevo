@@ -18,8 +18,8 @@
 | Component | Vitest + Testing Library + MSW | Web components and feature flows without a server | `pnpm validate` |
 | Sync client | Vitest + `fake-indexeddb` + MSW | Dexie repositories, outbox, merge, conflict handling | `pnpm validate` |
 | API integration | Vitest + Supertest + PostgreSQL at the minimum supported major ([postgresql.md](../infrastructure/postgresql.md#supported-versions); local `db-test` container or Testcontainers) | Every endpoint and sync mutation through `createApp`, jobs with an injected clock | `pnpm validate`; before a release also against the newest supported major |
-| Storage integration | Vitest + MinIO | Driver contract suite for `local` and `s3` | `pnpm validate` |
-| E2E | Playwright against the built Docker image (`docker-compose.e2e.yml`: app + disposable PostgreSQL fixture + minio + mailpit) | Critical user journeys, offline, PWA, multi-device sync | `pnpm test:e2e`, before stage acceptance and releases |
+| Storage integration | Vitest + an S3-compatible server (MinIO planned; replacement pending [OQ-23](../planning/open-questions.md#oq-23-s3-compatible-server-for-development-and-tests)) | Driver contract suite for `local` and `s3` | `pnpm validate` |
+| E2E | Playwright against the built Docker image (`docker-compose.e2e.yml`: app + disposable PostgreSQL fixture + mailpit; the S3 service is pending [OQ-23](../planning/open-questions.md#oq-23-s3-compatible-server-for-development-and-tests)) | Critical user journeys, offline, PWA, multi-device sync | `pnpm test:e2e`, before stage acceptance and releases |
 | Contract | OpenAPI snapshot diff | Breaking-change detection | `pnpm validate` |
 
 ## 3. What must be covered
@@ -63,9 +63,9 @@ Registration and first-user admin; onboarding; account and category setup; quick
 
 ```
 pnpm validate
- ├─ lint · format:check · typecheck · i18n:check · docs:check
+ ├─ db:generate (prisma generate) · lint · format:check · typecheck · i18n:check · docs:check
  ├─ unit + component + sync client (coverage report, domain threshold enforced; unit tests again with TZ=Pacific/Auckland)
- ├─ integration (local db-test PostgreSQL + minio from docker-compose.dev.yml, or Testcontainers)
+ ├─ integration (local db-test PostgreSQL from docker-compose.dev.yml, or Testcontainers; S3 server pending OQ-23)
  └─ openapi:check (snapshot diff)
 
 pnpm test:e2e

@@ -22,7 +22,10 @@ describe('OpenAPI document', () => {
   });
 
   it('matches the committed snapshot', () => {
-    const snapshot = readFileSync(fileURLToPath(new URL('../../../openapi.snapshot.json', import.meta.url)), 'utf8');
+    const snapshot = readFileSync(
+      fileURLToPath(new URL('../../../openapi.snapshot.json', import.meta.url)),
+      'utf8',
+    );
     expect(JSON.parse(snapshot)).toEqual(JSON.parse(JSON.stringify(document)));
   });
 });

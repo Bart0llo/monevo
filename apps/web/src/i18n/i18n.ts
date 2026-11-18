@@ -1,7 +1,14 @@
-import { DEFAULT_LANGUAGE, DEFAULT_NAMESPACE, NAMESPACES, SUPPORTED_LANGUAGES, resolveLanguage, resources } from '@monevo/i18n';
 import i18next, { type i18n } from 'i18next';
 import LanguageDetector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
+import {
+  DEFAULT_LANGUAGE,
+  DEFAULT_NAMESPACE,
+  NAMESPACES,
+  SUPPORTED_LANGUAGES,
+  resolveLanguage,
+  resources,
+} from '@monevo/i18n';
 
 // i18next setup (internationalization.md#2-translation-resources). The initial language is the saved
 // choice, then navigator.languages, then English.

@@ -38,10 +38,14 @@ describe('loadConfig', () => {
     expect(config.insecureCookies).toBe(false);
     expect(config.corsAllowedOrigins).toEqual([]);
     expect(config.apiDocsEnabled).toBe(true);
+    expect(config.httpCompression).toBe(false);
   });
 
   it('treats empty strings as unset for optional variables', () => {
-    const config = loadConfig({ ...BASE, PORT: '', LOG_LEVEL: undefined, API_DOCS_ENABLED: '' }, noFiles);
+    const config = loadConfig(
+      { ...BASE, PORT: '', LOG_LEVEL: undefined, API_DOCS_ENABLED: '' },
+      noFiles,
+    );
     expect(config.port).toBe(3000);
     expect(config.apiDocsEnabled).toBe(true);
   });
@@ -59,6 +63,7 @@ describe('loadConfig', () => {
         APP_URL: 'http://localhost:5173',
         CORS_ALLOWED_ORIGINS: 'https://a.example.com, http://localhost:4000',
         API_DOCS_ENABLED: 'false',
+        HTTP_COMPRESSION: 'true',
       },
       noFiles,
     );
@@ -71,6 +76,7 @@ describe('loadConfig', () => {
       insecureCookies: true,
       corsAllowedOrigins: ['https://a.example.com', 'http://localhost:4000'],
       apiDocsEnabled: false,
+      httpCompression: true,
     });
   });
 
@@ -106,12 +112,20 @@ describe('loadConfig', () => {
   });
 
   it('allows http:// APP_URL only with INSECURE_COOKIES=true', () => {
-    expect(problemsOf({ ...BASE, APP_URL: 'http://localhost:3000' })[0]).toMatch(/INSECURE_COOKIES/);
-    expect(problemsOf({ ...BASE, APP_URL: 'http://localhost:3000', INSECURE_COOKIES: 'true' })).toEqual([]);
+    expect(problemsOf({ ...BASE, APP_URL: 'http://localhost:3000' })[0]).toMatch(
+      /INSECURE_COOKIES/,
+    );
+    expect(
+      problemsOf({ ...BASE, APP_URL: 'http://localhost:3000', INSECURE_COOKIES: 'true' }),
+    ).toEqual([]);
   });
 
   it('never includes secret values in messages', () => {
-    const message = problemsOf({ ...BASE, APP_ENCRYPTION_KEY: 'c2VjcmV0LXZhbHVl', DATABASE_URL: 'mysql://user:hunter2@h/d' }).join('\n');
+    const message = problemsOf({
+      ...BASE,
+      APP_ENCRYPTION_KEY: 'c2VjcmV0LXZhbHVl',
+      DATABASE_URL: 'mysql://user:hunter2@h/d',
+    }).join('\n');
     expect(message).not.toContain('c2VjcmV0LXZhbHVl');
     expect(message).not.toContain('hunter2');
   });
@@ -125,7 +139,11 @@ describe('loadConfig', () => {
 
     it('reads values from files and trims trailing newlines', () => {
       const config = loadConfig(
-        { APP_URL: BASE.APP_URL, APP_ENCRYPTION_KEY_FILE: '/run/secrets/key', DATABASE_URL_FILE: '/run/secrets/db' },
+        {
+          APP_URL: BASE.APP_URL,
+          APP_ENCRYPTION_KEY_FILE: '/run/secrets/key',
+          DATABASE_URL_FILE: '/run/secrets/db',
+        },
         readFile,
       );
       expect(config.encryptionKey).toEqual(Buffer.alloc(32, 7));
@@ -138,7 +156,10 @@ describe('loadConfig', () => {
     });
 
     it('reports an unreadable file once, naming the _FILE variable', () => {
-      const problems = problemsOf({ APP_URL: BASE.APP_URL, APP_ENCRYPTION_KEY: KEY, DATABASE_URL_FILE: '/missing' }, readFile);
+      const problems = problemsOf(
+        { APP_URL: BASE.APP_URL, APP_ENCRYPTION_KEY: KEY, DATABASE_URL_FILE: '/missing' },
+        readFile,
+      );
       expect(problems).toEqual(['DATABASE_URL_FILE: cannot read /missing (ENOENT)']);
     });
   });
@@ -146,7 +167,10 @@ describe('loadConfig', () => {
 
 describe('configuration.md', () => {
   // Every variable the code reads must be documented (configuration.md#5-testing).
-  const doc = readFileSync(fileURLToPath(new URL('../../../../../docs/infrastructure/configuration.md', import.meta.url)), 'utf8');
+  const doc = readFileSync(
+    fileURLToPath(new URL('../../../../../docs/infrastructure/configuration.md', import.meta.url)),
+    'utf8',
+  );
 
   it.each(Object.keys(ENV_SCHEMA.shape))('documents %s', (name) => {
     expect(doc).toContain(`\`${name}\``);

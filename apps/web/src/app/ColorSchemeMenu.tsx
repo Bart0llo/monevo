@@ -6,7 +6,11 @@ const OPTIONS = [
   { value: 'light', labelKey: 'theme.light', icon: IconSun },
   { value: 'dark', labelKey: 'theme.dark', icon: IconMoon },
   { value: 'auto', labelKey: 'theme.auto', icon: IconDeviceDesktop },
-] as const satisfies readonly { value: MantineColorScheme; labelKey: `theme.${string}`; icon: unknown }[];
+] as const satisfies readonly {
+  value: MantineColorScheme;
+  labelKey: `theme.${string}`;
+  icon: unknown;
+}[];
 
 export function ColorSchemeMenu() {
   const { t } = useTranslation();

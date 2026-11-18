@@ -28,6 +28,7 @@ Unresolved decisions and assumptions. Each entry has a recommendation, which the
 | [OQ-20](#oq-20-default-execution-mode) | Default execution mode | `CONFIRM` | Stage 7 | Open |
 | [OQ-21](#oq-21-local-database-library) | Local database library | Dexie 4 | Stage 5 | Open |
 | [OQ-22](#oq-22-api-token-permission-catalogue-and-lifecycle) | API token permission catalogue and lifecycle | Catalogue and defaults in api-tokens.md | Stage 2 | Open |
+| [OQ-23](#oq-23-s3-compatible-server-for-development-and-tests) | S3-compatible server for development and tests | Evaluate Garage and SeaweedFS against the driver contract suite | Stage 6 | Open |
 
 **Before Stage 1:** nothing open (OQ-01, OQ-02, OQ-08 closed; OQ-07 deferred, 2026-11-18). **Before Stage 2:** OQ-03, OQ-06, OQ-22.
 
@@ -138,3 +139,9 @@ R-ADM-05 says admin privileges never grant access to financial data, but R-BAK-0
 Personal API tokens are in scope (R-TOK-01..09, decided 2026-11-18). The design details that the requirements leave open follow the recommendation as **[Proposed]** ([api-tokens.md](../architecture/api-tokens.md), [ADR-0017](../decisions/ADR-0017-personal-api-tokens.md)).
 
 **Recommendation:** the permission catalogue in [api-tokens.md](../architecture/api-tokens.md#4-permission-catalogue) (independent read, create, update, and delete per resource where supported, with "also requires" for cross-resource writes); never available to tokens: auth, account and credential management, sessions, token management, push subscriptions, notification preferences, admin, sync, realtime, dashboard layout, and export/import; permissions fixed at creation (rename only); at most 50 active tokens per user; expiration optional with a 90-day UI default; creation requires a recent authentication; tokens revoked on deactivation and backup restore but kept on password change or reset; `If-Match` required for token updates and deletes. Alternatives: allow export/import or dashboard access with dedicated permissions; editable permissions; a mandatory maximum lifetime; revoking tokens on password reset. Confirm before Stage 2.
+
+### OQ-23: S3-compatible server for development and tests
+
+Raised in Stage 1 (2026-11-18). The docs planned MinIO (`minio/minio`) for the `s3` storage-driver tests in `docker-compose.dev.yml`, the E2E stack, and the optional same-host `s3` profile in `docker-compose.yml` ([docker-compose.md](../infrastructure/docker-compose.md#2-compose-services), [testing-strategy.md](../development/testing-strategy.md)). The MinIO images are no longer publicly pullable (Docker Hub: pull access denied; quay.io: 401), so Stage 1 ships the compose files **without an S3 service**. Nothing in Stages 1-5 needs one; the `s3` driver and its contract suite arrive in Stage 6 ([file-storage.md](../architecture/file-storage.md)).
+
+**Recommendation:** at Stage 6, evaluate Garage and SeaweedFS (both maintained, open source, with public images) against the `StorageDriver` contract suite (multipart upload, streaming, ranged reads, delete) and pick the one that passes with the simplest configuration; use it for development, tests, and the optional `s3` profile. Alternatives: RustFS (newer, less proven); MinIO built from source into a project-maintained image (maintenance burden); a hosted S3 bucket for tests (needs credentials, not offline). Confirm before Stage 6.

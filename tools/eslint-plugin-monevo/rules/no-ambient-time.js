@@ -7,7 +7,8 @@ const rule = {
     type: 'problem',
     docs: { description: 'Disallow reading the wall clock outside the injected Clock' },
     messages: {
-      newDate: 'Zero-argument `new Date()` reads the wall clock. Use the injected `Clock` (`clock.now()`).',
+      newDate:
+        'Zero-argument `new Date()` reads the wall clock. Use the injected `Clock` (`clock.now()`).',
       dateNow: '`Date.now()` reads the wall clock. Use the injected `Clock` (`clock.now()`).',
     },
     schema: [],
@@ -15,7 +16,11 @@ const rule = {
   create(context) {
     return {
       NewExpression(node) {
-        if (node.callee.type === 'Identifier' && node.callee.name === 'Date' && node.arguments.length === 0) {
+        if (
+          node.callee.type === 'Identifier' &&
+          node.callee.name === 'Date' &&
+          node.arguments.length === 0
+        ) {
           context.report({ node, messageId: 'newDate' });
         }
       },

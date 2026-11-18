@@ -112,10 +112,7 @@ describe('arithmetic', () => {
   });
 
   it('enforces the range on results', () => {
-    expectMoneyError(
-      () => addMoney(pln('999999999999999.99'), pln('0.01')),
-      'AMOUNT_OUT_OF_RANGE',
-    );
+    expectMoneyError(() => addMoney(pln('999999999999999.99'), pln('0.01')), 'AMOUNT_OUT_OF_RANGE');
   });
 });
 
