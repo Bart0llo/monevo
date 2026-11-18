@@ -65,7 +65,7 @@ Routes are lazy-loaded per feature (code splitting) to keep the initial bundle s
 ## 7. UI composition
 
 - Mantine `AppShell` (navbar desktop, footer nav mobile), `Drawer`/`Modal` for entry forms, `Spotlight` **[Proposed]** for quick navigation and search.
-- Theme: `createTheme` with brand tokens. Color scheme via `useMantineColorScheme`, persisted in user settings (synced) and also in `localStorage` for pre-auth screens.
+- Theme: `createTheme` with brand tokens ([design-system.md](../product/design-system.md)). Color scheme via `useMantineColorScheme`, persisted in user settings (synced) and also in `localStorage` for pre-auth screens.
 - Charts: Recharts (or `@mantine/charts` wrappers) inside a shared `ChartCard` that handles loading, empty, missing-rate warnings, and accessible table fallbacks. Forecast series use dashed strokes, and actual series use solid strokes (enforced by `ChartCard` props `kind: 'actual'|'forecast'`).
 - Icons: Tabler. The category icon picker uses a curated subset (lazy-loaded).
 - Dashboard: see [reporting-and-dashboard.md](reporting-and-dashboard.md#dashboard).

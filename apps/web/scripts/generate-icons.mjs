@@ -4,8 +4,9 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 
 const OUT = new URL('../public/icons/', import.meta.url);
-const BRAND = [0x1c, 0x7e, 0xd6];
-const WHITE = [0xff, 0xff, 0xff];
+// COVER.light and the cover foreground in src/theme/theme.ts.
+const BRAND = [0x1a, 0x25, 0x44];
+const WHITE = [0xe8, 0xec, 0xf5];
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, n) => {
   let c = n;
@@ -62,7 +63,7 @@ function roundedSquareDistance(x, y, radius) {
 }
 
 /**
- * A white "M" on the brand color. `glyphScale` is the glyph size relative to the icon;
+ * A paper-white "M" on the ink cover color. `glyphScale` is the glyph size relative to the icon;
  * `cornerRadius` 0 fills the whole square (maskable icons are cropped by the platform).
  */
 function render(size, { glyphScale, cornerRadius }) {

@@ -12,5 +12,10 @@
   if (scheme === 'auto') {
     scheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   }
-  document.documentElement.setAttribute('data-mantine-color-scheme', scheme);
+  var root = document.documentElement;
+  root.setAttribute('data-mantine-color-scheme', scheme);
+  // Paint the page color before the stylesheets load, so a dark start does not flash white.
+  // Colors match PAPER in src/theme/theme.ts.
+  root.style.colorScheme = scheme;
+  root.style.backgroundColor = scheme === 'dark' ? '#191e2c' : '#f4f6fa';
 })();

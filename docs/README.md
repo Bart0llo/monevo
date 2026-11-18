@@ -23,6 +23,7 @@ Every document uses the same markers to keep requirements, decisions, and ideas 
 - [product/requirements.md](product/requirements.md): numbered requirements (the canonical scope list, including out-of-scope items)
 - [product/features.md](product/features.md): feature catalogue by module, with behaviour details
 - [product/user-experience.md](product/user-experience.md): navigation, screens, quick/full entry, dashboard, calendar, themes
+- [product/design-system.md](product/design-system.md): visual direction ("Passbook"), design tokens, shared UI components and styling rules
 - [product/terminology.md](product/terminology.md): glossary (**read this first**, because terms are used precisely)
 
 ### Architecture: how
@@ -85,6 +86,7 @@ Some topics touch several documents. To avoid contradictions, each fact has exac
 |---|---|
 | Scope (what is in or out) | [product/requirements.md](product/requirements.md) |
 | Term definitions | [product/terminology.md](product/terminology.md) |
+| Visual design tokens and styling rules | [product/design-system.md](product/design-system.md) |
 | Money precision, rounding, rates | [architecture/multi-currency.md](architecture/multi-currency.md) |
 | Balance/budget/report formulas | [data/financial-calculations.md](data/financial-calculations.md) |
 | Transaction/transfer/pot model | [architecture/financial-domain-model.md](architecture/financial-domain-model.md) |

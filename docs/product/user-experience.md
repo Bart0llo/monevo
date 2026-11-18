@@ -3,7 +3,7 @@
 ## Design direction
 
 - **Inspired by Cashew, not copied.** Use the same calm, card-based, colorful-category feel, with large readable amounts, quick entry always one tap away, and category colors and icons as the main visual language. All branding (name, logo, palette, typography, illustrations) is original.
-- **Mantine UI** is the component system. A custom Mantine theme defines the brand palette, radius, spacing, and typography. Light and dark color schemes are both first-class. "System" follows `prefers-color-scheme`.
+- **Mantine UI** is the component system. A custom Mantine theme defines the brand palette, radius, spacing, and typography. Light and dark color schemes are both first-class. "System" follows `prefers-color-scheme`. The visual direction, tokens and styling rules are in [design-system.md](design-system.md).
 - **Branding is configurable** by the operator: instance display name, logo, and primary accent color (validated for contrast). Defaults are Monevo's own branding.
 - Numbers use tabular figures. Positive inflows and negative outflows use color **and** sign or icon (never color alone, for accessibility).
 - **Planned and projected values always look different from actual values:** dashed or outlined styling, a "planned"/"forecast" label, and muted color. Actual values never use dashed styles.
@@ -11,6 +11,8 @@
 ## Navigation
 
 Desktop (≥ `md` breakpoint): a left navigation rail (Mantine `AppShell` navbar). Mobile: a bottom navigation bar with 4 items plus "More", and a floating action button for quick entry.
+
+"More" opens a bottom sheet. Until later stages add their screens, it lists only the destinations that exist (Accounts, Reports, Settings); the quick entry button arrives with quick entry itself.
 
 Primary destinations:
 1. **Home** (configurable dashboard)

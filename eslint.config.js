@@ -71,6 +71,8 @@ export default defineConfig(
       'apps/web/dev-dist/**',
       'e2e/test-results/**',
       'e2e/playwright-report/**',
+      // Project-level agent skills (gitignored, third-party scripts).
+      '.claude/**',
     ],
   },
   js.configs.recommended,

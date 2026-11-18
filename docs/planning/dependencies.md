@@ -5,7 +5,7 @@
 ## Policy
 
 1. **Prefer the platform** (Node `crypto`, `fetch`, `Intl`, Web Crypto, Web Locks) and libraries already in the tree.
-2. A new runtime dependency needs: active maintenance (release in the last 12 months or clearly "done"), a license compatible with the project license ([OQ-17](open-questions.md#oq-17-license); MIT, ISC, BSD, Apache-2.0, MPL-2.0 are fine), reasonable size for web dependencies, and an entry in this file.
+2. A new runtime dependency needs: active maintenance (release in the last 12 months or clearly "done"), a license compatible with the project license ([OQ-17](open-questions.md#oq-17-license); MIT, ISC, BSD, Apache-2.0, MPL-2.0 are fine; OFL-1.1 is fine for font files, accepted 2026-11-18), reasonable size for web dependencies, and an entry in this file.
 3. **Security-critical functionality uses established libraries**, never custom implementations (R-SEC-03): password hashing, OIDC, cookies/CSRF tokens, encryption.
 4. Lockfile committed; `pnpm audit` and Renovate/Dependabot ([security.md](../architecture/security.md#dependencies)).
 5. Removing a dependency is always welcome; replacing one needs a note here.
@@ -58,6 +58,7 @@ Dev/build: `typescript`, `tsx` (watch), `tsup`, `vitest`, `@vitest/coverage-v8`,
 | `vite-plugin-pwa` (Workbox) | Service worker, manifest | Standard for Vite PWAs; `injectManifest` for push. The custom worker uses `workbox-precaching` and `workbox-routing`; the page uses `workbox-window` (through the plugin's `registerSW`); `workbox-build` is the plugin's build-time peer |
 | `@dnd-kit/core`, `@dnd-kit/sortable` | Dashboard drag and drop | Accessible (keyboard), no grid engine needed |
 | `@tabler/icons-react` | Icons | Mantine's companion set; category icons |
+| `@fontsource-variable/hanken-grotesk` | Self-hosted UI typeface ([design-system.md](../product/design-system.md#type)) | Variable woff2, no third-party font CDN (works offline, no tracking); tabular digits by default. License OFL-1.1 (package metadata and bundled `LICENSE` agree; accepted, see policy item 2) |
 | `zod`, `decimal.js`, `date-fns` | via shared packages | Shared with the server |
 
 Dev: `vite`, `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library/dom`, `@testing-library/user-event`, `jsdom` (Vitest environment), `msw`, `fake-indexeddb`, `@playwright/test`, `@axe-core/playwright`.

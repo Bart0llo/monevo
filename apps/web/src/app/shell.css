@@ -1,0 +1,302 @@
+/* Shell: the ink "cover" (rail, top bar, bottom bar) around the paper "page". See
+   docs/product/design-system.md. */
+
+.mv-skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 1000;
+  padding: 0.5rem 0.875rem;
+  border-radius: var(--mantine-radius-sm);
+  background: var(--mv-surface);
+  color: var(--mantine-color-text);
+  font-size: var(--mantine-font-size-sm);
+  font-weight: 600;
+  text-decoration: none;
+  box-shadow: var(--mantine-shadow-md);
+  transform: translateY(-200%);
+}
+
+.mv-skip-link:focus-visible {
+  transform: none;
+}
+
+/* Brand */
+
+.mv-wordmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  color: var(--mv-cover-fg);
+}
+
+.mv-mark {
+  width: 1.625rem;
+  height: 1.625rem;
+  flex: none;
+}
+
+.mv-wordmark-text {
+  font-size: 1.0625rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+/* Desktop rail */
+
+.mv-rail {
+  display: flex;
+  flex-direction: column;
+  background: var(--mv-cover-bg);
+  color: var(--mv-cover-fg);
+  padding: 1.25rem 0.75rem 0.75rem;
+}
+
+.mv-rail-brand {
+  padding: 0 0.625rem 1.5rem;
+}
+
+.mv-rail-nav {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.mv-rail-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Secondary sections start a new group, and the system group sits at the bottom of the rail. */
+.mv-rail-item[data-group='primary'] + .mv-rail-item[data-group='secondary'] {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--mv-cover-border);
+}
+
+.mv-rail-item[data-group='system'] {
+  margin-top: auto;
+  padding-top: 0.75rem;
+}
+
+.mv-rail-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.5rem;
+  padding: 0 0.75rem;
+  border-radius: var(--mantine-radius-sm);
+  color: var(--mv-cover-fg-muted);
+  font-size: var(--mantine-font-size-md);
+  font-weight: 500;
+  text-decoration: none;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.mv-rail-link:hover {
+  background: var(--mv-cover-hover);
+  color: var(--mv-cover-fg);
+}
+
+.mv-rail-link[data-active] {
+  background: var(--mv-cover-active);
+  color: var(--mv-cover-fg-strong);
+  font-weight: 600;
+}
+
+.mv-rail-link[data-active] svg {
+  color: var(--mv-cover-focus);
+}
+
+.mv-rail-footer {
+  display: flex;
+  gap: 0.25rem;
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.25rem 0;
+  border-top: 1px solid var(--mv-cover-border);
+}
+
+/* Preference controls on the cover */
+
+.mv-cover-control.mv-cover-control {
+  border-color: transparent;
+  background: transparent;
+  color: var(--mv-cover-fg-muted);
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.mv-cover-control.mv-cover-control:hover,
+.mv-cover-control.mv-cover-control[data-expanded] {
+  background: var(--mv-cover-active);
+  color: var(--mv-cover-fg);
+}
+
+/* Focus rings on the cover use a light ink so they stay visible on navy. */
+.mv-rail :focus-visible,
+.mv-rail .mantine-focus-auto:focus-visible,
+.mv-top-bar :focus-visible,
+.mv-top-bar .mantine-focus-auto:focus-visible,
+.mv-bottom-bar :focus-visible,
+.mv-bottom-bar .mantine-focus-auto:focus-visible {
+  outline-color: var(--mv-cover-focus);
+}
+
+/* Mobile top bar */
+
+.mv-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: content-box;
+  padding: env(safe-area-inset-top) max(0.75rem, env(safe-area-inset-right)) 0
+    max(1rem, env(safe-area-inset-left));
+  background: var(--mv-cover-bg);
+  color: var(--mv-cover-fg);
+}
+
+.mv-top-bar-controls {
+  display: flex;
+  gap: 0.25rem;
+}
+
+/* Mobile bottom bar */
+
+.mv-bottom-bar {
+  box-sizing: content-box;
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--mv-cover-bg);
+}
+
+.mv-bottom-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  height: 4rem;
+  margin: 0;
+  padding: 0 max(0.25rem, env(safe-area-inset-right)) 0 max(0.25rem, env(safe-area-inset-left));
+  list-style: none;
+}
+
+.mv-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.25rem;
+  width: 100%;
+  height: 100%;
+  color: var(--mv-cover-fg-muted);
+  text-decoration: none;
+}
+
+.mv-tab-icon {
+  display: grid;
+  place-items: center;
+  width: 3.25rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  transition: background-color 150ms ease;
+}
+
+.mv-tab-label {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mv-tab[data-active] {
+  color: var(--mv-cover-fg-strong);
+}
+
+.mv-tab[data-active] .mv-tab-icon {
+  background: var(--mv-cover-active);
+}
+
+.mv-tab[data-active] .mv-tab-label {
+  font-weight: 650;
+}
+
+/* "More" sheet */
+
+.mv-sheet.mv-sheet {
+  flex: 0 0 auto;
+  height: auto;
+  max-height: 85dvh;
+  border-radius: var(--mantine-radius-lg) var(--mantine-radius-lg) 0 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.mv-sheet-title {
+  font-weight: 620;
+}
+
+.mv-sheet-list {
+  margin: 0 0 0.5rem;
+  padding: 0;
+  list-style: none;
+}
+
+.mv-sheet-link {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  min-height: 3rem;
+  padding: 0 0.75rem;
+  border-radius: var(--mantine-radius-sm);
+  color: var(--mantine-color-text);
+  font-size: var(--mantine-font-size-md);
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.mv-sheet-link svg {
+  color: var(--mantine-color-dimmed);
+}
+
+.mv-sheet-link:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.mv-sheet-link[data-active] {
+  background: var(--mantine-primary-color-light);
+  color: var(--mantine-primary-color-light-color);
+  font-weight: 600;
+}
+
+.mv-sheet-link[data-active] svg {
+  color: inherit;
+}
+
+/* Page */
+
+.mv-main {
+  min-height: 100dvh;
+}
+
+.mv-main:focus {
+  outline: none;
+}
+
+.mv-page {
+  max-width: 72rem;
+  padding: 1.5rem max(1rem, env(safe-area-inset-right)) 2rem max(1rem, env(safe-area-inset-left));
+}
+
+@media (min-width: 62em) {
+  .mv-page {
+    padding: 2.5rem 3rem 3rem;
+  }
+}

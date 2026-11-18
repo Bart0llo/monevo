@@ -3,7 +3,7 @@ import { Notifications } from '@mantine/notifications';
 import type { i18n } from 'i18next';
 import type { ReactNode } from 'react';
 import { I18nextProvider } from 'react-i18next';
-import { colorSchemeManager, theme } from '../theme/theme';
+import { colorSchemeManager, cssVariablesResolver, theme } from '../theme/theme';
 
 export function AppProviders({
   i18n,
@@ -19,6 +19,7 @@ export function AppProviders({
     <I18nextProvider i18n={i18n}>
       <MantineProvider
         theme={theme}
+        cssVariablesResolver={cssVariablesResolver}
         colorSchemeManager={colorSchemeManager}
         defaultColorScheme="auto"
         env={env ?? 'default'}

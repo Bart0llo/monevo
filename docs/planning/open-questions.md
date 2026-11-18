@@ -22,7 +22,7 @@ Unresolved decisions and assumptions. Each entry has a recommendation, which the
 | [OQ-14](#oq-14-backup-encryption) | Backup encryption | Optional age/passphrase encryption | Stage 15 | Open |
 | [OQ-15](#oq-15-pdf-export) | PDF export | Deferred | Stage 10 | Open |
 | [OQ-16](#oq-16-user-account-deletion) | User account deletion | Deferred in the UI; schema supports it | Stage 16 | Open |
-| [OQ-17](#oq-17-license) | License | AGPL-3.0 | Stage 16 (public release) | Open |
+| [OQ-17](#oq-17-license) | License | AGPL-3.0 | Stage 16 (public release) | Open (OFL-1.1 for fonts accepted) |
 | [OQ-18](#oq-18-mobile-dashboard-layout) | Mobile dashboard layout | Same order, full width; optional `mobileOrder` | Stage 12 | Open |
 | [OQ-19](#oq-19-spending-estimate-method) | Spending estimate method | Median daily spend over 90 days per category | Stage 11 | Open |
 | [OQ-20](#oq-20-default-execution-mode) | Default execution mode | `CONFIRM` | Stage 7 | Open |
@@ -117,6 +117,8 @@ R-ADM-05 says admin privileges never grant access to financial data, but R-BAK-0
 ### OQ-17: License
 
 **Recommendation:** AGPL-3.0 (self-hosted network software; keeps hosted forks open). Alternatives: MIT or Apache-2.0 for maximum reuse. Must be decided before the repository is published; third-party dependency licenses are checked against it ([dependencies.md](dependencies.md)).
+
+**Partial decision (2026-11-18):** the SIL Open Font License 1.1 (OFL-1.1) is accepted for third-party **font** dependencies, starting with `@fontsource-variable/hanken-grotesk` ([dependencies.md](dependencies.md#policy)). OFL-1.1 allows bundling and redistributing the fonts with software under any license, including each candidate above; it only forbids selling the fonts on their own and reusing the reserved font name for modified versions. The project license itself is still open.
 
 ### OQ-18: Mobile dashboard layout
 

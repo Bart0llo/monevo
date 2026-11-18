@@ -1,68 +1,162 @@
-import { AppShell, Burger, Group, NavLink, Text, Title } from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
+import { AppShell, Drawer, UnstyledButton } from '@mantine/core';
+import { useDisclosure, useMediaQuery } from '@mantine/hooks';
+import { IconDots } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useLocation } from 'react-router';
 import { ColorSchemeMenu } from './ColorSchemeMenu';
 import { LanguageMenu } from './LanguageMenu';
-import { NAV_ITEMS, isActivePath } from './navigation';
+import { MORE_NAV, NAV_ITEMS, PRIMARY_NAV, isActivePath, type NavItem } from './navigation';
+import { Wordmark } from './Wordmark';
+import './shell.css';
 
-/** Protected-area layout (frontend-architecture.md#7-ui-composition): header, navigation, content. */
+/** Mantine's `md` breakpoint (user-experience.md#navigation): rail from here up, bottom bar below. */
+const DESKTOP_QUERY = '(min-width: 62em)';
+const MAIN_ID = 'main-content';
+
+/**
+ * Protected-area layout (frontend-architecture.md#7-ui-composition). Desktop: an ink "cover" rail
+ * with the wordmark, navigation and preferences. Mobile: a top bar with the wordmark and
+ * preferences, and a bottom bar with the primary sections plus "More".
+ */
 export function AppLayout() {
   const { t } = useTranslation();
   const { pathname } = useLocation();
-  const [opened, { toggle, close }] = useDisclosure(false);
+  const isDesktop = useMediaQuery(DESKTOP_QUERY, undefined, { getInitialValueInEffect: false });
+  const [moreOpened, more] = useDisclosure(false);
+  const moreActive = MORE_NAV.some((item) => isActivePath(item.path, pathname));
 
   return (
     <AppShell
-      header={{ height: 56 }}
-      navbar={{ width: 240, breakpoint: 'sm', collapsed: { mobile: !opened } }}
-      padding="md"
+      header={{ height: 56, collapsed: isDesktop }}
+      navbar={{ width: 240, breakpoint: 'md', collapsed: { mobile: true } }}
+      footer={{ height: 64, collapsed: isDesktop }}
+      padding={0}
     >
-      <AppShell.Header>
-        <Group h="100%" px="md" justify="space-between" wrap="nowrap">
-          <Group gap="sm" wrap="nowrap">
-            <Burger
-              opened={opened}
-              onClick={toggle}
-              hiddenFrom="sm"
-              size="sm"
-              aria-label={t('nav.toggle')}
-            />
-            <Title order={1} size="h3">
-              {t('app.name')}
-            </Title>
-            <Text size="sm" c="dimmed" visibleFrom="md">
-              {t('app.tagline')}
-            </Text>
-          </Group>
-          <Group gap="xs" wrap="nowrap">
-            <LanguageMenu />
-            <ColorSchemeMenu />
-          </Group>
-        </Group>
-      </AppShell.Header>
+      <a href={`#${MAIN_ID}`} className="mv-skip-link">
+        {t('a11y.skipToContent')}
+      </a>
 
-      <AppShell.Navbar p="xs" component="nav" aria-label={t('nav.label')}>
-        {NAV_ITEMS.map(({ path, labelKey, icon: ItemIcon }) => {
-          const active = isActivePath(path, pathname);
-          return (
-            <NavLink
-              key={path}
-              component={Link}
-              to={path}
-              label={t(labelKey)}
-              leftSection={<ItemIcon size={18} stroke={1.5} />}
-              active={active}
-              aria-current={active ? 'page' : undefined}
-              onClick={close}
-            />
-          );
-        })}
-      </AppShell.Navbar>
+      {isDesktop ? (
+        <AppShell.Navbar component="div" className="mv-rail" withBorder={false}>
+          <div className="mv-rail-brand">
+            <Wordmark />
+          </div>
+          <nav className="mv-rail-nav" aria-label={t('nav.label')}>
+            <ul className="mv-rail-list">
+              {NAV_ITEMS.map((item) => (
+                <li key={item.path} className="mv-rail-item" data-group={item.group}>
+                  <RailLink item={item} active={isActivePath(item.path, pathname)} />
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <div className="mv-rail-footer">
+            <LanguageMenu className="mv-cover-control" position="top-start" />
+            <ColorSchemeMenu className="mv-cover-control" position="top-start" />
+          </div>
+        </AppShell.Navbar>
+      ) : (
+        <>
+          <AppShell.Header className="mv-top-bar" withBorder={false}>
+            <Wordmark />
+            <div className="mv-top-bar-controls">
+              <LanguageMenu className="mv-cover-control" position="bottom-end" />
+              <ColorSchemeMenu className="mv-cover-control" position="bottom-end" />
+            </div>
+          </AppShell.Header>
+          <AppShell.Footer className="mv-bottom-bar" withBorder={false}>
+            <nav aria-label={t('nav.label')}>
+              <ul className="mv-bottom-list">
+                {PRIMARY_NAV.map((item) => {
+                  const active = isActivePath(item.path, pathname);
+                  const ItemIcon = item.icon;
+                  return (
+                    <li key={item.path}>
+                      <Link
+                        to={item.path}
+                        className="mv-tab"
+                        data-active={active || undefined}
+                        aria-current={active ? 'page' : undefined}
+                      >
+                        <span className="mv-tab-icon">
+                          <ItemIcon size={22} stroke={1.6} aria-hidden="true" />
+                        </span>
+                        <span className="mv-tab-label">{t(item.labelKey)}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+                <li>
+                  <UnstyledButton
+                    className="mv-tab"
+                    data-active={moreActive || undefined}
+                    aria-haspopup="dialog"
+                    aria-expanded={moreOpened}
+                    onClick={more.open}
+                  >
+                    <span className="mv-tab-icon">
+                      <IconDots size={22} stroke={1.6} aria-hidden="true" />
+                    </span>
+                    <span className="mv-tab-label">{t('nav.more')}</span>
+                  </UnstyledButton>
+                </li>
+              </ul>
+            </nav>
+          </AppShell.Footer>
+          <Drawer
+            opened={moreOpened}
+            onClose={more.close}
+            position="bottom"
+            size="auto"
+            title={t('nav.more')}
+            classNames={{ content: 'mv-sheet', title: 'mv-sheet-title' }}
+            closeButtonProps={{ 'aria-label': t('nav.close') }}
+          >
+            <ul className="mv-sheet-list">
+              {MORE_NAV.map((item) => {
+                const active = isActivePath(item.path, pathname);
+                const ItemIcon = item.icon;
+                return (
+                  <li key={item.path}>
+                    <Link
+                      to={item.path}
+                      className="mv-sheet-link"
+                      data-active={active || undefined}
+                      aria-current={active ? 'page' : undefined}
+                      onClick={more.close}
+                    >
+                      <ItemIcon size={20} stroke={1.6} aria-hidden="true" />
+                      <span>{t(item.labelKey)}</span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </Drawer>
+        </>
+      )}
 
-      <AppShell.Main>
-        <Outlet />
+      <AppShell.Main id={MAIN_ID} tabIndex={-1} className="mv-main">
+        <div className="mv-page">
+          <Outlet />
+        </div>
       </AppShell.Main>
     </AppShell>
+  );
+}
+
+function RailLink({ item, active }: { readonly item: NavItem; readonly active: boolean }) {
+  const { t } = useTranslation();
+  const ItemIcon = item.icon;
+  return (
+    <Link
+      to={item.path}
+      className="mv-rail-link"
+      data-active={active || undefined}
+      aria-current={active ? 'page' : undefined}
+    >
+      <ItemIcon size={19} stroke={1.6} aria-hidden="true" />
+      <span>{t(item.labelKey)}</span>
+    </Link>
   );
 }

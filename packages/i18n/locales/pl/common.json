@@ -1,25 +1,46 @@
 {
   "app": {
-    "name": "Monevo",
-    "tagline": "Finanse osobiste, najpierw offline"
+    "name": "Monevo"
+  },
+  "a11y": {
+    "skipToContent": "Przejdź do treści"
   },
   "nav": {
     "label": "Główna nawigacja",
-    "toggle": "Przełącz nawigację",
     "dashboard": "Pulpit",
     "transactions": "Transakcje",
     "accounts": "Konta",
     "budgets": "Budżety",
     "calendar": "Kalendarz",
     "reports": "Raporty",
-    "settings": "Ustawienia"
+    "settings": "Ustawienia",
+    "more": "Więcej",
+    "close": "Zamknij"
+  },
+  "sections": {
+    "dashboard": "Przegląd Twoich finansów: salda, budżety i to, co nadchodzi.",
+    "transactions": "Wszystkie przychody, wydatki i przelewy, z wyszukiwaniem i filtrami.",
+    "accounts": "Twoje konta i ich salda, w dowolnej walucie.",
+    "budgets": "Limity wydatków dla kategorii i ile w każdej zostało.",
+    "calendar": "Przeszłe i zaplanowane transakcje ułożone według dat.",
+    "reports": "Wydatki, przychody i trendy w czasie.",
+    "settings": "Twój profil, język, waluta i preferencje."
   },
   "placeholder": {
-    "body": "Ta sekcja pojawi się w kolejnym etapie."
+    "body": "Ta sekcja pojawi się w kolejnym etapie.",
+    "badge": "Planowane"
   },
   "notFound": {
     "title": "Nie znaleziono strony",
-    "back": "Przejdź do pulpitu"
+    "back": "Przejdź do pulpitu",
+    "body": "Pod tym adresem nie ma żadnej strony.",
+    "hint": "Link może zawierać literówkę albo strona została przeniesiona."
+  },
+  "errorPage": {
+    "title": "Coś poszło nie tak",
+    "body": "Monevo napotkało nieoczekiwany błąd podczas wyświetlania tego ekranu.",
+    "hint": "Zwykle pomaga odświeżenie strony. Jeśli błąd się powtarza, wróć do pulpitu.",
+    "reload": "Odśwież stronę"
   },
   "theme": {
     "label": "Motyw kolorów",

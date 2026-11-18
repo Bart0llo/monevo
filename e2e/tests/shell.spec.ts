@@ -5,11 +5,25 @@ import { expect, test } from '@playwright/test';
 
 test('app shell loads with navigation', async ({ page }) => {
   await page.goto('/');
-  await expect(page.getByRole('heading', { level: 1, name: 'Monevo' })).toBeVisible();
-  await expect(page.getByRole('navigation', { name: 'Main navigation' })).toBeVisible();
-  await page.getByRole('link', { name: 'Transactions' }).click();
+  await expect(page.getByRole('heading', { level: 1, name: 'Dashboard' })).toBeVisible();
+  const nav = page.getByRole('navigation', { name: 'Main navigation' });
+  await expect(nav).toBeVisible();
+  await nav.getByRole('link', { name: 'Transactions' }).click();
   await expect(page).toHaveURL(/\/transactions$/);
-  await expect(page.getByRole('heading', { level: 2, name: 'Transactions' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Transactions' })).toBeVisible();
+  await expect(page).toHaveTitle('Transactions · Monevo');
+});
+
+test('mobile layout uses the bottom bar and the More sheet', async ({ page }) => {
+  await page.setViewportSize({ width: 360, height: 740 });
+  await page.goto('/');
+  const nav = page.getByRole('navigation', { name: 'Main navigation' });
+  await nav.getByRole('button', { name: 'More' }).click();
+  const sheet = page.getByRole('dialog', { name: 'More' });
+  await sheet.getByRole('link', { name: 'Accounts' }).click();
+  await expect(page).toHaveURL(/\/accounts$/);
+  await expect(page.getByRole('heading', { level: 1, name: 'Accounts' })).toBeVisible();
+  await expect(sheet).toBeHidden();
 });
 
 test('theme switch applies and persists across reloads', async ({ page }) => {
@@ -30,7 +44,7 @@ test('language switch translates the UI and persists', async ({ page }) => {
   await page.goto('/');
   await page.getByRole('button', { name: 'Language' }).click();
   await page.getByRole('menuitem', { name: 'Polski' }).click();
-  await expect(page.getByRole('heading', { level: 2, name: 'Pulpit' })).toBeVisible();
+  await expect(page.getByRole('heading', { level: 1, name: 'Pulpit' })).toBeVisible();
   await expect(page.locator('html')).toHaveAttribute('lang', 'pl');
 
   await page.reload();

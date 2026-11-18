@@ -1,25 +1,46 @@
 {
   "app": {
-    "name": "Monevo",
-    "tagline": "Personal finance, offline first"
+    "name": "Monevo"
+  },
+  "a11y": {
+    "skipToContent": "Skip to content"
   },
   "nav": {
     "label": "Main navigation",
-    "toggle": "Toggle navigation",
     "dashboard": "Dashboard",
     "transactions": "Transactions",
     "accounts": "Accounts",
     "budgets": "Budgets",
     "calendar": "Calendar",
     "reports": "Reports",
-    "settings": "Settings"
+    "settings": "Settings",
+    "more": "More",
+    "close": "Close"
+  },
+  "sections": {
+    "dashboard": "An overview of your money: balances, budgets and what is coming up.",
+    "transactions": "Every income, expense and transfer, with search and filters.",
+    "accounts": "Your accounts and their balances, in any currency.",
+    "budgets": "Spending limits per category, and how much of each is left.",
+    "calendar": "Past and planned transactions, laid out by date.",
+    "reports": "Spending, income and trends over time.",
+    "settings": "Your profile, language, currency and preferences."
   },
   "placeholder": {
-    "body": "This section is coming in a later stage."
+    "body": "This section is coming in a later stage.",
+    "badge": "Planned"
   },
   "notFound": {
     "title": "Page not found",
-    "back": "Go to the dashboard"
+    "back": "Go to the dashboard",
+    "body": "There is no page at this address.",
+    "hint": "The link may be mistyped, or the page may have moved."
+  },
+  "errorPage": {
+    "title": "Something went wrong",
+    "body": "Monevo hit an unexpected error while showing this screen.",
+    "hint": "Reloading the page usually fixes it. If it keeps happening, go back to the dashboard.",
+    "reload": "Reload the page"
   },
   "theme": {
     "label": "Color scheme",
