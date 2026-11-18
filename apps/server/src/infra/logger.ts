@@ -47,7 +47,10 @@ export function createLogger(config: LoggerConfig, destination?: pino.Destinatio
   const options = loggerOptions(config);
   if (destination) return pino(options, destination);
   if (config.nodeEnv === 'development') {
-    return pino({ ...options, transport: { target: 'pino-pretty', options: { singleLine: true } } });
+    return pino({
+      ...options,
+      transport: { target: 'pino-pretty', options: { singleLine: true } },
+    });
   }
   return pino(options);
 }

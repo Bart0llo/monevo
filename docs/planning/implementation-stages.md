@@ -16,6 +16,8 @@ Rules for every stage:
 
 ## Stage 1: Foundation
 
+**Status:** completed and **accepted by the user** (explicit acceptance granted 2026-11-18). `pnpm validate` and `pnpm test:e2e` passed locally before acceptance.
+
 - **Objective:** a running, deployable skeleton with every cross-cutting mechanism in place.
 - **Prerequisites:** Stage 0 accepted; [OQ-01](open-questions.md#oq-01-product-name), [OQ-02](open-questions.md#oq-02-package-manager-and-repository-layout), [OQ-08](open-questions.md#oq-08-nodejs-and-postgresql-versions) closed; [OQ-07](open-questions.md#oq-07-ci-platform) deferred (does not block).
 - **Features and deliverables:**

@@ -108,6 +108,24 @@ Rules:
 | `RATE_PROVIDER` | none (setting default `frankfurter`) | no | `frankfurter` or `nbp`. Locks `rates.provider` ([multi-currency.md](../architecture/multi-currency.md)). |
 | `SYNC_TOMBSTONE_RETENTION_DAYS` | `90` | no | Change-log tombstone retention ([offline-and-synchronization.md](../architecture/offline-and-synchronization.md)). Clients offline longer must re-bootstrap. |
 
+### Set by the image (not operator configuration)
+
+These are baked into the image at build time. Operators do not set them; they are not part of the validated `config` schema.
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `APP_VERSION` | `dev` | no | Build argument → env. Reported in the startup log and as the OCI `org.opencontainers.image.version` label. `pnpm test:e2e` passes it to the build. |
+| `GIT_COMMIT` | `unknown` | no | Build argument → env. Reported in the startup log; OCI `revision` label. |
+| `BUILD_DATE` | `unknown` | no | Build argument → env. OCI `created` label. |
+| `CHECKPOINT_DISABLE` | `1` (image) | no | Disables the Prisma CLI's telemetry and update check, which would otherwise try to write to the read-only root filesystem and phone home during `migrate`. |
+
+### Development only
+
+| Variable | Default | Required | Description |
+|---|---|---|---|
+| `VITE_PWA_DEV` | unset | no | Web dev server only (`apps/web`, read by Vite). `true` enables the service worker under `pnpm dev`; it is never in the production image. |
+| `TEST_DATABASE_URL`, `TESTCONTAINERS` | see [development-setup.md](../development/development-setup.md) | no | Integration-test database selection. |
+
 <a id="runtime-settings-app_settings"></a>
 
 ## 3. Runtime settings (app_settings)

@@ -1,11 +1,17 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { setTimeout as sleep } from 'node:timers/promises';
+import { fileURLToPath } from 'node:url';
 import { Command } from 'commander';
 import { ConfigError, loadConfig } from './config/env.js';
-import { checkServerVersion, ping, readServerVersionNum, versionTooNewMessage, versionTooOldMessage } from './infra/database.js';
+import {
+  checkServerVersion,
+  ping,
+  readServerVersionNum,
+  versionTooNewMessage,
+  versionTooOldMessage,
+} from './infra/database.js';
 import { createLogger, type Logger } from './infra/logger.js';
 import { createPrismaClient, type PrismaClient } from './infra/prisma.js';
 
@@ -42,7 +48,12 @@ function runPrismaMigrateDeploy(databaseUrl: string): Promise<number> {
   return new Promise((resolve, reject) => {
     const child = spawn(process.execPath, [prismaBin, 'migrate', 'deploy'], {
       cwd: appRoot,
-      env: { ...process.env, DATABASE_URL: databaseUrl, DATABASE_URL_FILE: undefined, PRISMA_HIDE_UPDATE_MESSAGE: '1' },
+      env: {
+        ...process.env,
+        DATABASE_URL: databaseUrl,
+        DATABASE_URL_FILE: undefined,
+        PRISMA_HIDE_UPDATE_MESSAGE: '1',
+      },
       stdio: 'inherit',
     });
     child.on('error', reject);
@@ -58,11 +69,17 @@ async function migrate(): Promise<number> {
     await waitForDatabase(prisma, logger);
     const version = checkServerVersion(await readServerVersionNum(prisma));
     if (version.status === 'too_old') {
-      logger.fatal({ event: 'database.unsupported', major: version.major }, versionTooOldMessage(version.major));
+      logger.fatal(
+        { event: 'database.unsupported', major: version.major },
+        versionTooOldMessage(version.major),
+      );
       return 1;
     }
     if (version.status === 'too_new') {
-      logger.warn({ event: 'database.version_untested', major: version.major }, versionTooNewMessage(version.major));
+      logger.warn(
+        { event: 'database.version_untested', major: version.major },
+        versionTooNewMessage(version.major),
+      );
     }
   } finally {
     await prisma.$disconnect();

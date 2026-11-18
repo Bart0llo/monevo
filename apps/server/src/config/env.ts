@@ -56,7 +56,10 @@ export const ENV_SCHEMA = z
     APP_URL: z
       .string({ error: 'is required' })
       .min(1, 'is required')
-      .refine((value) => URL.canParse(value), 'must be an absolute URL, e.g. https://money.example.com')
+      .refine(
+        (value) => URL.canParse(value),
+        'must be an absolute URL, e.g. https://money.example.com',
+      )
       .transform((value) => new URL(value)),
     PORT: integerVar(3000, 1, 65535),
     NODE_ENV: z
@@ -92,7 +95,11 @@ export const ENV_SCHEMA = z
     TRUST_PROXY: z
       .string()
       .optional()
-      .transform((value) => parseTrustProxy(value === undefined || value === '' ? 'loopback, linklocal, uniquelocal' : value)),
+      .transform((value) =>
+        parseTrustProxy(
+          value === undefined || value === '' ? 'loopback, linklocal, uniquelocal' : value,
+        ),
+      ),
     INSECURE_COOKIES: booleanVar(false),
     CORS_ALLOWED_ORIGINS: z
       .string()
@@ -113,9 +120,13 @@ export const ENV_SCHEMA = z
         return origins;
       }),
     API_DOCS_ENABLED: booleanVar(true),
+    HTTP_COMPRESSION: booleanVar(false),
   })
   .superRefine((env, ctx) => {
-    if (env.APP_URL.protocol !== 'https:' && !(env.APP_URL.protocol === 'http:' && env.INSECURE_COOKIES)) {
+    if (
+      env.APP_URL.protocol !== 'https:' &&
+      !(env.APP_URL.protocol === 'http:' && env.INSECURE_COOKIES)
+    ) {
       ctx.addIssue({
         code: 'custom',
         path: ['APP_URL'],
@@ -136,6 +147,7 @@ export interface Config {
   readonly insecureCookies: boolean;
   readonly corsAllowedOrigins: readonly string[];
   readonly apiDocsEnabled: boolean;
+  readonly httpCompression: boolean;
 }
 
 /** Startup configuration failure with one readable line per problem (never a stack trace). */
@@ -152,7 +164,11 @@ type ReadFile = (path: string) => string;
 const readUtf8: ReadFile = (path) => readFileSync(path, 'utf8');
 
 /** Resolves `<NAME>_FILE` variants into plain values. Setting both is an error. */
-function resolveSecrets(env: Env, readFile: ReadFile, problems: string[]): Record<string, string | undefined> {
+function resolveSecrets(
+  env: Env,
+  readFile: ReadFile,
+  problems: string[],
+): Record<string, string | undefined> {
   const resolved: Record<string, string | undefined> = { ...env };
   for (const name of SECRET_VARIABLES) {
     const filePath = env[`${name}_FILE`];
@@ -179,7 +195,12 @@ export function loadConfig(env: Env = process.env, readFile: ReadFile = readUtf8
     for (const issue of result.error.issues) {
       const name = String(issue.path[0] ?? 'environment');
       // A secret read from a file failed above; don't also report it as missing.
-      if (problems.some((problem) => problem.startsWith(`${name}_FILE:`) || problem.startsWith(`${name}:`))) continue;
+      if (
+        problems.some(
+          (problem) => problem.startsWith(`${name}_FILE:`) || problem.startsWith(`${name}:`),
+        )
+      )
+        continue;
       problems.push(`${name}: ${issue.message}`);
     }
   }
@@ -198,5 +219,6 @@ export function loadConfig(env: Env = process.env, readFile: ReadFile = readUtf8
     insecureCookies: data.INSECURE_COOKIES,
     corsAllowedOrigins: Object.freeze(data.CORS_ALLOWED_ORIGINS),
     apiDocsEnabled: data.API_DOCS_ENABLED,
+    httpCompression: data.HTTP_COMPRESSION,
   });
 }

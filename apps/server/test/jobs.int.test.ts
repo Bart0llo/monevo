@@ -20,7 +20,9 @@ describe('job runner', () => {
     const client = new pg.Client({ connectionString: db.url });
     await client.connect();
     try {
-      const { rows } = await client.query<{ name: string }>(`SELECT name FROM ${JOBS_SCHEMA}.queue`);
+      const { rows } = await client.query<{ name: string }>(
+        `SELECT name FROM ${JOBS_SCHEMA}.queue`,
+      );
       expect(rows.map((row) => row.name)).toContain('system.noop');
     } finally {
       await client.end();

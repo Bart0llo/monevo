@@ -4,6 +4,8 @@ Overview of the implementation stages. Stage contents, prerequisites, and accept
 
 ## Stages
 
+**Progress:** Stage 1 (Foundation) is completed and accepted by the user (2026-11-18). Stage 2 has not started. Per-stage status is recorded in [implementation-stages.md](implementation-stages.md#stage-1-foundation).
+
 | # | Stage | Main outcome |
 |---|---|---|
 | 0 | Discovery, architecture and documentation | This documentation |

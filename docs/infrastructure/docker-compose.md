@@ -46,9 +46,9 @@ Migrations never run concurrently: Prisma uses an advisory lock, and there is on
 | Service | Image | Network | Ports | Volumes | Notes |
 |---|---|---|---|---|---|
 | `app` | `monevo` | `default` (or the proxy's external network), plus `internal` when `minio` is used | `3000` published on `127.0.0.1` (or only to the proxy network) | `attachments:/data/attachments`, `backups:/data/backups` | `restart: unless-stopped`; read-only certificate mounts for database TLS if needed ([postgresql.md](postgresql.md#tls)) |
-| `minio` *(optional profile `s3`)* | `minio/minio` (pinned) | `internal` only | none (console optional on localhost) | `minio:/data` | Only for operators who want S3 semantics on one host; most deployments use the local driver or an external S3 |
+| `minio` *(optional profile `s3`; **pending [OQ-23](../planning/open-questions.md#oq-23-s3-compatible-server-for-development-and-tests)**, not in the compose files)* | `minio/minio` (pinned); the public images are no longer available, so the image is open in OQ-23 | `internal` only | none (console optional on localhost) | `minio:/data` | Only for operators who want S3 semantics on one host; most deployments use the local driver or an external S3 |
 
-There is **no `db` service**. The app connects to the external PostgreSQL named in `DATABASE_URL`, through its default network or an external Docker network shared with the database ([postgresql.md](postgresql.md#connection)). The `internal` network (`internal: true`, no outbound access) exists only for the optional `minio` service; the app reaches the database and the internet (OIDC, rates, push, SMTP) through its default network.
+There is **no `db` service**. The app connects to the external PostgreSQL named in `DATABASE_URL`, through its default network or an external Docker network shared with the database ([postgresql.md](postgresql.md#connection)). The `internal` network (`internal: true`, no outbound access) exists only for the optional `minio` service (pending OQ-23; until then neither exists); the app reaches the database and the internet (OIDC, rates, push, SMTP) through its default network.
 
 ### Hardening applied to `app`
 
@@ -71,9 +71,9 @@ All variables come from an `.env` file next to the compose file (or Docker secre
 | File | Purpose |
 |---|---|
 | `Dockerfile` | Multi-stage build above |
-| `docker-compose.yml` | Production example: `app` only (+ `minio` profile); PostgreSQL is external |
-| `docker-compose.dev.yml` | Development only: disposable local PostgreSQL containers `db` and `db-test`, plus `minio` and `mailpit`; the app runs on the host ([development-setup.md](../development/development-setup.md)). Not a production database. |
-| `docker-compose.e2e.yml` | Local E2E: built image + a disposable PostgreSQL test fixture + `minio` + `mailpit` for Playwright ([testing-strategy.md](../development/testing-strategy.md)) |
+| `docker-compose.yml` | Production example: `app` only (the `s3` profile returns with OQ-23); PostgreSQL is external |
+| `docker-compose.dev.yml` | Development only: disposable local PostgreSQL containers `db` and `db-test`, plus `mailpit` (the S3 test server is pending OQ-23); the app runs on the host ([development-setup.md](../development/development-setup.md)). Not a production database. |
+| `docker-compose.e2e.yml` | Local E2E: built image + a disposable PostgreSQL test fixture + `mailpit` for Playwright (S3 service pending OQ-23) ([testing-strategy.md](../development/testing-strategy.md)) |
 | `.env.example` | Documented minimal configuration |
 | `.dockerignore` | Excludes `node_modules`, `.git`, test artifacts, local `.env` |
 

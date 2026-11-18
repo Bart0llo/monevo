@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
-import { inject } from 'vitest';
 import pg from 'pg';
+import { inject } from 'vitest';
 
 const TEMPLATE_DB = 'monevo_template';
 
@@ -28,7 +28,9 @@ async function adminQuery(sql: string): Promise<void> {
 /** A fresh database for one test file: a clone of the migrated template, or empty. */
 export async function createTestDatabase(options: { empty?: boolean } = {}): Promise<TestDatabase> {
   const name = `monevo_test_${randomBytes(6).toString('hex')}`;
-  await adminQuery(options.empty ? `CREATE DATABASE ${name}` : `CREATE DATABASE ${name} TEMPLATE ${TEMPLATE_DB}`);
+  await adminQuery(
+    options.empty ? `CREATE DATABASE ${name}` : `CREATE DATABASE ${name} TEMPLATE ${TEMPLATE_DB}`,
+  );
   return {
     url: withDatabase(inject('adminDatabaseUrl'), name),
     drop: () => adminQuery(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`),

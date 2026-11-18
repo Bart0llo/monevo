@@ -1,3 +1,5 @@
+import type { ErrorRequestHandler, RequestHandler, Response } from 'express';
+import { ZodError } from 'zod';
 import {
   ERROR_STATUS,
   type ErrorCode,
@@ -6,8 +8,6 @@ import {
   type ProblemFieldError,
   problemTypeUri,
 } from '@monevo/contracts';
-import type { ErrorRequestHandler, RequestHandler, Response } from 'express';
-import { ZodError } from 'zod';
 import type { Logger } from '../infra/logger.js';
 
 // problem+json errors (api-design.md#4-error-format, backend-architecture.md#8-error-handling).
@@ -81,7 +81,11 @@ function bodyParserError(error: unknown): AppError | undefined {
 export function toAppError(error: unknown): AppError | undefined {
   if (error instanceof AppError) return error;
   if (error instanceof ZodError) {
-    return new AppError('VALIDATION_FAILED', 'One or more fields are invalid.', zodFieldErrors(error));
+    return new AppError(
+      'VALIDATION_FAILED',
+      'One or more fields are invalid.',
+      zodFieldErrors(error),
+    );
   }
   return bodyParserError(error);
 }

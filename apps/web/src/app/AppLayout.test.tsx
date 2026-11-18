@@ -12,7 +12,7 @@ async function renderApp(path = '/') {
   await i18n.changeLanguage('en');
   const router = createMemoryRouter(routes, { initialEntries: [path] });
   render(
-    <AppProviders i18n={i18n}>
+    <AppProviders i18n={i18n} env="test">
       <RouterProvider router={router} />
     </AppProviders>,
   );
@@ -38,7 +38,9 @@ describe('app shell', () => {
     await renderApp('/');
     await user.click(screen.getByRole('button', { name: 'Language' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Polski' }));
-    await waitFor(() => expect(screen.getByRole('heading', { level: 2, name: 'Pulpit' })).toBeTruthy());
+    await waitFor(() =>
+      expect(screen.getByRole('heading', { level: 2, name: 'Pulpit' })).toBeTruthy(),
+    );
     expect(document.documentElement.lang).toBe('pl');
     expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('pl');
   });
@@ -48,7 +50,9 @@ describe('app shell', () => {
     await renderApp('/');
     await user.click(screen.getByRole('button', { name: 'Color scheme' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Dark' }));
-    await waitFor(() => expect(document.documentElement.getAttribute('data-mantine-color-scheme')).toBe('dark'));
+    await waitFor(() =>
+      expect(document.documentElement.getAttribute('data-mantine-color-scheme')).toBe('dark'),
+    );
     expect(window.localStorage.getItem('monevo-color-scheme')).toBe('dark');
   });
 });

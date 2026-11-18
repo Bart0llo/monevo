@@ -7,7 +7,9 @@ RuleTester.describe = describe;
 RuleTester.it = it;
 RuleTester.itOnly = it.only;
 
-const tester = new RuleTester({ languageOptions: { parser: tseslint.parser, ecmaVersion: 2024, sourceType: 'module' } });
+const tester = new RuleTester({
+  languageOptions: { parser: tseslint.parser, ecmaVersion: 2024, sourceType: 'module' },
+});
 
 tester.run('no-ambient-time', plugin.rules['no-ambient-time'], {
   valid: [
@@ -49,9 +51,15 @@ tester.run('no-float-money', plugin.rules['no-float-money'], {
 
 tester.run('no-unscoped-prisma', plugin.rules['no-unscoped-prisma'], {
   valid: [
-    { code: 'await prisma.transaction.findMany({ where: { userId } });', filename: '/app/src/modules/transactions/transactions.repo.ts' },
+    {
+      code: 'await prisma.transaction.findMany({ where: { userId } });',
+      filename: '/app/src/modules/transactions/transactions.repo.ts',
+    },
     { code: 'await prisma.appSetting.findMany();', filename: '/app/src/config/settings.ts' },
-    { code: 'await prisma.currency.findMany();', filename: '/app/src/modules/currencies/currencies.service.ts' },
+    {
+      code: 'await prisma.currency.findMany();',
+      filename: '/app/src/modules/currencies/currencies.service.ts',
+    },
     { code: 'await prisma.$queryRaw`SELECT 1`;', filename: '/app/src/infra/database.ts' },
     { code: 'await prisma.$disconnect();', filename: '/app/src/main.ts' },
     { code: 'const x = this.transaction.findMany();', filename: '/app/src/a.ts' },
@@ -63,8 +71,16 @@ tester.run('no-unscoped-prisma', plugin.rules['no-unscoped-prisma'], {
       filename: '/app/src/modules/transactions/transactions.service.ts',
       errors: [{ messageId: 'unscoped', data: { model: 'transaction' } }],
     },
-    { code: 'await tx.account.update({});', filename: '/app/src/x.ts', errors: [{ messageId: 'unscoped' }] },
-    { code: 'await this.deps.prisma.user.findFirst();', filename: '/app/src/x.ts', errors: [{ messageId: 'unscoped' }] },
+    {
+      code: 'await tx.account.update({});',
+      filename: '/app/src/x.ts',
+      errors: [{ messageId: 'unscoped' }],
+    },
+    {
+      code: 'await this.deps.prisma.user.findFirst();',
+      filename: '/app/src/x.ts',
+      errors: [{ messageId: 'unscoped' }],
+    },
     {
       code: 'await prisma.appSetting.findMany();',
       filename: '/app/src/x.ts',

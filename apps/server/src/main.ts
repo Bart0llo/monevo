@@ -46,20 +46,32 @@ async function main(): Promise<void> {
     );
   }
 
-  const prisma = createPrismaClient({ databaseUrl: config.databaseUrl, poolSize: config.databasePoolSize });
+  const prisma = createPrismaClient({
+    databaseUrl: config.databaseUrl,
+    poolSize: config.databasePoolSize,
+  });
   const version = checkServerVersion(await readServerVersionNum(prisma));
   if (version.status === 'too_old') {
-    logger.fatal({ event: 'database.unsupported', major: version.major }, versionTooOldMessage(version.major));
+    logger.fatal(
+      { event: 'database.unsupported', major: version.major },
+      versionTooOldMessage(version.major),
+    );
     await prisma.$disconnect();
     process.exit(1);
   }
   if (version.status === 'too_new') {
-    logger.warn({ event: 'database.version_untested', major: version.major }, versionTooNewMessage(version.major));
+    logger.warn(
+      { event: 'database.version_untested', major: version.major },
+      versionTooNewMessage(version.major),
+    );
   }
   const shipped = listMigrationNames(migrationsDir);
   const pending = pendingMigrations(shipped, await readFinishedMigrations(prisma));
   if (pending.length > 0) {
-    logger.warn({ event: 'database.migrations_pending', pending }, 'database migrations are pending; run `node dist/cli.js migrate`');
+    logger.warn(
+      { event: 'database.migrations_pending', pending },
+      'database migrations are pending; run `node dist/cli.js migrate`',
+    );
   }
 
   const jobs = await startJobs(config.databaseUrl, logger);
@@ -109,6 +121,7 @@ async function main(): Promise<void> {
         port: config.port,
         nodeEnv: config.nodeEnv,
         apiDocsEnabled: config.apiDocsEnabled,
+        httpCompression: config.httpCompression,
         corsOrigins: config.corsAllowedOrigins.length,
         databaseMajor: version.major,
       },
@@ -118,6 +131,8 @@ async function main(): Promise<void> {
 }
 
 main().catch((error: unknown) => {
-  process.stderr.write(`Fatal startup error: ${error instanceof Error ? error.message : String(error)}\n`);
+  process.stderr.write(
+    `Fatal startup error: ${error instanceof Error ? error.message : String(error)}\n`,
+  );
   process.exit(1);
 });

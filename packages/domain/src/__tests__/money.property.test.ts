@@ -81,18 +81,14 @@ describe('money properties', () => {
 
   it('rounding stays within half a minor unit and is idempotent', () => {
     fc.assert(
-      fc.property(
-        currencyArb,
-        fc.bigInt({ min: -(10n ** 18n), max: 10n ** 18n }),
-        (c, raw) => {
-          const value = new Decimal(raw.toString()).dividedBy(10_000);
-          const rounded = roundToCurrency(value, c.code);
-          const halfUnit = new Decimal(1).dividedBy(10 ** c.exponent).dividedBy(2);
-          expect(rounded.minus(value).abs().lte(halfUnit)).toBe(true);
-          expect(roundToCurrency(rounded, c.code).eq(rounded)).toBe(true);
-          expect(rounded.decimalPlaces()).toBeLessThanOrEqual(c.exponent);
-        },
-      ),
+      fc.property(currencyArb, fc.bigInt({ min: -(10n ** 18n), max: 10n ** 18n }), (c, raw) => {
+        const value = new Decimal(raw.toString()).dividedBy(10_000);
+        const rounded = roundToCurrency(value, c.code);
+        const halfUnit = new Decimal(1).dividedBy(10 ** c.exponent).dividedBy(2);
+        expect(rounded.minus(value).abs().lte(halfUnit)).toBe(true);
+        expect(roundToCurrency(rounded, c.code).eq(rounded)).toBe(true);
+        expect(rounded.decimalPlaces()).toBeLessThanOrEqual(c.exponent);
+      }),
     );
   });
 

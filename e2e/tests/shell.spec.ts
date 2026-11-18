@@ -43,13 +43,30 @@ test('PWA manifest and service worker are in place', async ({ page, request }) =
   const manifest = await manifestResponse.json();
   expect(manifest.display).toBe('standalone');
   expect(manifest.start_url).toBe('/');
-  const sizes = (manifest.icons as { sizes: string; purpose?: string }[]).map((icon) => `${icon.sizes}:${icon.purpose ?? 'any'}`);
+  const sizes = (manifest.icons as { sizes: string; purpose?: string }[]).map(
+    (icon) => `${icon.sizes}:${icon.purpose ?? 'any'}`,
+  );
   expect(sizes).toEqual(expect.arrayContaining(['192x192:any', '512x512:any', '512x512:maskable']));
 
   await page.goto('/');
   const scope = await page.evaluate(async () => {
+    // `ready` resolves once a worker is active, which can still be in the `activating` state.
     const registration = await navigator.serviceWorker.ready;
-    return registration.active?.state === 'activated' ? registration.scope : null;
+    const worker = registration.active;
+    if (!worker) return null;
+    if (worker.state !== 'activated') {
+      await new Promise<void>((resolve) => {
+        const onChange = () => {
+          if (worker.state === 'activated') {
+            worker.removeEventListener('statechange', onChange);
+            resolve();
+          }
+        };
+        worker.addEventListener('statechange', onChange);
+        onChange();
+      });
+    }
+    return registration.scope;
   });
   expect(scope).toBe(new URL('/', page.url()).href);
 });

@@ -26,13 +26,18 @@ export function securityHeaders(config: SecurityHeadersConfig): RequestHandler[]
           ...(config.https ? { upgradeInsecureRequests: [] } : {}),
         },
       },
-      strictTransportSecurity: config.https ? { maxAge: 31_536_000, includeSubDomains: false } : false,
+      strictTransportSecurity: config.https
+        ? { maxAge: 31_536_000, includeSubDomains: false }
+        : false,
       referrerPolicy: { policy: 'same-origin' },
       crossOriginOpenerPolicy: { policy: 'same-origin' },
       crossOriginEmbedderPolicy: false,
     }),
     (_req, res, next) => {
-      res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=(), usb=()');
+      res.setHeader(
+        'Permissions-Policy',
+        'camera=(), microphone=(), geolocation=(), payment=(), usb=()',
+      );
       next();
     },
   ];

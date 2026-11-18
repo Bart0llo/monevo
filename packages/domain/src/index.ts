@@ -1,4 +1,10 @@
-export { Decimal, DecimalParseError, isDecimalString, parseDecimal, toDecimalString } from './decimal.js';
+export {
+  Decimal,
+  DecimalParseError,
+  isDecimalString,
+  parseDecimal,
+  toDecimalString,
+} from './decimal.js';
 export {
   CURRENCIES,
   type Currency,

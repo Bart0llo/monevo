@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'node:url';
-import { CURRENCIES } from '@monevo/domain';
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { CURRENCIES } from '@monevo/domain';
 import { createApp } from '../src/app.js';
 import {
   checkServerVersion,
@@ -28,7 +28,13 @@ function appFor(prisma: PrismaClient, lifecycle: Lifecycle = { shuttingDown: fal
     logger,
   });
   return createApp({
-    config: { appUrl: new URL('https://money.example.com'), trustProxy: false, corsAllowedOrigins: [], apiDocsEnabled: true },
+    config: {
+      appUrl: new URL('https://money.example.com'),
+      trustProxy: false,
+      corsAllowedOrigins: [],
+      apiDocsEnabled: true,
+      httpCompression: false,
+    },
     logger,
     readiness,
   });
@@ -53,7 +59,9 @@ describe('migrated database', () => {
   });
 
   it('readiness returns 503 lifecycle=fail while shutting down', async () => {
-    const res = await request(appFor(prisma, { shuttingDown: true })).get('/api/v1/health/ready').expect(503);
+    const res = await request(appFor(prisma, { shuttingDown: true }))
+      .get('/api/v1/health/ready')
+      .expect(503);
     expect(res.body).toEqual({ status: 'unavailable', checks: { lifecycle: 'fail' } });
   });
 
@@ -74,8 +82,12 @@ describe('migrated database', () => {
   });
 
   it('enforces the currency CHECK constraints', async () => {
-    await expect(prisma.currency.create({ data: { code: 'XXX', exponent: 5, name: 'Bad', active: true } })).rejects.toThrow();
-    await expect(prisma.currency.create({ data: { code: 'xx1', exponent: 2, name: 'Bad', active: true } })).rejects.toThrow();
+    await expect(
+      prisma.currency.create({ data: { code: 'XXX', exponent: 5, name: 'Bad', active: true } }),
+    ).rejects.toThrow();
+    await expect(
+      prisma.currency.create({ data: { code: 'xx1', exponent: 2, name: 'Bad', active: true } }),
+    ).rejects.toThrow();
   });
 
   it('stores app settings as JSONB with an update timestamp', async () => {
@@ -108,7 +120,10 @@ describe('empty database', () => {
 
 describe('unreachable database', () => {
   it('readiness returns 503 database=fail', async () => {
-    const prisma = createPrismaClient({ databaseUrl: 'postgresql://nobody:nothing@127.0.0.1:1/none', poolSize: 1 });
+    const prisma = createPrismaClient({
+      databaseUrl: 'postgresql://nobody:nothing@127.0.0.1:1/none',
+      poolSize: 1,
+    });
     try {
       const res = await request(appFor(prisma)).get('/api/v1/health/ready').expect(503);
       expect(res.body).toEqual({ status: 'unavailable', checks: { database: 'fail' } });

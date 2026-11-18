@@ -1,6 +1,7 @@
 import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   MIN_SUPPORTED_MAJOR,
@@ -73,7 +74,7 @@ describe('migrations', () => {
   });
 
   it('ships the foundation migration', () => {
-    const dir = new URL('../../../prisma/migrations', import.meta.url).pathname;
+    const dir = fileURLToPath(new URL('../../../prisma/migrations', import.meta.url));
     expect(listMigrationNames(dir)).toContain('20261118000000_foundation');
   });
 });

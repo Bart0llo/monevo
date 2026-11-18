@@ -1,7 +1,7 @@
 import { ActionIcon, Menu } from '@mantine/core';
-import { SUPPORTED_LANGUAGES, resolveLanguage } from '@monevo/i18n';
 import { IconCheck, IconLanguage } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LANGUAGES, resolveLanguage } from '@monevo/i18n';
 
 export function LanguageMenu() {
   const { t, i18n } = useTranslation();

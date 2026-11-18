@@ -19,7 +19,9 @@ if (mode === '--write') {
     // Missing snapshot is reported below.
   }
   if (committed !== generated) {
-    console.error('OpenAPI snapshot is out of date. Run `pnpm --filter @monevo/server openapi:generate` and review the diff.');
+    console.error(
+      'OpenAPI snapshot is out of date. Run `pnpm --filter @monevo/server openapi:generate` and review the diff.',
+    );
     process.exit(1);
   }
   console.log('OpenAPI snapshot is up to date.');

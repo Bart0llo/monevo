@@ -20,7 +20,8 @@ const rule = {
     type: 'problem',
     docs: { description: 'Disallow Prisma model access outside *.repo.ts files' },
     messages: {
-      unscoped: 'Prisma model `{{model}}` accessed outside a repository. Use the module\'s user-scoped `*.repo.ts`.',
+      unscoped:
+        "Prisma model `{{model}}` accessed outside a repository. Use the module's user-scoped `*.repo.ts`.",
     },
     schema: [
       {

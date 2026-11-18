@@ -8,7 +8,10 @@ describe('logger redaction', () => {
     ['authorization header', { req: { headers: { authorization: `Bearer ${SECRET}` } } }],
     ['cookie header', { req: { headers: { cookie: `__Host-session=${SECRET}` } } }],
     ['CSRF header', { req: { headers: { 'x-csrf-token': SECRET } } }],
-    ['set-cookie response header', { res: { headers: { 'set-cookie': `__Host-session=${SECRET}` } } }],
+    [
+      'set-cookie response header',
+      { res: { headers: { 'set-cookie': `__Host-session=${SECRET}` } } },
+    ],
     ['bare headers.authorization', { headers: { authorization: SECRET } }],
     ['bare headers.cookie', { headers: { cookie: SECRET } }],
     ['bare headers.x-csrf-token', { headers: { 'x-csrf-token': SECRET } }],

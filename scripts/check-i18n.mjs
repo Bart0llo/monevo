@@ -40,8 +40,13 @@ const languages = readdirSync(LOCALES, { withFileTypes: true })
 const catalog = new Map();
 for (const language of languages) {
   const namespaces = new Map();
-  for (const file of readdirSync(join(LOCALES, language)).filter((name) => name.endsWith('.json'))) {
-    namespaces.set(file.slice(0, -5), flatten(JSON.parse(readFileSync(join(LOCALES, language, file), 'utf8'))));
+  for (const file of readdirSync(join(LOCALES, language)).filter((name) =>
+    name.endsWith('.json'),
+  )) {
+    namespaces.set(
+      file.slice(0, -5),
+      flatten(JSON.parse(readFileSync(join(LOCALES, language, file), 'utf8'))),
+    );
   }
   catalog.set(language, namespaces);
 }
@@ -90,7 +95,8 @@ for (const language of languages) {
       const isPlural = [...forms.keys()].some((category) => category !== '');
       if (isPlural) {
         for (const category of categories) {
-          if (!forms.has(category)) problems.push(`${language}: plural ${ns}:${base} lacks _${category}`);
+          if (!forms.has(category))
+            problems.push(`${language}: plural ${ns}:${base} lacks _${category}`);
         }
       }
       const expected = placeholders([...theirs.get(base).values()].join(' '));
@@ -112,13 +118,17 @@ for (const language of languages) {
 }
 
 // errors namespace ⇔ ERROR_CODES. The contracts file has no imports, so Node loads it with type stripping.
-const { ERROR_CODES } = await import(pathToFileURL(join(ROOT, 'packages/contracts/src/error-codes.ts')).href);
+const { ERROR_CODES } = await import(
+  pathToFileURL(join(ROOT, 'packages/contracts/src/error-codes.ts')).href
+);
 const errorKeys = new Set(source.get('errors')?.keys() ?? []);
 for (const code of ERROR_CODES) {
-  if (!errorKeys.has(code)) problems.push(`errors:${code} is missing (every ERROR_CODES entry needs a message)`);
+  if (!errorKeys.has(code))
+    problems.push(`errors:${code} is missing (every ERROR_CODES entry needs a message)`);
 }
 for (const key of errorKeys) {
-  if (!ERROR_CODES.includes(key)) problems.push(`errors:${key} is not an error code in @monevo/contracts`);
+  if (!ERROR_CODES.includes(key))
+    problems.push(`errors:${key} is not an error code in @monevo/contracts`);
 }
 
 // Keys used by the web app. Literal t('…') calls must exist; any string literal or template prefix
@@ -128,7 +138,8 @@ function sourceFiles(dir) {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const path = join(dir, entry.name);
     if (entry.isDirectory()) out.push(...sourceFiles(path));
-    else if (['.ts', '.tsx'].includes(extname(entry.name)) && !/\.test\.tsx?$/.test(entry.name)) out.push(path);
+    else if (['.ts', '.tsx'].includes(extname(entry.name)) && !/\.test\.tsx?$/.test(entry.name))
+      out.push(path);
   }
   return out;
 }
@@ -145,7 +156,8 @@ for (const file of sourceFiles(WEB_SRC)) {
   const text = readFileSync(file, 'utf8');
   for (const match of text.matchAll(/\bt\(\s*(['"])([^'"]+)\1/g)) {
     const [ns, key] = splitKey(match[2]);
-    if (!defined.get(ns)?.has(key)) problems.push(`${relative(ROOT, file)}: unknown key ${match[2]}`);
+    if (!defined.get(ns)?.has(key))
+      problems.push(`${relative(ROOT, file)}: unknown key ${match[2]}`);
   }
   for (const match of text.matchAll(/(['"`])((?:\w+:)?[A-Za-z][\w-]*(?:\.[\w-]+)+)\1/g)) {
     used.add(splitKey(match[2]).join(':'));

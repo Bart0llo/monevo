@@ -10,7 +10,10 @@ export function registerHealthOpenApi(registry: OpenAPIRegistry): void {
     summary: 'Liveness: the process is serving HTTP',
     security: [],
     responses: {
-      200: { description: 'Alive', content: { 'application/json': { schema: HealthResponseSchema } } },
+      200: {
+        description: 'Alive',
+        content: { 'application/json': { schema: HealthResponseSchema } },
+      },
     },
   });
   registry.registerPath({
@@ -22,8 +25,14 @@ export function registerHealthOpenApi(registry: OpenAPIRegistry): void {
     description: 'Only failing checks are listed.',
     security: [],
     responses: {
-      200: { description: 'Ready', content: { 'application/json': { schema: ReadinessResponseSchema } } },
-      503: { description: 'Not ready', content: { 'application/json': { schema: ReadinessResponseSchema } } },
+      200: {
+        description: 'Ready',
+        content: { 'application/json': { schema: ReadinessResponseSchema } },
+      },
+      503: {
+        description: 'Not ready',
+        content: { 'application/json': { schema: ReadinessResponseSchema } },
+      },
     },
   });
 }
