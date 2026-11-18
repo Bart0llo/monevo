@@ -1,0 +1,58 @@
+{
+  "name": "@monevo/server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist",
+    "prisma",
+    "prisma.config.ts"
+  ],
+  "scripts": {
+    "dev": "tsx watch --env-file-if-exists=../../.env.development src/main.ts",
+    "build": "prisma generate && tsup",
+    "typecheck": "prisma generate && tsc -p tsconfig.json",
+    "test": "vitest run --config vitest.config.ts",
+    "test:integration": "prisma generate && vitest run --config vitest.integration.config.ts",
+    "db:migrate": "dotenv -e ../../.env.development -- prisma migrate dev",
+    "db:reset": "dotenv -e ../../.env.development -- prisma migrate reset",
+    "prisma": "prisma",
+    "openapi:generate": "tsx src/openapi/snapshot.ts --write",
+    "openapi:check": "tsx src/openapi/snapshot.ts --check"
+  },
+  "dependencies": {
+    "@asteasolutions/zod-to-openapi": "^9.1.0",
+    "@monevo/contracts": "workspace:*",
+    "@monevo/domain": "workspace:*",
+    "@monevo/i18n": "workspace:*",
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "commander": "^15.0.0",
+    "decimal.js": "^10.6.0",
+    "express": "^5.3.0",
+    "helmet": "^8.3.0",
+    "pg": "^8.23.0",
+    "pg-boss": "^12.38.0",
+    "pino": "^10.0.0",
+    "prisma": "7.10.1",
+    "swagger-ui-express": "^5.0.1",
+    "uuidv7": "^1.0.2",
+    "zod": "^4.6.0"
+  },
+  "devDependencies": {
+    "@testcontainers/postgresql": "^12.2.1",
+    "@types/express": "^5.0.3",
+    "@types/node": "^24.0.0",
+    "@types/pg": "^8.15.0",
+    "@types/supertest": "^7.2.1",
+    "@types/swagger-ui-express": "^4.1.8",
+    "@vitest/coverage-v8": "^5.1.1",
+    "dotenv-cli": "^11.1.0",
+    "pino-pretty": "^13.0.0",
+    "supertest": "^7.3.0",
+    "tsup": "^9.0.0",
+    "tsx": "^4.23.0",
+    "typescript": "~6.0.3",
+    "vitest": "^5.1.1"
+  }
+}

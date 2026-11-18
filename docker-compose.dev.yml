@@ -1,0 +1,47 @@
+# Development services only (docs/development/development-setup.md#3-dev-services-docker-composedevyml).
+# The app runs on the host. These PostgreSQL containers are a development convenience, never a
+# production database: production always uses an external PostgreSQL (docs/infrastructure/postgresql.md).
+# The S3 test server (formerly MinIO, whose images are no longer public) returns with OQ-23 (open-questions.md).
+name: monevo-dev
+
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: monevo
+      POSTGRES_PASSWORD: monevo
+      POSTGRES_DB: monevo_dev
+    ports:
+      - '127.0.0.1:5432:5432'
+    volumes:
+      - db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U monevo -d monevo_dev']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  db-test:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    command: ['postgres', '-c', 'fsync=off', '-c', 'synchronous_commit=off', '-c', 'full_page_writes=off']
+    ports:
+      - '127.0.0.1:5433:5432'
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - '127.0.0.1:1025:1025'
+      - '127.0.0.1:8025:8025'
+
+volumes:
+  db:

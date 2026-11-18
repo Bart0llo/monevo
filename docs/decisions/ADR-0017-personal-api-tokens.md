@@ -11,7 +11,7 @@ The user moved personal API tokens from the deferred list into the initial scope
 
 - **Opaque random tokens**, not JWTs: `mnv_pat_` + 32 bytes from `crypto.randomBytes` as base64url. Only the SHA-256 hash is stored, the full token is shown once, and every request looks the token up, so revocation is immediate. This is the same vetted scheme as sessions.
 - **Sent as `Authorization: Bearer`**, routed by the `mnv_pat_` prefix. Tokens are an additional authentication method for `/api/v1` and do not replace local login, OIDC, or sessions.
-- **Fine-grained permissions** `<resource>:<operation>`, defined per resource according to its real operations, independent read and write, fixed at creation. Operations that write another resource type also require that resource's permission.
+- **Fine-grained permissions** `<resource>:<operation>`, selected by the user from a predefined catalogue, defined per resource according to its real operations (`read`, `create`, `update`, `delete`), each granted independently, fixed at creation. Operations that write another resource type also require that resource's permission.
 - **Hard exclusions:** tokens never reach admin, auth, session, password, identity, token-management, sync, or realtime endpoints, and always act with the effective role `USER`.
 - **Amends [ADR-0006](ADR-0006-user-data-isolation.md):** the acting user ID comes only from the authenticated credential, a session or a personal API token (previously "only from the session"). Everything else in ADR-0006 applies unchanged to token-authenticated requests.
 - **Owner-bounded:** a token acts as exactly one user; all ownership checks, invariants, quotas, and rate limits apply; deactivation and backup restore revoke all tokens.

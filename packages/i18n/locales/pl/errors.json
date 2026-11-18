@@ -1,0 +1,8 @@
+{
+  "MALFORMED_REQUEST": "Nie udało się odczytać żądania.",
+  "NOT_FOUND": "Nie znaleziono.",
+  "PAYLOAD_TOO_LARGE": "Żądanie jest zbyt duże.",
+  "UNSUPPORTED_MEDIA_TYPE": "Ten typ zawartości nie jest obsługiwany.",
+  "VALIDATION_FAILED": "Niektóre pola są nieprawidłowe.",
+  "INTERNAL": "Coś poszło nie tak. Spróbuj ponownie."
+}

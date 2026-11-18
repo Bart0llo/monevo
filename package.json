@@ -1,0 +1,40 @@
+{
+  "name": "monevo",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @monevo/server --filter @monevo/web dev",
+    "build": "pnpm --filter @monevo/web --filter @monevo/server build",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "lint": "eslint . --max-warnings 0",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm -r test",
+    "test:tz": "cross-env TZ=Pacific/Auckland pnpm -r test",
+    "test:integration": "pnpm --filter @monevo/server test:integration",
+    "test:e2e": "node scripts/test-e2e.mjs",
+    "db:migrate": "pnpm --filter @monevo/server db:migrate",
+    "db:reset": "pnpm --filter @monevo/server db:reset",
+    "openapi:check": "pnpm --filter @monevo/server openapi:check",
+    "i18n:check": "node scripts/check-i18n.mjs",
+    "docs:check": "node scripts/check-doc-links.mjs",
+    "validate": "pnpm lint && pnpm format:check && pnpm typecheck && pnpm i18n:check && pnpm docs:check && pnpm test && pnpm test:tz && pnpm test:integration && pnpm openapi:check"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.0",
+    "cross-env": "^10.0.0",
+    "eslint": "^10.15.0",
+    "eslint-plugin-i18next": "^6.1.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.14.0",
+    "prettier": "^3.10.1",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.73.0",
+    "vitest": "^5.1.1"
+  }
+}

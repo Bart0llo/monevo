@@ -1,0 +1,46 @@
+{
+  "name": "@monevo/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json && tsc -p src/sw/tsconfig.json",
+    "test": "vitest run --config vitest.config.ts",
+    "icons": "node scripts/generate-icons.mjs"
+  },
+  "dependencies": {
+    "@mantine/core": "8.3.18",
+    "@mantine/hooks": "8.3.18",
+    "@mantine/notifications": "8.3.18",
+    "@monevo/contracts": "workspace:*",
+    "@monevo/domain": "workspace:*",
+    "@monevo/i18n": "workspace:*",
+    "@tabler/icons-react": "^3.52.0",
+    "i18next": "^27.1.0",
+    "i18next-browser-languagedetector": "^8.3.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-i18next": "^18.0.0",
+    "react-router": "7.18.5",
+    "workbox-precaching": "^7.4.0",
+    "workbox-routing": "^7.4.0"
+  },
+  "devDependencies": {
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "jsdom": "^31.0.0",
+    "typescript": "~6.0.3",
+    "vite": "^8.3.0",
+    "vite-plugin-pwa": "^2.0.0",
+    "vitest": "^5.1.1",
+    "workbox-build": "^7.4.0",
+    "workbox-window": "^7.4.0"
+  }
+}

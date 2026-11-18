@@ -1,0 +1,12 @@
+pnpm-lock.yaml
+docs/
+CLAUDE.md
+STAN-SESJI.md
+apps/server/src/generated/
+apps/server/prisma/migrations/
+apps/server/openapi.snapshot.json
+dist/
+coverage/
+e2e/test-results/
+e2e/playwright-report/
+apps/server/openapi.snapshot.json

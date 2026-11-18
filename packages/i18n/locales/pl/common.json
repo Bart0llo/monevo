@@ -1,0 +1,41 @@
+{
+  "app": {
+    "name": "Monevo",
+    "tagline": "Finanse osobiste, najpierw offline"
+  },
+  "nav": {
+    "label": "Główna nawigacja",
+    "toggle": "Przełącz nawigację",
+    "dashboard": "Pulpit",
+    "transactions": "Transakcje",
+    "accounts": "Konta",
+    "budgets": "Budżety",
+    "calendar": "Kalendarz",
+    "reports": "Raporty",
+    "settings": "Ustawienia"
+  },
+  "placeholder": {
+    "body": "Ta sekcja pojawi się w kolejnym etapie."
+  },
+  "notFound": {
+    "title": "Nie znaleziono strony",
+    "back": "Przejdź do pulpitu"
+  },
+  "theme": {
+    "label": "Motyw kolorów",
+    "light": "Jasny",
+    "dark": "Ciemny",
+    "auto": "Systemowy"
+  },
+  "language": {
+    "label": "Język",
+    "en": "English",
+    "pl": "Polski"
+  },
+  "pwa": {
+    "updateTitle": "Dostępna aktualizacja",
+    "updateMessage": "Nowa wersja Monevo jest gotowa.",
+    "updateAction": "Odśwież",
+    "offlineReady": "Monevo jest gotowe do pracy offline."
+  }
+}

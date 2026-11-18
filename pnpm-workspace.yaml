@@ -1,0 +1,18 @@
+packages:
+  - apps/*
+  - packages/*
+  - e2e
+  - tools/*
+allowBuilds:
+  '@prisma/engines': true
+  '@scarf/scarf': false
+  cpu-features: false
+  esbuild: true
+  prisma: true
+  protobufjs: false
+  ssh2: false
+minimumReleaseAgeExclude:
+  - '@vitest/coverage-v8@5.1.1'
+  - '@vitest/mocker@5.1.1'
+  - '@vitest/spy@5.1.1'
+  - vitest@5.1.1

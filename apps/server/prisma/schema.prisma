@@ -1,0 +1,32 @@
+// Database conventions: docs/architecture/database-architecture.md
+// Keep docs/data/data-model.md and docs/data/entity-relationships.md in sync with migrations.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+/// Instance-wide runtime settings (configuration.md#runtime-settings-app_settings).
+model AppSetting {
+  key             String   @id
+  value           Json
+  updatedAt       DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  updatedByUserId String?  @map("updated_by_user_id") @db.Uuid
+
+  @@map("app_settings")
+}
+
+/// ISO 4217 reference data, seeded by migration (multi-currency.md#currency-reference-data).
+model Currency {
+  code     String  @id @db.Char(3)
+  exponent Int     @db.SmallInt
+  name     String
+  active   Boolean
+
+  @@map("currencies")
+}

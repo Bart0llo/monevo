@@ -186,7 +186,7 @@ Design: [api-tokens.md](../architecture/api-tokens.md).
 | ID | Requirement |
 |---|---|
 | R-TOK-01 | Users create multiple personal API tokens, each with a custom name, so separate integrations and use cases get separate tokens. |
-| R-TOK-02 | Each token has granular permissions configured per resource type. Read and write permissions are granted independently, and each resource offers only the operations it actually supports. |
+| R-TOK-02 | Each token has granular permissions that the user selects from a predefined permission catalogue, per resource type. Read, create, update, and delete operations are granted independently, and each resource offers only the operations it actually supports. |
 | R-TOK-03 | A token can have an optional expiration date. |
 | R-TOK-04 | Users see their tokens with name, creation date, expiration date, last-used timestamp, and status, and can revoke any token at any time. Revocation immediately prevents further use. |
 | R-TOK-05 | Tokens are generated with a cryptographically secure, standard method. The complete token is shown only once, after creation. Only a secure hash is stored, and stored hashes are never exposed through the API. |

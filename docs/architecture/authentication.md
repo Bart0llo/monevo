@@ -18,6 +18,8 @@ Session:       see §4
 
 One user can have a password, an OIDC identity, or both. Login method does not create separate accounts.
 
+**Extensibility rule:** Stage 2 builds this model completely, including `user_identities`, a nullable `passwordHash`, `Session.authMethod`, and an authentication pipeline that resolves any credential to `req.auth`. OIDC ([Stage 14](../planning/implementation-stages.md#stage-14-oidc)) then only adds the login flow, identity rows, and admin configuration, with no change to the user, identity, or session model.
+
 ## 2. Local authentication
 
 | Aspect | Rule |

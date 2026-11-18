@@ -1,0 +1,8 @@
+{
+  "MALFORMED_REQUEST": "The request could not be read.",
+  "NOT_FOUND": "Not found.",
+  "PAYLOAD_TOO_LARGE": "The request is too large.",
+  "UNSUPPORTED_MEDIA_TYPE": "This content type is not supported.",
+  "VALIDATION_FAILED": "Some fields are invalid.",
+  "INTERNAL": "Something went wrong. Please try again."
+}

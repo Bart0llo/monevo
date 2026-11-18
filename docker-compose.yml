@@ -1,0 +1,30 @@
+# Production example (docs/infrastructure/docker-compose.md#2-compose-services).
+# PostgreSQL is external: set DATABASE_URL in .env (docs/infrastructure/postgresql.md).
+# Configuration reference: docs/infrastructure/configuration.md. Start with `docker compose up -d`.
+# The optional same-host S3 service (`s3` profile) returns once OQ-23 picks a MinIO replacement.
+name: monevo
+
+services:
+  app:
+    image: monevo:latest
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - '127.0.0.1:3000:3000'
+    volumes:
+      - attachments:/data/attachments
+      - backups:/data/backups
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    user: '1000:1000'
+    stop_grace_period: 30s
+
+volumes:
+  attachments:
+  backups:

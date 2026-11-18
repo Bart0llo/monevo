@@ -36,6 +36,7 @@ Rules for every stage:
 - **Prerequisites:** Stage 1; [OQ-03](open-questions.md#oq-03-smtp-for-authentication-emails), [OQ-06](open-questions.md#oq-06-authentication-implementation), [OQ-22](open-questions.md#oq-22-api-token-permission-catalogue-and-lifecycle) resolved.
 - **Features and deliverables:**
   - Local registration and login (argon2id), sessions (cookie + Bearer), CSRF, rate limits, logout, session list and revocation, password change ([authentication.md](../architecture/authentication.md)).
+  - The complete account model, OIDC-ready but without OIDC login: `user_identities` table, nullable `passwordHash`, `Session.authMethod` ([authentication.md](../architecture/authentication.md#1-account-model), extensibility rule).
   - SMTP flows: email verification, password reset, email change; admin-generated reset link fallback.
   - First-user admin bootstrap, CLI `create-admin`, `reset-password-link`, `set-role`, `generate-key`; `BOOTSTRAP_ADMIN_EMAIL`.
   - Admin: users list, activate/deactivate (revokes sessions), roles, registration mode, recent-auth requirement ([administration.md](../architecture/administration.md)).

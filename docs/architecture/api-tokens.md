@@ -62,43 +62,55 @@ Bearer value starts with "mnv_pat_" → hash → SELECT api_token JOIN user WHER
 
 ## 4. Permission catalogue
 
-Permissions are strings `<resource>:<operation>`. Each resource lists only the operations it actually supports. Read and write permissions are independent: a write permission does not imply read, although write responses still return the created or changed resource. The catalogue is defined once in `@monevo/contracts` and shared by the server (enforcement, OpenAPI) and the web app (token creation form). New permissions are additive within `/api/v1`.
+Permissions are strings `<resource>:<operation>`. The user selects them for each token from this predefined catalogue; free-form permissions are rejected (`422`). Operations are `read`, `create`, `update`, and `delete`, and each resource lists only the operations it actually supports. Every operation is granted independently: no operation implies another (`delete` does not imply `read`), although write responses still return the created or changed resource. Domain actions map to the closest operation: archive, unarchive, reorder, enable, disable, mark-read, and dismiss are `update`. The catalogue is defined once in `@monevo/contracts` and shared by the server (enforcement, OpenAPI) and the web app (token creation form). New permissions are additive within `/api/v1`.
 
-| Permission | Grants | Also requires |
-|---|---|---|
-| `profile:read` | Read profile and settings: display name, locale, time zone, base currency, week start (`GET /me`, `GET /me/settings`). No email address. | |
-| `currencies:read` | Currencies and exchange rates (`GET /currencies`, `GET /exchange-rates`, `GET /exchange-rates/missing`). | |
-| `exchange-rates:manage` | Enter manual rates, trigger on-demand provider fetches (`POST /exchange-rates`, `/exchange-rates/resolve`, `/exchange-rates/missing/resolve`). | |
-| `accounts:read` | Accounts and balances (`GET /accounts[/:id]`, `/accounts/balances`). | |
-| `accounts:manage` | Create, edit, archive, unarchive, delete unused accounts. | |
-| `categories:read` | Categories and subcategories. | |
-| `categories:manage` | Create, edit, reorder, delete categories. | `transactions:update` for deletion (deleting reassigns or uncategorizes transactions) |
-| `transactions:read` | Transactions, transfers, adjustments, and their change history. | |
-| `transactions:create` | Create transactions, transfers, adjustments. | |
-| `transactions:update` | Edit transactions. | |
-| `transactions:delete` | Permanently delete transactions. | |
-| `transaction-templates:read` | Transaction templates. | |
-| `transaction-templates:manage` | Create, edit, delete templates. | |
-| `custom-fields:read` | Custom field definitions (needed to interpret `customFields` values). | |
-| `custom-fields:manage` | Create, edit, archive custom field definitions. | |
-| `attachments:read` | List and download attachments. | |
-| `attachments:manage` | Upload and delete attachments (counts against the user's quota). | |
-| `scheduled-transactions:read` | Recurring and planned transactions, occurrences, `GET /upcoming`. | |
-| `scheduled-transactions:manage` | Create, edit, delete schedules; amount changes; skip and unskip occurrences. | `transactions:create` to confirm or modify an occurrence (creates a transaction) |
-| `calendar:read` | `GET /calendar`. | |
-| `forecast:read` | `GET /forecast`. | |
-| `budgets:read` | Budgets, periods, summary. | |
-| `budgets:manage` | Create, edit, delete budgets (including their threshold alert rules). | |
-| `savings-pots:read` | Pots and allocation history. | |
-| `savings-pots:manage` | Create, edit, delete pots; allocate and release money. | |
-| `savings-goals:read` | Goals, progress, contribution history. | |
-| `savings-goals:manage` | Create, edit, delete goals. | |
-| `alert-rules:read` | Alert rules. | |
-| `alert-rules:manage` | Create, edit, enable, disable, delete alert rules. | |
-| `notifications:read` | Notifications and insights. | |
-| `notifications:manage` | Mark notifications read, dismiss insights. | |
-| `reports:read` | Report endpoints (including `?format=csv`) and saved report definitions. | |
-| `reports:manage` | Create, edit, delete saved report definitions. | |
+| Resource | Operations | Grants | Also requires |
+|---|---|---|---|
+| `profile` | `read` | Profile and settings: display name, locale, time zone, base currency, week start (`GET /me`, `GET /me/settings`). No email address. | |
+| `currencies` | `read` | Currencies and exchange rates (`GET /currencies`, `GET /exchange-rates`, `GET /exchange-rates/missing`). | |
+| `exchange-rates` | `create` | Enter manual rates, trigger on-demand provider fetches (`POST /exchange-rates`, `/exchange-rates/resolve`, `/exchange-rates/missing/resolve`). | |
+| `accounts` | `read` | Accounts and balances (`GET /accounts[/:id]`, `/accounts/balances`). | |
+| | `create` | Create accounts. | |
+| | `update` | Edit, archive, unarchive accounts. | |
+| | `delete` | Delete unused accounts. | |
+| `categories` | `read` | Categories and subcategories. | |
+| | `create` | Create categories. | |
+| | `update` | Edit and reorder categories. | |
+| | `delete` | Delete categories. | `transactions:update` (deleting reassigns or uncategorizes transactions) |
+| `transactions` | `read` | Transactions, transfers, adjustments, and their change history. | |
+| | `create` | Create transactions, transfers, adjustments. | `savings-pots:update` to pay from a pot |
+| | `update` | Edit transactions. | |
+| | `delete` | Permanently delete transactions. | |
+| `transaction-templates` | `read`, `create`, `update`, `delete` | Transaction templates. | |
+| `custom-fields` | `read` | Custom field definitions (needed to interpret `customFields` values). | |
+| | `create` | Create definitions. | |
+| | `update` | Edit and archive definitions. | |
+| `attachments` | `read` | List and download attachments. | |
+| | `create` | Upload attachments (counts against the user's quota). | |
+| | `delete` | Delete attachments. | |
+| `scheduled-transactions` | `read` | Recurring and planned transactions, occurrences, `GET /upcoming`. | |
+| | `create` | Create schedules. | |
+| | `update` | Edit schedules, amount changes, skip and unskip occurrences, confirm or modify an occurrence. | `transactions:create` to confirm or modify an occurrence (creates a transaction) |
+| | `delete` | Delete schedules. | |
+| `calendar` | `read` | `GET /calendar`. | |
+| `forecast` | `read` | `GET /forecast`. | |
+| `budgets` | `read` | Budgets, periods, summary. | |
+| | `create`, `update` | Create and edit budgets. | |
+| | `delete` | Delete budgets (including their threshold alert rules). | |
+| `savings-pots` | `read` | Pots and allocation history. | |
+| | `create` | Create pots. | |
+| | `update` | Edit and archive pots; allocate and release money (allocations change the pot balance). | |
+| | `delete` | Delete pots. | |
+| `savings-goals` | `read` | Goals, progress, contribution history. | |
+| | `create`, `update`, `delete` | Create, edit, delete goals. | |
+| `alert-rules` | `read` | Alert rules. | |
+| | `create`, `update`, `delete` | Create; edit, enable, disable; delete alert rules. | |
+| `notifications` | `read` | Notifications and insights. | |
+| | `update` | Mark notifications read, dismiss insights. | |
+| `reports` | `read` | Report endpoints (including `?format=csv`) and saved report definitions. | |
+| | `create`, `update`, `delete` | Create, edit, delete saved report definitions. | |
+
+A row listing several operations defines one permission per operation (`budgets:create` and `budgets:update` are separate). The exact routes of each permission are declared on the route with `x-monevo-permissions` ([§7](#7-api-documentation)) when the stage that adds the route is built ([implementation-stages.md](../planning/implementation-stages.md)).
 
 **"Also requires"** applies the general rule: an operation that creates, changes, or deletes records of another resource type needs that resource's permission too, so a token cannot reach transactions indirectly. Removing a feature's own dependent configuration (a budget's threshold alert rules) needs no extra permission.
 
@@ -118,6 +130,8 @@ These routes reject token authentication with `403 API_TOKEN_NOT_ALLOWED`, whate
 | `/dashboard` | UI layout, not data. |
 | `/exports`, `/imports` | Whole-account bulk transfer stays interactive; integrations use the read permissions instead. |
 
+**Public routes** need no credential at all: `/health`, `/health/ready`, `/openapi.json`, `/docs`, and `/auth/config`. They declare `security: []` in OpenAPI and no permission. A token sent to them is ignored.
+
 ## 5. Token management
 
 Available in **Settings → API tokens** ([features.md](../product/features.md#settings)) and through the API, **only with a session** (cookie or native bearer session):
@@ -130,7 +144,7 @@ Available in **Settings → API tokens** ([features.md](../product/features.md#s
 | `DELETE /me/api-tokens/:id` | Revoke (`revokedAt = now`, `revokedReason = USER_REVOKED`). Idempotent, `204`. |
 
 UI rules:
-- The creation form groups the catalogue by resource with read and write toggles, shows the "also requires" hints, and offers expiration presets (30, 90, 365 days, a custom date, or none). The default preset is 90 days; choosing "no expiration" shows a warning. A custom date means the end of that day in the user's time zone.
+- The creation form groups the catalogue by resource with one toggle per supported operation (read, create, update, delete), no permission selected by default, shows the "also requires" hints, and offers expiration presets (30, 90, 365 days, a custom date, or none). The default preset is 90 days; choosing "no expiration" shows a warning. A custom date means the end of that day in the user's time zone.
 - After creation, the secret is shown once with a copy button and the message that it cannot be shown again.
 - Revoking asks for confirmation that names the token ([user-experience.md](../product/user-experience.md#interaction-rules)).
 

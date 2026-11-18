@@ -1,0 +1,47 @@
+# Local end-to-end tests (docs/development/testing-strategy.md#5-local-validation), driven by
+# `pnpm test:e2e`. The PostgreSQL service here is a disposable test fixture, never a production setup.
+# No S3 service until a MinIO replacement is chosen (docs/planning/open-questions.md, OQ-23).
+name: monevo-e2e
+
+services:
+  db:
+    image: postgres:17-bookworm
+    environment:
+      POSTGRES_USER: monevo
+      POSTGRES_PASSWORD: monevo
+      POSTGRES_DB: monevo
+    command: ['postgres', '-c', 'fsync=off', '-c', 'synchronous_commit=off', '-c', 'full_page_writes=off']
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U monevo -d monevo']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  app:
+    image: monevo:e2e
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      APP_URL: http://localhost:3100
+      INSECURE_COOKIES: 'true'
+      # Test-only key (32 bytes, base64); never use it for a real instance.
+      APP_ENCRYPTION_KEY: ZTJlLW9ubHktbW9uZXZvLWVuY3J5cHRpb24ta2V5ISE=
+      DATABASE_URL: postgresql://monevo:monevo@db:5432/monevo
+      LOG_LEVEL: info
+    ports:
+      - '127.0.0.1:3100:3000'
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    user: '1000:1000'
+
+  mailpit:
+    image: axllent/mailpit:v1.27
