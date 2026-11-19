@@ -145,3 +145,16 @@ export function extractChangelogSection(markdown, version) {
     .join('\n')
     .trim();
 }
+
+/**
+ * Documented Makefile targets: lines like `target: deps ## description`, in file order.
+ * Used by `make help`, so it needs no awk/grep (Windows without Git Bash).
+ */
+export function parseMakefileHelp(makefile) {
+  const targets = [];
+  for (const line of String(makefile).split(/\r?\n/)) {
+    const match = /^([a-z][a-z-]*):[^=]*?## (.+)$/.exec(line);
+    if (match) targets.push({ target: match[1], description: match[2].trim() });
+  }
+  return targets;
+}

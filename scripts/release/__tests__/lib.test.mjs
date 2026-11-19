@@ -7,6 +7,7 @@ import {
   latestReleaseVersion,
   normalizeReleaseMode,
   parseGitHubRemote,
+  parseMakefileHelp,
   parseVersion,
   releaseCommitSubject,
   tagForVersion,
@@ -177,5 +178,24 @@ describe('commits and changelog', () => {
   it('does not match a different version with the same prefix', () => {
     expect(extractChangelogSection(changelog, '1.1')).toBeNull();
     expect(extractChangelogSection(changelog, '0.1.0')).toBeNull();
+  });
+});
+
+describe('Makefile help', () => {
+  it('lists documented targets in order and skips everything else', () => {
+    const makefile = [
+      'RELEASE ?= manual ## not a target',
+      '.PHONY: help version',
+      'help: ## Show available commands',
+      '\t@node cli.mjs help',
+      'internal:',
+      'release-notes: deps ## Preview the notes',
+      'publish: ## Publish: manual = push; github-actions = instructions',
+    ].join('\r\n'); // CRLF, as in a Windows checkout
+    expect(parseMakefileHelp(makefile)).toEqual([
+      { target: 'help', description: 'Show available commands' },
+      { target: 'release-notes', description: 'Preview the notes' },
+      { target: 'publish', description: 'Publish: manual = push; github-actions = instructions' },
+    ]);
   });
 });

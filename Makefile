@@ -1,6 +1,6 @@
 # Monevo release and Docker image commands (docs/development/releasing.md).
 # All logic lives in scripts/release/cli.mjs (Node.js 24), so the targets behave the same on Linux,
-# macOS and Windows (Git Bash). Nothing here pushes Git commits or tags.
+# macOS and Windows (PowerShell or Git Bash). Nothing here pushes Git commits or tags.
 #
 # Overridable variables (make <target> VAR=value, or environment):
 #   RELEASE_MODE     local publishing mode: manual (default) or github-actions. Only affects
@@ -28,11 +28,7 @@ RELEASE := node scripts/release/cli.mjs
 	github-release inspect remove clean
 
 help: ## Show available commands
-	@echo "Monevo release commands (docs/development/releasing.md)"
-	@echo ""
-	@awk 'BEGIN {FS = ":.*## "} /^[a-z-]+:.*## / {printf "  make %-16s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
-	@echo ""
-	@echo "Variables: RELEASE_MODE=$(RELEASE_MODE) IMAGE_REGISTRY=$(IMAGE_REGISTRY) IMAGE_OWNER=$(if $(IMAGE_OWNER),$(IMAGE_OWNER),<from origin>) IMAGE_NAME=$(IMAGE_NAME)"
+	@$(RELEASE) help
 
 version: ## Print the current application version (root package.json)
 	@$(RELEASE) version

@@ -13,7 +13,7 @@ A release has two phases:
 
 Release notes state migrations, rollback compatibility, and required operator actions ([deployment.md](../infrastructure/deployment.md#upgrades)). Edit the generated `CHANGELOG.md` section before release-it commits it if those need to be spelled out (release-it shows the changelog and asks before committing).
 
-Files: [`.release-it.js`](../../.release-it.js) (release-it configuration), [`Makefile`](../../Makefile) (commands), [`scripts/release/cli.mjs`](../../scripts/release/cli.mjs) (all checks and image commands, Node.js only, so the same on Linux, macOS and Windows with Git Bash), [`scripts/release/lib.mjs`](../../scripts/release/lib.mjs) (pure helpers, tested by `pnpm test:release`), [`.github/workflows/release.yml`](../../.github/workflows/release.yml) (GitHub Actions mode).
+Files: [`.release-it.js`](../../.release-it.js) (release-it configuration), [`Makefile`](../../Makefile) (commands), [`scripts/release/cli.mjs`](../../scripts/release/cli.mjs) (all checks and image commands, Node.js only, so the same on Linux, macOS and Windows, including `make help`), [`scripts/release/lib.mjs`](../../scripts/release/lib.mjs) (pure helpers, tested by `pnpm test:release`), [`.github/workflows/release.yml`](../../.github/workflows/release.yml) (GitHub Actions mode).
 
 <a id="canonical-version"></a>
 
@@ -38,7 +38,7 @@ The remote behaviour depends only on the **repository variable**. The local `REL
 
 ## 4. Prerequisites
 
-- Node.js 24 and pnpm (as in [development-setup.md](development-setup.md#1-prerequisites)), GNU Make (on Windows: Git Bash with `make`, or run `node scripts/release/cli.mjs …` directly).
+- Node.js 24 and pnpm (as in [development-setup.md](development-setup.md#1-prerequisites)), GNU Make (on Windows from PowerShell or Git Bash, no Unix tools needed), or run `node scripts/release/cli.mjs …` directly.
 - A clean `master` that is up to date with `origin/master`, all remote tags fetched (`git fetch --tags`).
 - The local test database running for `pnpm validate` (`docker compose -f docker-compose.dev.yml up -d db-test`), and Docker for `pnpm test:e2e`.
 - Manual mode also needs: Docker with Buildx and QEMU emulation for the multi-platform build ([§8](#8-multi-architecture-builds)), a GitHub token to push to GHCR ([§7](#7-ghcr-authentication)), and the GitHub CLI `gh` (logged in with `gh auth login`) for `make github-release`.

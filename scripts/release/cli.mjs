@@ -5,6 +5,7 @@
 //
 //   node scripts/release/cli.mjs <command> [options]
 //
+//   help                    (make help) list the documented Makefile targets and variables
 //   version                 print the canonical version (root package.json)
 //   mode                    print the local publishing mode (RELEASE_MODE, default manual)
 //   check [--validate] [--e2e]
@@ -29,6 +30,7 @@ import {
   isValidVersion,
   latestReleaseVersion,
   normalizeReleaseMode,
+  parseMakefileHelp,
   parseGitHubRemote,
   releaseCommitSubject,
   tagForVersion,
@@ -529,6 +531,21 @@ async function imageRemove(ctx, flags) {
   run('docker', ['image', 'rm', ...new Set(refs)]);
 }
 
+// ─── Make help ───────────────────────────────────────────────────────────────
+
+/** `make help` in Node.js, so it needs no awk or Unix shell (Windows PowerShell). */
+function printMakeHelp() {
+  const targets = parseMakefileHelp(readFileSync(join(ROOT, 'Makefile'), 'utf8'));
+  console.log('Monevo release commands (docs/development/releasing.md)\n');
+  for (const { target, description } of targets) {
+    console.log(`  make ${target.padEnd(16)} ${description}`);
+  }
+  console.log(
+    `\nVariables: RELEASE_MODE=${env.RELEASE_MODE || 'manual'} IMAGE_REGISTRY=${env.IMAGE_REGISTRY || 'ghcr.io'} ` +
+      `IMAGE_OWNER=${env.IMAGE_OWNER || '<from origin>'} IMAGE_NAME=${env.IMAGE_NAME || 'monevo'}`,
+  );
+}
+
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
 async function main(argv) {
@@ -537,6 +554,8 @@ async function main(argv) {
   const [arg] = rest.filter((value) => !value.startsWith('--'));
 
   switch (command) {
+    case 'help':
+      return printMakeHelp();
     case 'version':
       return console.log(rootVersion());
     case 'mode': {
