@@ -5,7 +5,7 @@
 ## 1. Prerequisites
 
 - Node.js 24 (`.nvmrc`; use nvm, fnm, or mise). Corepack enabled (`corepack enable`), which provides the pinned pnpm version from `package.json#packageManager`.
-- Docker with the Compose plugin (for the local development PostgreSQL, Mailpit, and E2E; an S3-compatible test server is pending [OQ-23](../planning/open-questions.md#oq-23-s3-compatible-server-for-development-and-tests)).
+- Docker with the Compose plugin (for the local development PostgreSQL, the mock identity provider, and E2E; an S3-compatible test server is pending [OQ-23](../planning/open-questions.md#oq-23-s3-compatible-server-for-development-and-tests)).
 - Git. An editor with ESLint, Prettier, and TypeScript support.
 
 ## 2. First run
@@ -13,17 +13,17 @@
 ```bash
 pnpm install
 cp .env.example .env.development        # then apply the dev values from its comments (below)
-docker compose -f docker-compose.dev.yml up -d   # db, db-test, mailpit
+docker compose -f docker-compose.dev.yml up -d   # db, db-test, mock-idp
 pnpm db:migrate                          # prisma migrate dev
 pnpm dev                                 # server (tsx watch, :3000) + web (Vite, :5173) in parallel
 pnpm --filter @monevo/e2e exec playwright install --with-deps chromium   # once, for pnpm test:e2e
 ```
 
-`.env.example` is production-oriented; its comments give the development values. In `.env.development` set `APP_URL=http://localhost:5173`, `INSECURE_COOKIES=true`, `DATABASE_URL=postgresql://monevo:monevo@127.0.0.1:5432/monevo_dev`, and an `APP_ENCRYPTION_KEY` (`openssl rand -base64 32`).
+`.env.example` is production-oriented; its comments give the development values. In `.env.development` set `APP_URL=http://localhost:5173`, `INSECURE_COOKIES=true`, `DATABASE_URL=postgresql://monevo:monevo@127.0.0.1:5432/monevo_dev`, an `APP_ENCRYPTION_KEY` (`openssl rand -base64 32`), and the OIDC values for the mock identity provider: `OIDC_ISSUER=http://localhost:9400`, `OIDC_CLIENT_ID=monevo-dev`, `OIDC_CLIENT_SECRET=monevo-dev-secret`, `OIDC_DISPLAY_NAME=Mock IdP` ([configuration.md](../infrastructure/configuration.md#oidc)). To develop against a real Account Center instead, register a loopback client as described in [deployment.md](../infrastructure/deployment.md#registering-monevo-in-account-center) with the redirect URI `http://localhost:5173/api/v1/auth/oidc/callback`.
 
 On Windows and macOS, `--with-deps` is unnecessary: `playwright install chromium` is enough. The repository's `.gitattributes` forces LF line endings, which Prettier and the Linux image expect; clones made before it existed need a fresh checkout.
 
-Open `http://localhost:5173`. The Vite dev server proxies `/api` (including the WebSocket path `/api/v1/realtime`) to `:3000`, so the browser sees one origin, as in production. The first registered user becomes admin.
+Open `http://localhost:5173`. The Vite dev server proxies `/api` (including the WebSocket path `/api/v1/realtime`) to `:3000`, so the browser sees one origin, as in production. "Sign in" redirects to the mock identity provider, whose form accepts any username, name, email, and groups; each distinct username is a distinct identity (`sub`). With `OIDC_ADMIN_GROUP` unset, the first user who signs in becomes admin ([authentication.md](../architecture/authentication.md#7-admin-bootstrap)).
 
 ## 3. Dev services (`docker-compose.dev.yml`)
 
@@ -31,7 +31,7 @@ Open `http://localhost:5173`. The Vite dev server proxies `/api` (including the 
 |---|---|---|
 | `db` | `127.0.0.1:5432` | Development database `monevo_dev` (PostgreSQL 17, inside the [supported range](../infrastructure/postgresql.md#supported-versions); persistent volume) |
 | `db-test` | `127.0.0.1:5433` | Disposable database for integration tests at the minimum supported major, PostgreSQL 16 (tmpfs, `fsync=off`) |
-| `mailpit` | `127.0.0.1:1025` (SMTP), `8025` (UI) | Catches verification and reset emails |
+| `mock-idp` | `127.0.0.1:9400` | Test-only mock OpenID Provider (`tools/mock-idp/server.mjs`, run with the `node:24-alpine` image); registers the client `monevo-dev` with the redirect URI `http://localhost:5173/api/v1/auth/oidc/callback`. Keys and state live in memory, so a restart signs everyone out at the next revalidation. |
 
 All ports bind to localhost only. These PostgreSQL containers are a development convenience only; production always uses an external PostgreSQL ([postgresql.md](../infrastructure/postgresql.md)). Instead of the dev `db`, `DATABASE_URL` in `.env.development` may point to any reachable PostgreSQL in the supported range.
 
@@ -76,7 +76,7 @@ Start `db-test` with `docker compose -f docker-compose.dev.yml up -d db-test` be
 - **Time and time zones:** the server accepts `DEV_FAKE_NOW` (ISO instant, development and test builds only, rejected at startup in production) to drive the injected clock; the client has a dev-tools panel to override "today". Use `TZ=Pacific/Kiritimati` or `TZ=America/St_Johns` to flush out time zone bugs.
 - **Jobs:** `pnpm --filter server job:run <name>` runs one job immediately against the dev database.
 - **Push:** works on `localhost` without HTTPS in Chromium and Firefox.
-- **OIDC:** a local Keycloak or Authelia container is not part of the default dev compose; the OIDC integration tests use a mock issuer ([testing-strategy.md](testing-strategy.md)).
+- **OIDC:** the `mock-idp` dev service stands in for Account Center. It also exposes test hooks: `POST /_test/revoke?sub=<sub>` (revokes the user's grants, so the next revalidation signs them out), `POST /_test/down` (toggles a simulated outage), and `POST /_test/rotate-keys` ([testing-strategy.md](testing-strategy.md#4-test-data-and-environment)).
 
 ## 6. Troubleshooting
 

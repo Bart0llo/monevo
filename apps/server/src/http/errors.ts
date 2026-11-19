@@ -15,10 +15,25 @@ import type { Logger } from '../infra/logger.js';
 /** English fallback titles; clients translate `code` via `errors.<CODE>`. */
 const TITLES: Readonly<Record<ErrorCode, string>> = {
   MALFORMED_REQUEST: 'Malformed request',
+  UNAUTHENTICATED: 'Authentication required',
+  API_TOKEN_EXPIRED: 'API token expired',
+  API_TOKEN_REVOKED: 'API token revoked',
+  FORBIDDEN: 'Forbidden',
+  CSRF_INVALID: 'CSRF token missing or invalid',
+  REAUTH_REQUIRED: 'Recent authentication required',
+  ACCOUNT_DEACTIVATED: 'Account deactivated',
+  API_TOKEN_NOT_ALLOWED: 'Not available to API tokens',
+  API_TOKEN_PERMISSION_DENIED: 'API token permission missing',
   NOT_FOUND: 'Not found',
+  VERSION_CONFLICT: 'Version conflict',
+  LAST_ADMIN: 'Last active administrator',
+  ROLE_MANAGED_BY_IDP: 'Role managed by the identity provider',
   PAYLOAD_TOO_LARGE: 'Payload too large',
   UNSUPPORTED_MEDIA_TYPE: 'Unsupported media type',
   VALIDATION_FAILED: 'Validation failed',
+  API_TOKEN_LIMIT_REACHED: 'API token limit reached',
+  PRECONDITION_REQUIRED: 'Precondition required',
+  RATE_LIMITED: 'Too many requests',
   INTERNAL: 'Internal server error',
 };
 
@@ -29,6 +44,8 @@ export class AppError extends Error {
     readonly code: ErrorCode,
     readonly detail?: string,
     readonly errors?: readonly ProblemFieldError[],
+    /** `VERSION_CONFLICT`: the current resource, returned as `current`. */
+    readonly current?: unknown,
   ) {
     super(detail ?? TITLES[code]);
     this.name = 'AppError';
@@ -45,6 +62,7 @@ export function sendProblem(res: Response, requestId: string, error: AppError): 
     ...(error.detail === undefined ? {} : { detail: error.detail }),
     requestId,
     ...(error.errors === undefined ? {} : { errors: [...error.errors] }),
+    ...(error.current === undefined ? {} : { current: error.current }),
   };
   res.status(error.status).type(PROBLEM_CONTENT_TYPE).json(body);
 }

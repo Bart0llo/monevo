@@ -33,3 +33,4 @@ export {
   sumMoney,
   zeroMoney,
 } from './money.js';
+export { isTimeZone } from './time-zone.js';

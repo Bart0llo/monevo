@@ -52,8 +52,8 @@ The cover and paper colors are repeated outside the theme (they must be known be
 
 ## 3. Layout
 
-- **Desktop (≥ `md`, 62em):** a 240px ink rail with the wordmark, primary destinations, secondary destinations below a divider, Settings pinned low, and the language and color scheme controls in the rail footer.
-- **Mobile (< `md`):** an ink top bar (wordmark, language, color scheme) and an ink bottom bar with the four primary destinations plus **More**. More opens a bottom sheet with the remaining destinations. The quick entry button is added with the entry stage, not before ([user-experience.md](user-experience.md#navigation)).
+- **Desktop (≥ `md`, 62em):** a 240px ink rail with the wordmark, primary destinations, secondary destinations below a divider, the system group (Settings, then Administration for admins) pinned together at the bottom, and the language and color scheme controls in the rail footer.
+- **Mobile (< `md`):** an ink top bar (wordmark, language, color scheme) and an ink bottom bar with the four primary destinations plus **More**. More opens a bottom sheet with the remaining destinations, with the system group below a divider. The quick entry button is added with the entry stage, not before ([user-experience.md](user-experience.md#navigation)).
 - Page content is capped at 72rem. A "Skip to content" link is the first focusable element and targets `#main-content`.
 
 ## 4. Shared components

@@ -3,9 +3,12 @@ import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import { IconDots } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { Link, Outlet, useLocation } from 'react-router';
+import { useIsAdmin } from '../auth/RequireAuth';
+import { AccountMenu } from './AccountMenu';
 import { ColorSchemeMenu } from './ColorSchemeMenu';
 import { LanguageMenu } from './LanguageMenu';
-import { MORE_NAV, NAV_ITEMS, PRIMARY_NAV, isActivePath, type NavItem } from './navigation';
+import { PRIMARY_NAV, isActivePath, moreNavFor, navItemsFor, type NavItem } from './navigation';
+import { usePreferenceSync } from './preferences';
 import { Wordmark } from './Wordmark';
 import './shell.css';
 
@@ -23,7 +26,11 @@ export function AppLayout() {
   const { pathname } = useLocation();
   const isDesktop = useMediaQuery(DESKTOP_QUERY, undefined, { getInitialValueInEffect: false });
   const [moreOpened, more] = useDisclosure(false);
-  const moreActive = MORE_NAV.some((item) => isActivePath(item.path, pathname));
+  const isAdmin = useIsAdmin();
+  const navItems = navItemsFor(isAdmin);
+  const moreNav = moreNavFor(isAdmin);
+  const preferences = usePreferenceSync();
+  const moreActive = moreNav.some((item) => isActivePath(item.path, pathname));
 
   return (
     <AppShell
@@ -43,7 +50,7 @@ export function AppLayout() {
           </div>
           <nav className="mv-rail-nav" aria-label={t('nav.label')}>
             <ul className="mv-rail-list">
-              {NAV_ITEMS.map((item) => (
+              {navItems.map((item) => (
                 <li key={item.path} className="mv-rail-item" data-group={item.group}>
                   <RailLink item={item} active={isActivePath(item.path, pathname)} />
                 </li>
@@ -51,8 +58,17 @@ export function AppLayout() {
             </ul>
           </nav>
           <div className="mv-rail-footer">
-            <LanguageMenu className="mv-cover-control" position="top-start" />
-            <ColorSchemeMenu className="mv-cover-control" position="top-start" />
+            <AccountMenu className="mv-cover-control" position="top-start" />
+            <LanguageMenu
+              className="mv-cover-control"
+              position="top-start"
+              onChange={preferences.onLanguageChange}
+            />
+            <ColorSchemeMenu
+              className="mv-cover-control"
+              position="top-start"
+              onChange={preferences.onColorSchemeChange}
+            />
           </div>
         </AppShell.Navbar>
       ) : (
@@ -60,8 +76,17 @@ export function AppLayout() {
           <AppShell.Header className="mv-top-bar" withBorder={false}>
             <Wordmark />
             <div className="mv-top-bar-controls">
-              <LanguageMenu className="mv-cover-control" position="bottom-end" />
-              <ColorSchemeMenu className="mv-cover-control" position="bottom-end" />
+              <LanguageMenu
+                className="mv-cover-control"
+                position="bottom-end"
+                onChange={preferences.onLanguageChange}
+              />
+              <ColorSchemeMenu
+                className="mv-cover-control"
+                position="bottom-end"
+                onChange={preferences.onColorSchemeChange}
+              />
+              <AccountMenu className="mv-cover-control" position="bottom-end" />
             </div>
           </AppShell.Header>
           <AppShell.Footer className="mv-bottom-bar" withBorder={false}>
@@ -113,11 +138,11 @@ export function AppLayout() {
             closeButtonProps={{ 'aria-label': t('nav.close') }}
           >
             <ul className="mv-sheet-list">
-              {MORE_NAV.map((item) => {
+              {moreNav.map((item) => {
                 const active = isActivePath(item.path, pathname);
                 const ItemIcon = item.icon;
                 return (
-                  <li key={item.path}>
+                  <li key={item.path} className="mv-sheet-item" data-group={item.group}>
                     <Link
                       to={item.path}
                       className="mv-sheet-link"

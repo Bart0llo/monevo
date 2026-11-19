@@ -25,9 +25,9 @@
 
 ### What must never be logged
 
-Canonical rule in [security.md](../architecture/security.md#logging-hygiene): no request or response bodies of financial or auth endpoints, no passwords, tokens, cookies, CSRF tokens, `Authorization` headers, OIDC codes, push subscription keys, secrets, financial amounts, descriptions, notes, attachment filenames, or storage keys at `info`. pino `redact` paths enforce this centrally, and a unit test asserts redaction for each path.
+Canonical rule in [security.md](../architecture/security.md#logging-hygiene): no request or response bodies of financial or auth endpoints, no passwords, tokens, cookies, CSRF tokens, `Authorization` headers, OIDC codes, ID tokens, refresh tokens, `state`/`nonce`/PKCE values, push subscription keys, secrets, financial amounts, descriptions, notes, attachment filenames, or storage keys at `info`. pino `redact` paths enforce this centrally, and a unit test asserts redaction for each path.
 
-Emails appear only in auth security events at `info` level as a hash (`emailHash`), to correlate brute-force attempts without logging addresses.
+Email addresses are not logged; auth events identify the user by `userId` (the identity provider `sub` appears only at `debug`).
 
 ### Levels
 
@@ -36,14 +36,14 @@ Emails appear only in auth security events at `info` level as a hash (`emailHash
 | `fatal` | Startup config errors, unrecoverable DB loss |
 | `error` | Unhandled exceptions (500), job failures after final retry, backup failure, storage probe failure |
 | `warn` | Retried job failures, rate provider errors, push endpoint failures, `INSECURE_COOKIES`, rate-limit hits, failed logins |
-| `info` | Startup/shutdown, HTTP access log (one line per request), job start/finish summaries, admin actions (`event: admin.action`), auth events (login, logout, session revoked, password changed), backup/restore events |
+| `info` | Startup/shutdown, HTTP access log (one line per request), job start/finish summaries, admin actions (`event: admin.action`), auth events (login, account provisioned, logout, session revoked, IdP revocation, re-authentication), backup/restore events |
 | `debug` | Query timings, sync batch sizes, cache decisions |
 
 Health check requests are logged at `debug` only, so they don't flood the log.
 
 ### Key events
 
-`server.started` (version, commit, config summary without secrets), `migrate.applied`, `auth.login.succeeded|failed`, `auth.session.revoked`, `admin.action`, `sync.push.conflict`, `sync.resync_required`, `job.failed`, `backup.started|succeeded|failed|restored`, `storage.probe.failed`, `rates.fetch.failed`, `push.endpoint.removed`, `maintenance.on|off`.
+`server.started` (version, commit, config summary without secrets), `migrate.applied`, `auth.login.succeeded|failed`, `auth.user.provisioned`, `auth.reauth.succeeded|failed`, `auth.session.revoked`, `auth.idp.revoked`, `auth.idp.unavailable`, `admin.action`, `sync.push.conflict`, `sync.resync_required`, `job.failed`, `backup.started|succeeded|failed|restored`, `storage.probe.failed`, `rates.fetch.failed`, `push.endpoint.removed`, `maintenance.on|off`.
 
 ## 2. Health endpoints
 
@@ -56,7 +56,7 @@ Both are public, unauthenticated, rate-limit exempt, and return no versions or i
 
 ## 3. Admin system status
 
-The detailed status (versions, migrations, job runs, storage, SMTP, rate provider, push, maintenance) is in the admin System tab, `GET /api/v1/admin/system` ([administration.md](../architecture/administration.md#system-r-adm-02-r-adm-06)). Job status (last run, status, error, next run per job name) is read from pg-boss's own job and schedule tables; no extra table is needed.
+The detailed status (versions, migrations, job runs, storage, identity provider, rate provider, push, maintenance) is in the admin System tab, `GET /api/v1/admin/system` ([administration.md](../architecture/administration.md#system-r-adm-02-r-adm-06)). Job status (last run, status, error, next run per job name) is read from pg-boss's own job and schedule tables; no extra table is needed.
 
 Failures that the admin should notice (backup failed, storage probe failing, rate provider failing for > 24 h, jobs failing repeatedly) are shown as a banner in the admin panel. There are no outbound alerts (email notifications are out of scope); operators who want alerts point an external uptime monitor at `/api/v1/health/ready` or alert on `level >= 50` lines with their log tooling.
 
@@ -70,5 +70,5 @@ The web app reports nothing to third parties (no telemetry, [security.md](../arc
 
 ## 6. Testing
 
-- Redaction unit tests per sensitive path; an integration test that performs login, a transaction create, and an attachment upload, then asserts the captured log output contains none of the password, amount, description, filename, or session token.
+- Redaction unit tests per sensitive path; an integration test that performs login, a transaction create, and an attachment upload, then asserts the captured log output contains none of the OIDC code, ID or refresh token, amount, description, filename, or session token.
 - Readiness returns 503 when the database is stopped (integration) and 200 during maintenance.

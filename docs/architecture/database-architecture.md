@@ -17,7 +17,6 @@
 | JSON | `JSONB` for custom field values, overrides, dashboard layout, report definitions, audit changes, settings. It is always validated by Zod before writing. |
 | Versioning | `version INT NOT NULL DEFAULT 1` on synced mutable tables. |
 | Text search | `unaccent` + `pg_trgm` extensions. A trigram GIN index on `transactions.description` (lowercased, unaccented) for "contains" search. |
-| Case-insensitive email | `citext` extension for `users.email`. |
 | Extensions | Only `citext`, `pg_trgm`, `unaccent` (trusted, from the standard distribution); no others without justification ([postgresql.md](../infrastructure/postgresql.md#extensions)). |
 
 <a id="composite-ownership-foreign-keys"></a>

@@ -1,8 +1,8 @@
 # Personal API Tokens
 
-**[Accepted]** scope (R-TOK-01..09, [requirements.md](../product/requirements.md#personal-api-tokens)). **[Proposed]** design, see [ADR-0017](../decisions/ADR-0017-personal-api-tokens.md); the permission catalogue and lifecycle defaults are confirmed with [OQ-22](../planning/open-questions.md#oq-22-api-token-permission-catalogue-and-lifecycle) before Stage 2. This is the canonical document for the token format, the permission catalogue, and token-authenticated request handling.
+**[Accepted]** scope (R-TOK-01..09, [requirements.md](../product/requirements.md#personal-api-tokens)) and design ([ADR-0017](../decisions/ADR-0017-personal-api-tokens.md), amended by [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md); permission catalogue and lifecycle decided with [OQ-22](../planning/open-questions.md#oq-22-api-token-permission-catalogue-and-lifecycle), 2026-11-19). The token framework is built in Stage 2. This is the canonical document for the token format, the permission catalogue, and token-authenticated request handling.
 
-A personal API token lets a user connect an external integration (a script, a home automation system, a spreadsheet) to their own data through the versioned REST API. It is an **additional** credential: it does not replace local login, OIDC, or sessions ([authentication.md](authentication.md)), and it never opens an interactive session.
+A personal API token lets a user connect an external integration (a script, a home automation system, a spreadsheet) to their own data through the versioned REST API. It is an **additional** credential: it does not replace interactive sign-in through the identity provider or sessions ([authentication.md](authentication.md)), and it never opens an interactive session.
 
 ## 1. Token model
 
@@ -64,6 +64,8 @@ Bearer value starts with "mnv_pat_" → hash → SELECT api_token JOIN user WHER
 
 Permissions are strings `<resource>:<operation>`. The user selects them for each token from this predefined catalogue; free-form permissions are rejected (`422`). Operations are `read`, `create`, `update`, and `delete`, and each resource lists only the operations it actually supports. Every operation is granted independently: no operation implies another (`delete` does not imply `read`), although write responses still return the created or changed resource. Domain actions map to the closest operation: archive, unarchive, reorder, enable, disable, mark-read, and dismiss are `update`. The catalogue is defined once in `@monevo/contracts` and shared by the server (enforcement, OpenAPI) and the web app (token creation form). New permissions are additive within `/api/v1`.
 
+**The table below is the plan.** The catalogue in `@monevo/contracts` (and therefore the creation form and the validation of `POST /me/api-tokens`) contains **only permissions whose routes exist**. Stage 2 ships `profile:read`; each later stage adds the permissions of the routes it builds ([OQ-22](../planning/open-questions.md#oq-22-api-token-permission-catalogue-and-lifecycle)).
+
 | Resource | Operations | Grants | Also requires |
 |---|---|---|---|
 | `profile` | `read` | Profile and settings: display name, locale, time zone, base currency, week start (`GET /me`, `GET /me/settings`). No email address. | |
@@ -120,8 +122,8 @@ These routes reject token authentication with `403 API_TOKEN_NOT_ALLOWED`, whate
 
 | Area | Reason |
 |---|---|
-| `/auth/*` (login, logout, session, registration, password reset, OIDC) | Tokens never create or represent interactive sessions. |
-| `/me` writes, `/me/email-change`, `/me/password`, `/me/identities`, `/me/oidc/link`, `/me/base-currency-change` | Account, credential, and identity management stay interactive. |
+| `/auth/*` (OIDC start and callback, session, logout) | Tokens never create or represent interactive sessions. |
+| `/me` writes, `/me/settings` writes, `/me/base-currency-change` | Account and settings management stay interactive. Credentials and identities are managed in the identity provider, not in Monevo. |
 | `/me/sessions` | Session management (R-TOK-07). |
 | `/me/api-tokens` | A token cannot create, list, or revoke tokens, so a leaked token cannot entrench itself. |
 | `/me/push-subscriptions`, `/notification-preferences`, `/me/storage` | Device- and UI-bound settings. |
@@ -134,12 +136,12 @@ These routes reject token authentication with `403 API_TOKEN_NOT_ALLOWED`, whate
 
 ## 5. Token management
 
-Available in **Settings → API tokens** ([features.md](../product/features.md#settings)) and through the API, **only with a session** (cookie or native bearer session):
+Available in **Settings → API tokens** ([features.md](../product/features.md#settings)) and through the API, **only with a session** (session cookie):
 
 | Endpoint | Behaviour |
 |---|---|
 | `GET /me/api-tokens` | All of the user's tokens (active, and revoked or expired within 90 days): `id`, `name`, `displayPrefix`, `permissions`, `status`, `createdAt`, `expiresAt`, `lastUsedAt`, `lastUsedIp` (hidden when `privacy.showSessionIp` is off), `revokedAt`. Never the hash or the token. |
-| `POST /me/api-tokens` | Body `{ name, permissions, expiresAt? }`. Requires a recent authentication (≤ 15 min, otherwise `403 REAUTH_REQUIRED`), like other credential changes. Unknown permissions or a past `expiresAt` → `422`. Response `201 { token: <metadata>, secret: "mnv_pat_…" }`: the only time the full token is returned. |
+| `POST /me/api-tokens` | Body `{ name, permissions, expiresAt? }`. Requires a recent authentication (re-sign-in at the identity provider within 15 min, otherwise `403 REAUTH_REQUIRED`; [authentication.md](authentication.md#recent-authentication)). Unknown permissions or a past `expiresAt` → `422`. Response `201 { token: <metadata>, secret: "mnv_pat_…" }`: the only time the full token is returned. |
 | `PATCH /me/api-tokens/:id` | Rename only (`name`). |
 | `DELETE /me/api-tokens/:id` | Revoke (`revokedAt = now`, `revokedReason = USER_REVOKED`). Idempotent, `204`. |
 
@@ -156,7 +158,9 @@ UI rules:
 | Expiration reached | Rejected from `expiresAt` on (`401 API_TOKEN_EXPIRED`). |
 | Admin deactivates the user | All tokens revoked (`DEACTIVATED`), together with the sessions ([administration.md](administration.md#users-r-adm-01-r-auth-04)). Reactivation does not restore them. |
 | Backup restore | All tokens revoked (`RESTORE`), because a restored database could otherwise bring back tokens revoked after the backup was taken ([backups-and-restoration.md](../infrastructure/backups-and-restoration.md#restore)). |
-| Password change or reset | Tokens stay valid (they are independent credentials). After a password reset, the UI prompts the user to review their active tokens. |
+| Session ends at the identity provider (logout, revalidation failure) | Tokens stay valid (they are independent credentials). The user revokes them in Settings, or an admin deactivates the user. |
+
+Monevo has no passwords, so there is no password change or reset event ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)).
 
 ## 6. Audit and logging
 
@@ -167,7 +171,7 @@ UI rules:
 
 ## 7. API documentation
 
-- OpenAPI declares a third security scheme, `apiToken` (`type: http`, `scheme: bearer`, `bearerFormat: mnv_pat`), next to `cookieAuth` and `bearerAuth` ([api-design.md](api-design.md#7-authentication)).
+- OpenAPI declares a second security scheme, `apiToken` (`type: http`, `scheme: bearer`, `bearerFormat: mnv_pat`), next to `cookieAuth` ([api-design.md](api-design.md#7-authentication)).
 - Each token-enabled operation lists `apiToken` in its `security` and declares its required permissions in an `x-monevo-permissions` extension, which also appears in the operation description. Operations from [§4](#never-available-to-tokens) do not list `apiToken`.
 - `info.description` contains an "Authenticating integrations" section: create a token in Settings → API tokens, send `Authorization: Bearer mnv_pat_…`, handle `401`/`403` codes, send `If-Match` on updates and `Idempotency-Key` on creates, respect `429 Retry-After`.
 - Swagger UI's "Authorize" dialog accepts a token, so integrators can try endpoints with their own data.

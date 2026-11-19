@@ -19,12 +19,36 @@ Target scale: a household or small group (≤ 10 users). One app container, no h
 
 1. Prepare the external PostgreSQL: a dedicated database and owning role, network access from this host, and TLS if the connection leaves the host or a trusted private network ([postgresql.md](postgresql.md#deployment-checklist)).
 2. Create a directory (e.g. `/opt/monevo`) with `docker-compose.yml` and `.env.example` from the release. To use the published image instead of building locally, set `image: ghcr.io/<owner>/monevo:vX.Y.Z` and remove `build:` ([releasing.md](../development/releasing.md#docker-images)).
-3. `cp .env.example .env`, set `APP_URL`, `DATABASE_URL` (pointing at the external database), and `APP_ENCRYPTION_KEY` (`docker compose run --rm app node dist/cli.js generate-key`). Store `.env` securely and **keep a copy outside the server** ([backups-and-restoration.md](backups-and-restoration.md#what-is-not-in-a-backup)).
-4. Configure the [reverse proxy](#reverse-proxy).
-5. `docker compose up -d`, then `docker compose logs -f app` until `server listening` (the entrypoint first waits for the database and applies migrations).
-6. Create the admin: either open `APP_URL` and register (the first user becomes admin), or, recommended for an internet-facing instance, run `docker compose exec app node dist/cli.js create-admin --email you@example.com` **before** exposing the site, or set `BOOTSTRAP_ADMIN_EMAIL` ([authentication.md](../architecture/authentication.md#7-admin-bootstrap)).
-7. In the admin panel: check System status (including the database version), set branding, confirm the backup schedule, and optionally configure OIDC.
-8. Run a manual backup and download it once to confirm the procedure works.
+3. [Register Monevo in Account Center](#registering-monevo-in-account-center) and note the client ID and secret.
+4. `cp .env.example .env`, set `APP_URL`, `DATABASE_URL` (pointing at the external database), `APP_ENCRYPTION_KEY` (`docker compose run --rm app node dist/cli.js generate-key`), and the [OIDC variables](configuration.md#oidc) (`OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, optionally `OIDC_ADMIN_GROUP`). Store `.env` securely and **keep a copy outside the server** ([backups-and-restoration.md](backups-and-restoration.md#what-is-not-in-a-backup)).
+5. Configure the [reverse proxy](#reverse-proxy).
+6. `docker compose up -d`, then `docker compose logs -f app` until `server listening` (the entrypoint first waits for the database and applies migrations).
+7. Open `APP_URL` and sign in with Account Center. With `OIDC_ADMIN_GROUP` set, members of that group are admins; otherwise the first user who signs in becomes admin, so sign in yourself before anyone else, and restrict access with the application's allowed groups in Account Center ([authentication.md](../architecture/authentication.md#7-admin-bootstrap)).
+8. In the admin panel: check System status (including the database version) and the Identity provider card, set branding, and confirm the backup schedule.
+9. Run a manual backup and download it once to confirm the procedure works.
+
+## Registering Monevo in Account Center
+
+Monevo signs users in only through Account Center ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md), [authentication.md](../architecture/authentication.md#2-oidc-login)). Register it once as an OIDC application, in the Account Center admin UI or with its CLI:
+
+| Setting | Value |
+|---|---|
+| Client type | Confidential (recommended; Monevo authenticates with `client_secret_basic`). A public client also works: leave `OIDC_CLIENT_SECRET` empty. PKCE S256 is used either way. |
+| Redirect URI | `<APP_URL>/api/v1/auth/oidc/callback`, exactly (Account Center compares byte for byte; `http` only on loopback). |
+| Post-logout redirect URI | `<APP_URL>/login`, so signing out of Monevo returns to its login page. |
+| Allowed groups | The group(s) whose members may use Monevo. Account Center refuses sign-in to everyone else, so Monevo has no allow-list of its own. Without allowed groups, every Account Center user can sign in and get a Monevo account. |
+| Exposed groups | Only if you use `OIDC_ADMIN_GROUP`: expose that group so it appears in the `groups` claim. |
+| Scopes | `openid profile email groups` (the default `OIDC_SCOPES`). |
+
+Account Center serves its discovery document only after an admin has generated a signing key; until then Monevo's sign-in shows "identity provider unavailable" and the admin Identity provider card reports a discovery error.
+
+CLI example, run in the Account Center deployment (it prints the client secret once; put it in Monevo's `OIDC_CLIENT_SECRET`):
+
+```bash
+docker compose exec app node apps/api/dist/oidc/createClient.js --name Monevo   --client-id monevo   --redirect-uri https://money.example.com/api/v1/auth/oidc/callback   --post-logout-redirect-uri https://money.example.com/login   --allowed-group Monevo-Users --exposed-group Monevo-Admins
+```
+
+Then set `OIDC_ISSUER` to Account Center's issuer (its `APP_URL`), `OIDC_CLIENT_ID=monevo`, `OIDC_CLIENT_SECRET`, and optionally `OIDC_ADMIN_GROUP=Monevo-Admins` ([configuration.md](configuration.md#oidc)).
 
 ## Reverse proxy
 
@@ -88,7 +112,7 @@ PostgreSQL is external, so its major upgrades are done by the database operator 
 - [ ] `APP_URL` is HTTPS and the site loads with a valid certificate.
 - [ ] The external PostgreSQL accepts connections only from the Monevo host, over TLS when the connection leaves the host or a trusted network ([postgresql.md](postgresql.md#deployment-checklist)).
 - [ ] `.env` and `APP_ENCRYPTION_KEY` are stored outside the server.
-- [ ] Registration is `DISABLED` after creating the intended users (default after the first admin).
+- [ ] Access is restricted with the application's allowed groups in Account Center, and the admin signed in first (or `OIDC_ADMIN_GROUP` is set).
 - [ ] Backups succeed (admin Backups tab) and copies leave the host.
 - [ ] A restore was tested once on a scratch host.
 - [ ] Host OS and Docker get security updates; the Monevo image is updated for security releases.

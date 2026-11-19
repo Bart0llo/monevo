@@ -6,6 +6,7 @@ import { errorHandler, notFound } from './http/errors.js';
 import { requestId } from './http/request-id.js';
 import { cors, securityHeaders } from './http/security.js';
 import { webApp } from './http/static.js';
+import { createIdentityRouter, type IdentityDeps } from './identity.js';
 import type { Logger } from './infra/logger.js';
 import { healthRouter, type ReadinessChecker } from './modules/health/index.js';
 import { API_BASE_PATH, buildOpenApiDocument } from './openapi/document.js';
@@ -22,6 +23,8 @@ export interface AppDeps {
   readonly readiness: ReadinessChecker;
   /** Directory of the built web app; static hosting is skipped when it has no index.html. */
   readonly webRoot?: string;
+  /** Identity modules (auth, users, api-tokens, admin); omitted in tests that don't need them. */
+  readonly identity?: IdentityDeps;
 }
 
 export const JSON_BODY_LIMIT = '1mb';
@@ -42,6 +45,7 @@ export function createApp(deps: AppDeps): Express {
   api.use(cors(deps.config.corsAllowedOrigins));
   api.use(express.json({ limit: JSON_BODY_LIMIT }));
   api.use(healthRouter(deps.readiness));
+  if (deps.identity) api.use(createIdentityRouter(deps.identity, deps.logger));
   if (deps.config.apiDocsEnabled) api.use(openApiRouter(buildOpenApiDocument()));
   app.use(API_BASE_PATH, api);
   // Unknown API paths are always a problem+json 404, never the SPA.

@@ -33,7 +33,7 @@ monevo-backup-<UTC yyyymmddThhmmssZ>-<shortId>.tar[.age]
 
 ### What is not in a backup
 
-- `APP_ENCRYPTION_KEY` and other environment secrets. Without the key, encrypted settings (OIDC client secret set via UI, VAPID private key, remote backup credentials) cannot be decrypted after a restore on a new host. **The operator must store the `.env` (or secrets) separately**, e.g. in a password manager.
+- `APP_ENCRYPTION_KEY` and other environment secrets. Without the key, encrypted settings (identity provider refresh tokens stored on sessions, VAPID private key, remote backup credentials) cannot be decrypted after a restore on a new host. **The operator must store the `.env` (or secrets) separately**, e.g. in a password manager.
 - `BACKUP_ENCRYPTION_PASSPHRASE` (by definition).
 - Older backups and user export files under `BACKUP_PATH`.
 - S3 attachments when `backups.includeS3Attachments = false` (then the operator relies on bucket versioning or the provider's own backups; the admin UI shows a warning).

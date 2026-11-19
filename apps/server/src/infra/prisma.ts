@@ -1,7 +1,10 @@
 import { PrismaPg } from '@prisma/adapter-pg';
-import { PrismaClient } from '../generated/prisma/client.js';
+import { type Prisma, PrismaClient } from '../generated/prisma/client.js';
 
 export type { PrismaClient } from '../generated/prisma/client.js';
+
+/** The client or an interactive transaction; repositories accept either. */
+export type Db = PrismaClient | Prisma.TransactionClient;
 
 export interface PrismaConfig {
   readonly databaseUrl: string;

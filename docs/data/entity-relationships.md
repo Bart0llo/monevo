@@ -52,8 +52,7 @@ erDiagram
 
 ```mermaid
 erDiagram
-    USERS ||--o{ USER_IDENTITIES : "OIDC links"
-    USERS ||--o{ AUTH_TOKENS : "single-use tokens"
+    USERS ||--|| USER_IDENTITIES : "OIDC subject"
     USERS ||--o{ SESSIONS : "devices"
     USERS ||--o{ API_TOKENS : "integrations"
     SESSIONS |o--o{ PUSH_SUBSCRIPTIONS : "registered from"
@@ -73,6 +72,8 @@ erDiagram
 ```
 
 `alert_rules.config`, `notifications.link`, and `insights.params` reference entities by ID inside JSONB/text. They have no FK and are handled by the rules in §3.
+
+**Implemented so far:** Stage 1 `app_settings`, `currencies`; Stage 2 (migration `20261119000000_identity`) `users`, `user_settings` (PK = `user_id`; `base_currency` → `currencies(code)` `NoAction`, so a referenced currency can never be deleted), `user_identities` (`UNIQUE (issuer, subject)`, one per user and issuer), `sessions`, `api_tokens`, each with `user_id → users ON DELETE CASCADE` and (except `user_settings`) `UNIQUE (id, user_id)` for future composite references.
 
 ## 3. Deletion rules
 

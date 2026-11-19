@@ -6,7 +6,7 @@
 
 1. **Prefer the platform** (Node `crypto`, `fetch`, `Intl`, Web Crypto, Web Locks) and libraries already in the tree.
 2. A new runtime dependency needs: active maintenance (release in the last 12 months or clearly "done"), a license compatible with the project license ([OQ-17](open-questions.md#oq-17-license); MIT, ISC, BSD, Apache-2.0, MPL-2.0 are fine; OFL-1.1 is fine for font files, accepted 2026-11-18), reasonable size for web dependencies, and an entry in this file.
-3. **Security-critical functionality uses established libraries**, never custom implementations (R-SEC-03): password hashing, OIDC, cookies/CSRF tokens, encryption.
+3. **Security-critical functionality uses established libraries**, never custom implementations (R-SEC-03): OIDC, cookies/CSRF tokens, encryption.
 4. Lockfile committed; `pnpm audit` and Renovate/Dependabot ([security.md](../architecture/security.md#dependencies)).
 5. Removing a dependency is always welcome; replacing one needs a note here.
 
@@ -20,16 +20,14 @@
 | `swagger-ui-express` | Swagger UI at `/api/v1/docs` | Standard, small |
 | `prisma`, `@prisma/client` 7, `@prisma/adapter-pg`, `pg` | ORM and driver | Required ORM; the pg adapter gives control over the pool and timeouts |
 | `decimal.js` | Exact decimal arithmetic | Same library as Prisma `Decimal`; via the `@monevo/domain` wrapper |
-| `argon2` | argon2id password hashing | Maintained native binding, OWASP-recommended algorithm |
-| `openid-client` 6 | OIDC relying party | OpenID-certified, PKCE/nonce/state handled correctly |
+| `openid-client` 6 | OIDC relying party (Stage 2), the only sign-in method ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)) | OpenID-certified; discovery, PKCE/nonce/state, ID token validation, refresh, and RP-initiated logout handled correctly; depends only on `oauth4webapi` and `jose` |
 | `helmet` | Security headers | Standard |
 | `compression` | Optional in-app response compression (`HTTP_COMPRESSION=true`) | Express's standard middleware; off by default because the reverse proxy compresses |
-| `express-rate-limit` | Rate limiting | Simple, memory store suffices for one process |
-| `cookie-parser` (or Express built-in parsing) | Session cookie reading | Minimal |
+| `express-rate-limit` | Rate limiting (Stage 2) | Simple, memory store suffices for one process ([security.md](../architecture/security.md#rate-limiting)) |
+| `cookie` | Session cookie reading (Stage 2) | The jshttp parser Express itself uses for `res.cookie`; one function (`parseCookie`) instead of the `cookie-parser` middleware. Setting cookies uses Express `res.cookie` |
 | `socket.io` 4 | Realtime pokes | Required by the brief |
 | `pg-boss` | Durable jobs and cron in PostgreSQL | No Redis; transactional enqueue; singleton jobs ([ADR-0013](../decisions/ADR-0013-scheduled-transactions-and-jobs.md)) |
 | `pino` | Structured logging with redaction | Fast, JSON, redaction built in. Stage 1 writes the access log with a small middleware instead of `pino-http` (one less dependency, stable field names) |
-| `nodemailer` | SMTP for auth emails | De facto standard |
 | `web-push` | Web Push with VAPID | Standard, implements payload encryption |
 | `busboy` | Streaming multipart parsing | Streams to storage without temp files; byte limits |
 | `file-type` | Magic-byte MIME detection | Maintained, broad format coverage |
@@ -41,7 +39,7 @@
 | `uuidv7` | Time-ordered IDs (chosen in Stage 1) | UUIDv7 for client-generated IDs (index locality) |
 | `commander` | CLI argument parsing | Small, well known |
 
-Dev/build: `typescript`, `tsx` (watch), `tsup`, `vitest`, `@vitest/coverage-v8`, `supertest`, `@testcontainers/postgresql`, `fast-check`, `dotenv-cli` (loads `.env.development` for the Prisma `db:*` scripts), `pino-pretty` (readable dev logs).
+Dev/build: `typescript`, `tsx` (watch), `tsup`, `vitest`, `@vitest/coverage-v8`, `supertest`, `@testcontainers/postgresql`, `fast-check`, `dotenv-cli` (loads `.env.development` for the Prisma `db:*` scripts), `pino-pretty` (readable dev logs), `@types/nodemailer`.
 
 ## Web (`apps/web`)
 
@@ -65,7 +63,7 @@ Dev: `vite`, `@vitejs/plugin-react`, `@testing-library/react`, `@testing-library
 
 ## Workspace tooling
 
-`pnpm`, `eslint` + `typescript-eslint` + `eslint-plugin-react-hooks` + `eslint-plugin-i18next` (6.x, verified with ESLint 10 in Stage 1) + `eslint-plugin-boundaries` (Stage 1: package dependency rules and backend module entry points from application-structure.md) + `eslint-plugin-import-x` (`import-x/order`; the maintained fork of `eslint-plugin-import`, which does not support ESLint 10) + `eslint-import-resolver-typescript`, `@eslint/js`, `globals`, `cross-env` (the `test:tz` run), `prettier`, `release-it` + `@release-it/conventional-changelog` (release preparation: version, `CHANGELOG.md`, tag; [releasing.md](../development/releasing.md)), `i18next-parser` (or a custom key checker), a tiny link checker script for `docs:check` (no dependency).
+`pnpm`, `eslint` + `typescript-eslint` + `eslint-plugin-react-hooks` + `eslint-plugin-i18next` (6.x, verified with ESLint 10 in Stage 1) + `eslint-plugin-boundaries` (Stage 1: package dependency rules and backend module entry points from application-structure.md) + `eslint-plugin-import-x` (`import-x/order`; the maintained fork of `eslint-plugin-import`, which does not support ESLint 10) + `eslint-import-resolver-typescript`, `@eslint/js`, `globals`, `cross-env` (the `test:tz` run), `prettier`, `release-it` + `@release-it/conventional-changelog` (release preparation: version, `CHANGELOG.md`, tag; [releasing.md](../development/releasing.md)), `i18next-parser` (or a custom key checker), a tiny link checker script for `docs:check` (no dependency). `tools/mock-idp` (`@monevo/mock-idp`, Stage 2): the test-only mock OpenID Provider used by integration tests, development and E2E; Node built-ins only, no dependency ([testing-strategy.md](../development/testing-strategy.md#4-test-data-and-environment)).
 
 ## Rejected or avoided
 

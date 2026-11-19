@@ -15,7 +15,7 @@
 
 - **All data** (default), or **selected accounts**: the chosen accounts, their transactions (a transfer is included if **either** leg's account is selected; the other account is then included as a reference stub, marked `referenceOnly`), the categories used by those transactions, and the budgets, pots, goals, schedules, and templates that reference only included accounts or categories.
 - Entity selection (R-EXP-01): accounts, categories, transactions, budgets are always selectable. Optional extras: scheduled transactions, savings pots and goals, templates, custom field definitions, alert rules, report definitions, dashboard layout, user manual exchange rates, settings (locale, tz, base currency, week start).
-- Never exported: sessions, identities, password hash, push subscriptions, notifications, insights, sync metadata, idempotency records, provider (global) exchange rates, `storageKey`s, or other users' anything. Transaction history is exported optionally (`includeHistory`, default off) as read-only records.
+- Never exported: sessions, identities, push subscriptions, notifications, insights, sync metadata, idempotency records, provider (global) exchange rates, `storageKey`s, or other users' anything. Transaction history is exported optionally (`includeHistory`, default off) as read-only records.
 - Attachments: **metadata only** in v1 (filename, size, MIME, sha256). Including attachment content in the export zip is **[Proposed]** as an option (`includeAttachments`) once quota-sized archives are tested; it counts against no quota but is capped by `MAX_EXPORT_BYTES` (default 2 GiB).
 
 ### JSON document

@@ -15,7 +15,8 @@
     "reports": "Reports",
     "settings": "Settings",
     "more": "More",
-    "close": "Close"
+    "close": "Close",
+    "admin": "Administration"
   },
   "sections": {
     "dashboard": "An overview of your money: balances, budgets and what is coming up.",
@@ -24,7 +25,8 @@
     "budgets": "Spending limits per category, and how much of each is left.",
     "calendar": "Past and planned transactions, laid out by date.",
     "reports": "Spending, income and trends over time.",
-    "settings": "Your profile, language, currency and preferences."
+    "settings": "Your profile, language, currency and preferences.",
+    "admin": "Accounts on this Monevo instance and the identity provider connection."
   },
   "placeholder": {
     "body": "This section is coming in a later stage.",
@@ -58,5 +60,209 @@
     "updateMessage": "A new version of Monevo is ready.",
     "updateAction": "Reload",
     "offlineReady": "Monevo is ready to work offline."
+  },
+  "auth": {
+    "loading": "Loading",
+    "unreachableTitle": "Monevo can't reach the server",
+    "unreachableBody": "Check your connection and try again.",
+    "retry": "Try again"
+  },
+  "reauth": {
+    "title": "Confirm it's you",
+    "body": "This action needs a recent sign-in. You'll confirm your identity with your sign-in provider and come back here; then try the action again.",
+    "confirm": "Continue to sign-in"
+  },
+  "actions": {
+    "cancel": "Cancel",
+    "save": "Save changes",
+    "copy": "Copy",
+    "copied": "Copied",
+    "done": "Done"
+  },
+  "account": {
+    "label": "Account",
+    "signOut": "Sign out"
+  },
+  "login": {
+    "title": "Sign in",
+    "body": "Monevo uses your organization's account for sign-in. Your financial data stays private to you.",
+    "signIn": "Sign in with {{provider}}",
+    "hint": "You'll be redirected to your sign-in provider and brought back here.",
+    "errors": {
+      "idp_unavailable": "The sign-in provider isn't reachable right now. Try again in a moment.",
+      "login_failed": "Sign-in didn't complete. Please try again.",
+      "access_denied": "Sign-in was cancelled or access was denied.",
+      "account_deactivated": "This account has been deactivated. Contact your administrator.",
+      "reauth_mismatch": "You confirmed with a different account. Sign in again with the account you use in Monevo."
+    }
+  },
+  "onboarding": {
+    "title": "Welcome to Monevo",
+    "body": "A few settings before you start. You can change the language and time zone later.",
+    "baseCurrencyHint": "Totals and reports use this currency. It can't be changed after setup.",
+    "submit": "Start using Monevo"
+  },
+  "validation": {
+    "required": "This field is required.",
+    "tooLong": "Use at most {{max}} characters."
+  },
+  "fieldErrors": {
+    "BASE_CURRENCY_LOCKED": "The base currency can't be changed after setup."
+  },
+  "roles": {
+    "USER": "User",
+    "ADMIN": "Administrator"
+  },
+  "weekdays": {
+    "MONDAY": "Monday",
+    "TUESDAY": "Tuesday",
+    "WEDNESDAY": "Wednesday",
+    "THURSDAY": "Thursday",
+    "FRIDAY": "Friday",
+    "SATURDAY": "Saturday",
+    "SUNDAY": "Sunday"
+  },
+  "settings": {
+    "language": "Language",
+    "timeZone": "Time zone",
+    "baseCurrency": "Base currency",
+    "nothingFound": "Nothing found",
+    "saved": "Changes saved.",
+    "tabs": {
+      "label": "Settings sections",
+      "profile": "Profile",
+      "sessions": "Devices",
+      "apiTokens": "API tokens"
+    },
+    "profile": {
+      "title": "Profile",
+      "displayName": "Display name",
+      "email": "Email",
+      "emailHint": "Comes from your sign-in provider.",
+      "role": "Role: {{role}}"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "weekStart": "Week starts on",
+      "dateFormat": "Date format",
+      "dateFormatLocale": "Language default",
+      "baseCurrencyLocked": "Set during setup; it can't be changed."
+    }
+  },
+  "sessions": {
+    "title": "Signed-in devices",
+    "body": "Sign out of devices you don't recognize or no longer use.",
+    "revokeOthers": "Sign out all other devices",
+    "revoked": "Device signed out.",
+    "revokedOthers_one": "Signed out {{count}} device.",
+    "revokedOthers_other": "Signed out {{count}} devices.",
+    "unknownDevice": "Unknown device",
+    "current": "This device",
+    "lastSeen": "Last active {{when}}",
+    "signedIn": "Signed in {{when}}",
+    "revoke": "Sign out",
+    "revokeNamed": "Sign out {{device}}"
+  },
+  "apiTokens": {
+    "title": "Personal API tokens",
+    "body": "Tokens let your own scripts and integrations use the Monevo API with the permissions you choose.",
+    "create": "Create token",
+    "createTitle": "New API token",
+    "createdTitle": "Token created",
+    "empty": "You have no API tokens.",
+    "name": "Name",
+    "namePlaceholder": "e.g. Home Assistant",
+    "permissionsLabel": "Permissions",
+    "permissionsRequired": "Choose at least one permission.",
+    "permissions": {
+      "profileRead": "Read your profile and settings"
+    },
+    "expiry": "Expires",
+    "expiryDays_one": "In {{count}} day",
+    "expiryDays_other": "In {{count}} days",
+    "noExpiry": "Never",
+    "neverUsed": "never",
+    "meta": "Created {{created}} · Expires {{expires}} · Last used {{used}}",
+    "secretOnce": "Copy this token now. For your security it won't be shown again.",
+    "status": {
+      "ACTIVE": "Active",
+      "EXPIRED": "Expired",
+      "REVOKED": "Revoked"
+    },
+    "revoke": "Revoke",
+    "revokeNamed": "Revoke {{name}}",
+    "revokeTitle": "Revoke token?",
+    "revokeBody": "Integrations using “{{name}}” will stop working immediately. This can't be undone.",
+    "revoked": "Token revoked."
+  },
+  "admin": {
+    "title": "Users",
+    "idp": {
+      "title": "Identity provider",
+      "discovery": {
+        "OK": "Reachable",
+        "ERROR": "Unreachable"
+      },
+      "provider": "Provider",
+      "issuer": "Issuer",
+      "clientId": "Client ID",
+      "clientType": "Client type",
+      "clientTypes": {
+        "CONFIDENTIAL": "Confidential (client secret)",
+        "PUBLIC": "Public (PKCE only)"
+      },
+      "scopes": "Scopes",
+      "adminGroup": "Administrator group",
+      "adminGroupUnset": "Not set: roles are managed in Monevo",
+      "endSession": "Signs out at the provider",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "users": {
+      "title": "Accounts",
+      "rolesManaged": "Roles follow the “{{group}}” group in the identity provider.",
+      "search": "Search by name or email",
+      "statusFilter": "Account status",
+      "all": "All",
+      "status": {
+        "ACTIVE": "Active",
+        "DEACTIVATED": "Deactivated"
+      },
+      "empty": "No matching accounts.",
+      "user": "User",
+      "role": "Role",
+      "statusLabel": "Status",
+      "lastLogin": "Last sign-in",
+      "sessions": "Sessions",
+      "actions": "Actions",
+      "actionsFor": "Actions for {{name}}",
+      "you": "you",
+      "loadMore": "Load more",
+      "updated": "Account updated.",
+      "actionLabels": {
+        "promote": "Make administrator",
+        "demote": "Make regular user",
+        "deactivate": "Deactivate",
+        "activate": "Reactivate"
+      },
+      "confirm": {
+        "promote": {
+          "title": "Make administrator?",
+          "body": "{{name}} will be able to manage accounts and instance settings. Administrators never see other users' financial data."
+        },
+        "demote": {
+          "title": "Remove administrator role?",
+          "body": "{{name}} will no longer have access to administration."
+        },
+        "deactivate": {
+          "title": "Deactivate account?",
+          "body": "{{name}} will be signed out everywhere and can't sign in until reactivated. Their data is kept."
+        },
+        "activate": {
+          "title": "Reactivate account?",
+          "body": "{{name}} will be able to sign in again."
+        }
+      }
+    }
   }
 }

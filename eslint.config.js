@@ -134,6 +134,14 @@ export default defineConfig(
                 },
               },
             },
+            // Server integration tests may use dev tools such as the mock IdP; server src may not.
+            {
+              from: {
+                element: { type: 'server' },
+                file: { path: 'apps/server/test/**', categories: 'test' },
+              },
+              allow: { to: { element: { type: 'tooling' } } },
+            },
             allowLocal('web', ['web', ...SHARED]),
             allowLocal('web-build', ['web-build', 'web', ...SHARED]),
             allowLocal('e2e', ['e2e']),
@@ -267,6 +275,7 @@ export default defineConfig(
     // The clock itself, tests, and tooling may read the wall clock.
     files: [
       'apps/server/src/infra/clock.ts',
+      'apps/web/src/data/clock.ts',
       '**/*.test.ts',
       '**/*.test.tsx',
       '**/__tests__/**',

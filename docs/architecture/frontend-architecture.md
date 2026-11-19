@@ -10,7 +10,7 @@ A single-page application built with Vite and served by Express from the same or
 main.tsx
  └─ <AppProviders>   MantineProvider(theme, colorScheme) · I18nextProvider · QueryClientProvider
                      · AuthProvider · LocalDbProvider · SyncProvider · Notifications/Modals
-     └─ <RouterProvider>  public routes (login, register, reset, oidc-callback-result)
+     └─ <RouterProvider>  public routes (login)
                           protected routes (AppShell layout → features)  · admin routes (role guard)
 ```
 
@@ -39,7 +39,7 @@ See [offline-and-synchronization.md](offline-and-synchronization.md#10-client-de
 ## 4. Auth on the client
 
 - On load, `GET /api/v1/auth/session` → user, settings, CSRF token. If offline and a replica exists for the last user, enter **offline mode** using cached user info (actions queue, and server calls are skipped). Any 401 when online → login screen (the outbox is preserved for the same user).
-- Login, OIDC redirect, and registration pages are public routes. The OIDC callback is handled by the server, which redirects back to `returnTo`.
+- `/login` is the only public route: one "Sign in with {provider}" button that navigates to `GET /api/v1/auth/oidc/start` ([authentication.md](authentication.md#2-oidc-login)). The OIDC callback is handled by the server, which redirects back to `returnTo` or to `/login?error=<code>`. There are no registration, password reset, or email verification pages.
 - Role guard for `/admin/*` routes (UX only; the server enforces it).
 
 ## 5. Forms and validation
@@ -51,7 +51,7 @@ See [offline-and-synchronization.md](offline-and-synchronization.md#10-client-de
 ## 6. Routing (indicative)
 
 ```
-/login /register /reset-password /verify-email /onboarding
+/login /onboarding
 /                   dashboard
 /transactions       list (filters in URL query params for shareable/back-button state)
 /transactions/new   full entry (quick entry is a modal available everywhere)

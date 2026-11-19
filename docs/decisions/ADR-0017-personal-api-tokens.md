@@ -1,6 +1,6 @@
 # ADR-0017: Personal API tokens
 
-- **Status:** Proposed
+- **Status:** Accepted (amended by [ADR-0020](ADR-0020-oidc-only-authentication.md))
 - **Date:** 2026-11-18
 
 ## Context
@@ -14,11 +14,12 @@ The user moved personal API tokens from the deferred list into the initial scope
 - **Fine-grained permissions** `<resource>:<operation>`, selected by the user from a predefined catalogue, defined per resource according to its real operations (`read`, `create`, `update`, `delete`), each granted independently, fixed at creation. Operations that write another resource type also require that resource's permission.
 - **Hard exclusions:** tokens never reach admin, auth, session, password, identity, token-management, sync, or realtime endpoints, and always act with the effective role `USER`.
 - **Amends [ADR-0006](ADR-0006-user-data-isolation.md):** the acting user ID comes only from the authenticated credential, a session or a personal API token (previously "only from the session"). Everything else in ADR-0006 applies unchanged to token-authenticated requests.
-- **Owner-bounded:** a token acts as exactly one user; all ownership checks, invariants, quotas, and rate limits apply; deactivation and backup restore revoke all tokens.
+- **Owner-bounded:** a token acts as exactly one user; all ownership checks, invariants, quotas, and rate limits apply; deactivation, backup restore, and a completed password reset (emailed or admin-generated link) revoke all tokens. A normal authenticated password change keeps them.
+- **Catalogue grows with the routes:** `@monevo/contracts` and the creation form list only permissions whose routes exist; each stage adds the permissions of its routes.
 - **Audit:** token-made transaction changes record `credentialType = API_TOKEN`, the token ID, and a copy of its name.
 - Token `PATCH`/`DELETE` on versioned resources require `If-Match`.
 
-Details: [api-tokens.md](../architecture/api-tokens.md). The permission catalogue and lifecycle defaults are [OQ-22](../planning/open-questions.md#oq-22-api-token-permission-catalogue-and-lifecycle).
+Details: [api-tokens.md](../architecture/api-tokens.md). The permission catalogue and lifecycle defaults were decided with [OQ-22](../planning/open-questions.md#oq-22-api-token-permission-catalogue-and-lifecycle).
 
 ## Alternatives considered
 
@@ -33,8 +34,10 @@ Details: [api-tokens.md](../architecture/api-tokens.md). The permission catalogu
 - The auth pipeline has two credential types; `RequestContext` carries the credential, and services see the same `userId` either way.
 - Every new route must declare its token permissions or be listed as never available; the permission suite fails otherwise.
 - Integrations must handle `If-Match` and poll instead of using realtime.
-- A restore or deactivation breaks integrations until the user creates new tokens.
+- A restore, deactivation, or password reset breaks integrations until the user creates new tokens.
 
 ## Status
 
-Proposed. Confirm before Stage 2 together with [OQ-22](../planning/open-questions.md#oq-22-api-token-permission-catalogue-and-lifecycle). The scope itself (R-TOK-01..09) is accepted.
+Accepted (user decision on OQ-22, 2026-11-19, with the change that a completed password reset revokes all tokens). The scope itself (R-TOK-01..09) was accepted on 2026-11-18.
+
+Amended by [ADR-0020](ADR-0020-oidc-only-authentication.md) (2026-11-19): Monevo has no local passwords, so the password-reset revocation and the password-change rule do not apply. Tokens are still revoked on deactivation and backup restore, and tokens never reach credential, auth, or session endpoints.

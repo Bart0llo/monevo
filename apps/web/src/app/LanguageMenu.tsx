@@ -2,9 +2,9 @@ import { ActionIcon, Menu } from '@mantine/core';
 import { IconCheck, IconLanguage } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES, resolveLanguage } from '@monevo/i18n';
-import type { MenuControlProps } from './menuControl';
+import type { LanguageMenuProps } from './menuControl';
 
-export function LanguageMenu({ className, position = 'bottom-end' }: MenuControlProps) {
+export function LanguageMenu({ className, position = 'bottom-end', onChange }: LanguageMenuProps) {
   const { t, i18n } = useTranslation();
   const current = resolveLanguage([i18n.resolvedLanguage ?? i18n.language]);
 
@@ -27,7 +27,10 @@ export function LanguageMenu({ className, position = 'bottom-end' }: MenuControl
             key={language}
             lang={language}
             rightSection={language === current ? <IconCheck size={14} /> : null}
-            onClick={() => void i18n.changeLanguage(language)}
+            onClick={() => {
+              void i18n.changeLanguage(language);
+              onChange?.(language);
+            }}
           >
             {t(`language.${language}`)}
           </Menu.Item>

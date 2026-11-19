@@ -1,15 +1,15 @@
 # Administration
 
-**[Accepted]** scope from R-ADM-01..06. **[Proposed]** design. The admin panel is for **operating the instance**, not for viewing anyone's finances (R-ADM-05, [authorization-and-data-isolation.md](authorization-and-data-isolation.md#1-model)).
+**[Accepted]** scope from R-ADM-01..06. **[Proposed]** design; the Users section, the identity provider status, access control, and the identity CLI commands are built in Stage 2. Authentication is OIDC-only ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)): users, passwords and MFA are managed in Account Center, not here. The admin panel is for **operating the instance**, not for viewing anyone's finances (R-ADM-05, [authorization-and-data-isolation.md](authorization-and-data-isolation.md#1-model)).
 
 ## 1. Boundaries
 
 | Admins can | Admins cannot |
 |---|---|
-| List users with operational data (email, display name, role, status, created, last login, session count, storage used and quota) | See any user's accounts, transactions, categories, budgets, goals, pots, schedules, attachments, history, notifications, dashboard, exports, or API tokens |
-| Activate and deactivate users, change roles | Impersonate a user or log in as them |
-| Generate a one-time password reset link for a user | Read or set a user's password |
-| Configure registration, quotas, upload limits, branding, rate provider, OIDC, backups | See per-user financial counts or amounts |
+| List users with operational data (email as last reported by the IdP, display name, role, status, created, last login, session count, storage used and quota) | See any user's accounts, transactions, categories, budgets, goals, pots, schedules, attachments, history, notifications, dashboard, exports, or API tokens |
+| Activate and deactivate users, change roles (unless roles are managed by the IdP group) | Impersonate a user or log in as them |
+| See the identity provider status (read-only) | Create users, set passwords, or change the identity provider (done in Account Center and the environment) |
+| Configure quotas, upload limits, branding, rate provider, backups | See per-user financial counts or amounts |
 | See system status, versions, job status, storage status | Update the application from the UI (out of scope) |
 | Run, download, and restore instance backups | Browse a backup's contents in the UI |
 
@@ -20,8 +20,8 @@ Out of scope (R-ADM, [requirements.md](../product/requirements.md#out-of-scope))
 ## 2. Access control
 
 - All endpoints live under `/api/v1/admin/*` behind `requireRole('ADMIN')`.
-- **Sensitive actions** require a recent authentication (≤ 15 min, otherwise `403 REAUTH_REQUIRED`; the UI shows a password or OIDC re-login prompt): deactivate a user, change a role, generate a reset link, change OIDC settings, download a backup, restore a backup, change the storage quota defaults.
-- The last active admin cannot deactivate or demote themselves ([authentication.md](authentication.md#7-admin-bootstrap)).
+- **Sensitive actions** require a recent authentication (≤ 15 min, otherwise `403 REAUTH_REQUIRED`; the UI offers "Confirm identity", a re-sign-in at the identity provider, [authentication.md](authentication.md#recent-authentication)): deactivate a user, change a role, download a backup, restore a backup, change the storage quota defaults.
+- Admins cannot deactivate themselves, and the last active admin cannot be deactivated or demoted (`409 LAST_ADMIN`, [authentication.md](authentication.md#7-admin-bootstrap)).
 - Admin actions are logged as structured `info` log events (`event: admin.action`, actor user ID, action, target user ID, no financial data). There is no admin audit dashboard; the logs are the record ([monitoring-and-logging.md](../infrastructure/monitoring-and-logging.md)).
 - Admin data is never synced to IndexedDB, and the admin UI is online-only.
 
@@ -31,31 +31,33 @@ The admin UI has five tabs: Users, Settings, Storage, Backups, System ([user-exp
 
 ### Users (R-ADM-01, R-AUTH-04)
 
-`GET /admin/users?page&pageSize&q&status` (offset pagination), `GET /admin/users/:id`, `PATCH /admin/users/:id` (role, quota override), `POST /admin/users/:id/activate|deactivate`, `POST /admin/users/:id/password-reset-link`.
+`GET /admin/users?cursor&limit&q&status` (cursor pagination), `GET /admin/users/:id`, `PATCH /admin/users/:id` (role in Stage 2; quota override from Stage 6), `POST /admin/users/:id/activate|deactivate`.
+
+- **Role:** `PATCH` with `{ role }` (recent authentication). When `OIDC_ADMIN_GROUP` is set, roles follow the IdP group and the change is refused with `409 ROLE_MANAGED_BY_IDP` ([authentication.md](authentication.md#7-admin-bootstrap)).
 
 - **Deactivate:** sets `status = DEACTIVATED`, revokes all sessions (sockets disconnected with `session:revoked`) and all personal API tokens ([api-tokens.md](api-tokens.md#lifecycle-events)), deletes push subscriptions, and pauses jobs for the user (AUTO generation, reminders, alerts, insights skip deactivated users). Data is kept unchanged. **Activate** reverses it; AUTO schedules resume from the current date (no burst of back-filled occurrences: missed occurrences become overdue for confirmation).
-- **Password reset link:** a single-use `PASSWORD_RESET` token, valid 1 h, shown **once** to the admin to pass on out-of-band. It is the fallback when SMTP is not configured ([OQ-03](../planning/open-questions.md#oq-03-smtp-for-authentication-emails)).
-- **Create user:** not offered in v1 beyond the CLI `create-admin` and open registration. Invite links are **[Deferred]**.
+- Deactivation does not touch the account in the IdP; disable the user in Account Center as well if they should lose access to other applications. A deactivated user who signs in at the IdP gets no Monevo session (`account_deactivated`).
+- **Create user:** not offered. Users are provisioned automatically on their first sign-in; who may sign in is controlled in Account Center (allowed groups for the Monevo application).
 - **Delete user:** **[Deferred]** (schema supports it by cascade; see [database-architecture.md](database-architecture.md#7-data-lifecycle)).
-- Stale OIDC identities left over after an issuer change can be cleaned up here (count shown per user, no subject details beyond issuer).
+- **Issuer change:** identities are keyed by issuer, so pointing `OIDC_ISSUER` at a different IdP makes existing users unreachable (their next sign-in provisions new users). Changing the issuer is an operator migration, not a supported setting change.
 
-### Settings (R-ADM-02, R-ADM-04, R-GEN-06)
+### Identity provider (R-ADM-04)
 
-`GET/PATCH /admin/settings`, `GET/PUT /admin/oidc`.
+`GET /admin/identity-provider` (read-only): provider name, issuer, client ID, client type (confidential or public), scopes, whether `OIDC_ADMIN_GROUP` is set and its name, whether discovery currently succeeds, and whether the IdP offers an end-session endpoint. The provider is configured only through environment variables ([configuration.md](../infrastructure/configuration.md#oidc)); there is no form.
+
+### Settings (R-ADM-02, R-GEN-06)
+
+`GET/PATCH /admin/settings`.
 
 Runtime settings are stored in `app_settings` (one key per setting, JSONB value, validated by Zod, cached in memory and invalidated on change). **Environment variables take precedence**: a setting that is set by env is shown read-only with a "set by environment" badge. The full list and defaults are canonical in [configuration.md](../infrastructure/configuration.md#runtime-settings-app_settings).
 
 | Group | Settings |
 |---|---|
-| Registration | mode `OPEN` / `DISABLED`; email verification required for login (default off) |
 | Storage | default user quota, max upload size (≤ `MAX_UPLOAD_BYTES`) |
 | Branding | instance name, logo (PNG/WebP ≤ 256 KB), accent color (contrast-checked against both themes) |
 | Exchange rates | active provider (`frankfurter` / `nbp`) |
-| OIDC | display name, issuer, client ID, client secret (write-only, encrypted), scopes, `allowAutoProvision`, `allowEmailLinking`, test connection (discovery fetch) |
 | Backups | see Backups |
 | Privacy | show session IP addresses to users (default on) |
-
-Changing the OIDC issuer shows how many users are OIDC-only before saving ([authentication.md](authentication.md#changing-the-provider)).
 
 ### Storage (R-ADM-03)
 
@@ -75,7 +77,7 @@ Driver status and totals from `/admin/storage` ([file-storage.md](file-storage.m
   "database": { "status": "OK", "serverVersion": "17.x", "latestMigration": "20261118_add_x", "pendingMigrations": 0, "sizeBytes": 123456789 },
   "jobs": [ { "name": "schedules.generate", "lastRunAt": "…", "lastStatus": "COMPLETED", "lastError": null, "nextRunAt": "…" } ],
   "storage": { "driver": "local", "status": "OK" },
-  "smtp": { "configured": true, "lastError": null },
+  "identityProvider": { "issuer": "https://ac.example.com", "discovery": "OK" },
   "rateProvider": { "id": "frankfurter", "lastSuccessAt": "…", "lastError": null },
   "push": { "vapidConfigured": true },
   "users": { "total": 4, "active": 3 },
@@ -100,19 +102,18 @@ Operator commands for situations where the UI is unavailable (`docker compose ex
 
 | Command | Purpose |
 |---|---|
-| `create-admin --email <e> [--password-stdin]` | Create the first or an additional admin |
-| `reset-password-link --email <e>` | Print a one-time reset link |
-| `set-role --email <e> --role ADMIN|USER` | Recover admin access |
+| `list-users` | Print id, display name, email, role, status, issuer and subject of every user (to find an id) |
+| `set-role --user-id <uuid> --role ADMIN|USER` | Recover admin access; refused when `OIDC_ADMIN_GROUP` is set (change the group in Account Center instead) |
 | `backup [--output <path>]` | Run a backup now |
 | `restore <archive> [--yes]` | Disaster recovery restore ([backups-and-restoration.md](../infrastructure/backups-and-restoration.md)) |
 | `maintenance on|off` | Toggle instance maintenance mode |
 | `generate-key` | Print a new random `APP_ENCRYPTION_KEY` |
 
-CLI commands log to stdout with the same redaction rules and never print secrets other than the requested reset link or key.
+CLI commands log to stdout with the same redaction rules and never print secrets other than the requested key.
 
 ## 6. Testing
 
 - Admin endpoint response schemas contain no financial fields (schema snapshot test).
 - A non-admin gets 403 on every admin route (iterated from the OpenAPI registry); sensitive actions without recent auth get `REAUTH_REQUIRED`.
 - Deactivation revokes sessions and API tokens and stops jobs for the user (integration test with an injected clock).
-- Last-admin protection.
+- Last-admin protection, no self-deactivation, `ROLE_MANAGED_BY_IDP` with `OIDC_ADMIN_GROUP` set.

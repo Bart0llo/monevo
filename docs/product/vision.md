@@ -43,7 +43,7 @@ Monevo extends that familiar experience with:
 
 ## Non-goals (initial version)
 
-The full list lives in [requirements.md: out of scope](requirements.md#out-of-scope). In short, Monevo does not do bank synchronization, statement imports, OCR, investments, crypto, physical assets, shared or family finances, tags, automation engines, email notifications, local MFA, multiple OIDC providers at once, admin analytics or audit dashboards, self-updating, or AI analysis.
+The full list lives in [requirements.md: out of scope](requirements.md#out-of-scope). In short, Monevo does not do bank synchronization, statement imports, OCR, investments, crypto, physical assets, shared or family finances, tags, automation engines, email notifications, local passwords or MFA (sign-in is delegated to one OIDC identity provider), admin analytics or audit dashboards, self-updating, or AI analysis.
 
 ## Success criteria for v1.0
 

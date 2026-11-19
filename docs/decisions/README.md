@@ -10,7 +10,7 @@ Significant or hard-to-reverse decisions are recorded here as ADRs. The summary 
 | [ADR-0002](ADR-0002-single-application-image.md) | Single application image | Accepted (amended by ADR-0015) |
 | [ADR-0003](ADR-0003-postgresql-and-prisma.md) | PostgreSQL and Prisma | Accepted (amended by ADR-0015) |
 | [ADR-0004](ADR-0004-rest-api-versioning-and-contracts.md) | REST API, versioning and contracts | Accepted |
-| [ADR-0005](ADR-0005-authentication-and-sessions.md) | Authentication and sessions | Proposed (extended by ADR-0017) |
+| [ADR-0005](ADR-0005-authentication-and-sessions.md) | Authentication and sessions | Superseded by ADR-0020 |
 | [ADR-0006](ADR-0006-user-data-isolation.md) | User data isolation | Accepted (amended by ADR-0017) |
 | [ADR-0007](ADR-0007-money-and-multi-currency.md) | Money and multi-currency | Accepted |
 | [ADR-0008](ADR-0008-transaction-and-transfer-model.md) | Transaction and transfer model | Accepted |
@@ -22,9 +22,10 @@ Significant or hard-to-reverse decisions are recorded here as ADRs. The summary 
 | [ADR-0014](ADR-0014-virtual-savings-pots.md) | Virtual savings pots | Accepted |
 | [ADR-0015](ADR-0015-external-postgresql.md) | External PostgreSQL | Accepted (amended by ADR-0018) |
 | [ADR-0016](ADR-0016-local-validation-ci-deferred.md) | Local validation; CI platform deferred | Accepted (amendment proposed in ADR-0019) |
-| [ADR-0017](ADR-0017-personal-api-tokens.md) | Personal API tokens | Proposed |
+| [ADR-0017](ADR-0017-personal-api-tokens.md) | Personal API tokens | Accepted (amended by ADR-0020) |
 | [ADR-0018](ADR-0018-postgresql-16-minimum.md) | PostgreSQL 16 as the minimum supported major | Accepted |
 | [ADR-0019](ADR-0019-release-management.md) | Release management and image publishing | Proposed |
+| [ADR-0020](ADR-0020-oidc-only-authentication.md) | OIDC-only authentication with Account Center | Accepted |
 
 ## Process
 
@@ -33,7 +34,7 @@ Significant or hard-to-reverse decisions are recorded here as ADRs. The summary 
 3. ADRs are **append-only**. To change a decision, write a new ADR that **supersedes** the old one and set the old one's status to `Superseded by ADR-NNNN`. Only typo fixes and status changes edit an existing ADR.
 4. Update the affected architecture documents and [overview.md](../architecture/overview.md#key-architectural-decisions) in the same change ([contribution-guidelines.md](../development/contribution-guidelines.md#3-documentation-maintenance)).
 
-Statuses: `Proposed`, `Accepted`, `Accepted (amended by ADR-NNNN)` (a later ADR replaces part of it), `Proposed (extended by ADR-NNNN)` (a later ADR adds to it without replacing it), `Accepted (amendment proposed in ADR-NNNN)` (a proposed ADR would replace part of it once accepted), `Superseded by ADR-NNNN`, `Rejected`.
+Statuses: `Proposed`, `Accepted`, `Accepted (amended by ADR-NNNN)` (a later ADR replaces part of it), `Proposed (extended by ADR-NNNN)` or `Accepted (extended by ADR-NNNN)` (a later ADR adds to it without replacing it), `Accepted (amendment proposed in ADR-NNNN)` (a proposed ADR would replace part of it once accepted), `Superseded by ADR-NNNN`, `Rejected`.
 
 ## Template
 

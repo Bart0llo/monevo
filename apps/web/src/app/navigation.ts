@@ -5,6 +5,7 @@ import {
   IconPigMoney,
   IconReceipt,
   IconSettings,
+  IconShieldLock,
   IconWallet,
   type Icon,
 } from '@tabler/icons-react';
@@ -73,11 +74,27 @@ export const NAV_ITEMS = [
   group: 'primary' | 'secondary' | 'system';
 }[];
 
-export type NavItem = (typeof NAV_ITEMS)[number];
+/** Shown only to administrators (administration.md). */
+export const ADMIN_NAV_ITEM = {
+  path: '/admin/users',
+  labelKey: 'nav.admin',
+  descriptionKey: 'sections.admin',
+  icon: IconShieldLock,
+  group: 'system',
+} as const;
+
+export type NavItem = (typeof NAV_ITEMS)[number] | typeof ADMIN_NAV_ITEM;
+
+/** The navigation for the signed-in user: admins also get user administration. */
+export function navItemsFor(isAdmin: boolean): readonly NavItem[] {
+  return isAdmin ? [...NAV_ITEMS, ADMIN_NAV_ITEM] : NAV_ITEMS;
+}
 
 export const PRIMARY_NAV = NAV_ITEMS.filter((item) => item.group === 'primary');
 /** Everything that is not in the mobile bottom bar; shown in the "More" sheet. */
-export const MORE_NAV = NAV_ITEMS.filter((item) => item.group !== 'primary');
+export function moreNavFor(isAdmin: boolean): readonly NavItem[] {
+  return navItemsFor(isAdmin).filter((item) => item.group !== 'primary');
+}
 
 export function isActivePath(itemPath: string, pathname: string): boolean {
   if (itemPath === '/') return pathname === '/';

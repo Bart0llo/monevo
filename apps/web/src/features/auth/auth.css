@@ -1,0 +1,47 @@
+/* Sign-in and onboarding: the page sits on the ink "cover", like the shell's rail. */
+
+.mv-auth-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--mv-cover-bg);
+}
+
+.mv-auth-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+}
+
+.mv-auth-main {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 1rem 4rem;
+}
+
+.mv-auth-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 26rem;
+  padding: 2rem 1.75rem;
+  border-radius: var(--mantine-radius-lg);
+  background: var(--mantine-color-body);
+  box-shadow: var(--mantine-shadow-lg);
+}
+
+.mv-auth-card[data-wide] {
+  max-width: 32rem;
+}
+
+.mv-auth-page :focus-visible {
+  outline-color: var(--mv-cover-focus);
+}
+
+.mv-auth-card :focus-visible {
+  outline-color: var(--mv-focus);
+}

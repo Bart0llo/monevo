@@ -8,10 +8,10 @@ Unresolved decisions and assumptions. Each entry has a recommendation, which the
 |---|---|---|---|---|
 | [OQ-01](#oq-01-product-name) | Product name | **Decided:** Monevo | Stage 1 | Closed |
 | [OQ-02](#oq-02-package-manager-and-repository-layout) | Package manager and repository layout | **Decided:** pnpm workspaces monorepo | Stage 1 | Closed |
-| [OQ-03](#oq-03-smtp-for-authentication-emails) | SMTP for authentication emails | Optional SMTP; admin reset link as fallback | Stage 2 | Open |
+| [OQ-03](#oq-03-smtp-for-authentication-emails) | SMTP for authentication emails | **Obsolete:** OIDC-only, Monevo sends no email ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)) | Stage 2 | Closed |
 | [OQ-04](#oq-04-admin-backup-access-vs-financial-privacy) | Admin backup access vs financial privacy | Accept operator trust + optional encryption | Stage 15 | Open |
 | [OQ-05](#oq-05-changing-the-base-currency) | Changing the base currency | Allow, as a recompute job | Stage 3 | Open |
-| [OQ-06](#oq-06-authentication-implementation) | Authentication implementation | Own thin layer on vetted primitives | Stage 2 | Open |
+| [OQ-06](#oq-06-authentication-implementation) | Authentication implementation | **Decided:** OIDC-only with Account Center via `openid-client` + own session layer ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)) | Stage 2 | Closed |
 | [OQ-07](#oq-07-ci-platform) | CI platform | **Decided:** none for now; local validation ([ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md)) | Later (does not block) | Deferred |
 | [OQ-08](#oq-08-nodejs-and-postgresql-versions) | Node.js and PostgreSQL versions | **Decided:** Node.js 24; external PostgreSQL via `DATABASE_URL`, maintained majors, minimum 16 ([ADR-0018](../decisions/ADR-0018-postgresql-16-minimum.md)) | Stage 1 | Closed |
 | [OQ-09](#oq-09-offline-attachment-uploads) | Offline attachment uploads | Online-only in v1 (deferred) | Stage 6 | Open |
@@ -27,10 +27,10 @@ Unresolved decisions and assumptions. Each entry has a recommendation, which the
 | [OQ-19](#oq-19-spending-estimate-method) | Spending estimate method | Median daily spend over 90 days per category | Stage 11 | Open |
 | [OQ-20](#oq-20-default-execution-mode) | Default execution mode | `CONFIRM` | Stage 7 | Open |
 | [OQ-21](#oq-21-local-database-library) | Local database library | Dexie 4 | Stage 5 | Open |
-| [OQ-22](#oq-22-api-token-permission-catalogue-and-lifecycle) | API token permission catalogue and lifecycle | Catalogue and defaults in api-tokens.md | Stage 2 | Open |
+| [OQ-22](#oq-22-api-token-permission-catalogue-and-lifecycle) | API token permission catalogue and lifecycle | **Decided:** catalogue and defaults in api-tokens.md; revoked on deactivation and restore ([ADR-0017](../decisions/ADR-0017-personal-api-tokens.md), amended by [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)) | Stage 2 | Closed |
 | [OQ-23](#oq-23-s3-compatible-server-for-development-and-tests) | S3-compatible server for development and tests | Evaluate Garage and SeaweedFS against the driver contract suite | Stage 6 | Open |
 
-**Before Stage 1:** nothing open (OQ-01, OQ-02, OQ-08 closed; OQ-07 deferred, 2026-11-18). **Before Stage 2:** OQ-03, OQ-06, OQ-22.
+**Before Stage 1:** nothing open (OQ-01, OQ-02, OQ-08 closed; OQ-07 deferred, 2026-11-18). **Before Stage 2:** nothing open (OQ-03, OQ-06, OQ-22 closed, 2026-11-19; reviewed again for the OIDC-only switch, [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)).
 
 ## Questions
 
@@ -46,7 +46,9 @@ Unresolved decisions and assumptions. Each entry has a recommendation, which the
 
 ### OQ-03: SMTP for authentication emails
 
-Email **notifications** are out of scope (R-NOT-05), but email verification and password reset normally need email. Options:
+**Status: Closed (2026-11-19), obsolete.** The user switched to OIDC-only authentication ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)): Monevo has no passwords, no password reset, no email verification and no email change, so it sends no email and needs no SMTP. Credentials and email addresses are managed in Account Center. *(Earlier the same day, option 1, optional SMTP with an admin reset link as the fallback, had been chosen; that decision is void.)*
+
+**Original question:** email **notifications** are out of scope (R-NOT-05), but email verification and password reset normally need email. Options:
 
 1. SMTP optional: when configured, verification and reset emails are sent; when not, verification is skipped and the admin generates one-time reset links ([authentication.md](../architecture/authentication.md), [administration.md](../architecture/administration.md#users-r-adm-01-r-auth-04)).
 2. SMTP required for every instance.
@@ -66,7 +68,9 @@ R-ADM-05 says admin privileges never grant access to financial data, but R-BAK-0
 
 ### OQ-06: Authentication implementation
 
-**Recommendation:** an own thin session layer on vetted primitives (argon2, `crypto.randomBytes`, openid-client), not a custom crypto or protocol implementation ([ADR-0005](../decisions/ADR-0005-authentication-and-sessions.md)). Alternative: better-auth (more features out of the box, but its schema and session model would need to fit Prisma, composite-key isolation, and the Bearer-token plan for native clients). Confirm before Stage 2.
+**Status: Closed (2026-11-19).** **Decision:** OIDC-only authentication with Account Center as the single identity provider ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md), superseding [ADR-0005](../decisions/ADR-0005-authentication-and-sessions.md)): `openid-client` v6 for the Relying Party (Authorization Code + PKCE S256, state, nonce, JWKS-verified ID tokens, refresh grant, RP-initiated logout), plus Monevo's own thin session layer on vetted primitives: `crypto.randomBytes` + SHA-256 for session and token hashes, AES-256-GCM via Node `crypto` for the encrypted state cookie and stored IdP refresh tokens, and `express-rate-limit` with its in-memory store (one container; counters reset on restart). Users are provisioned on first login and keyed by `(issuer, sub)`, never by email. Sensitive actions (API token creation, admin deactivation and role change) need a recent authentication within 15 minutes, done by re-signing in at the IdP with `prompt=login` (otherwise `403 REAUTH_REQUIRED`). Details: [authentication.md](../architecture/authentication.md). *(Earlier the same day, a local-password design with argon2 and nodemailer had been chosen; it was replaced before implementation.)*
+
+**Original recommendation:** an own thin session layer on vetted primitives (argon2, `crypto.randomBytes`, openid-client), not a custom crypto or protocol implementation ([ADR-0005](../decisions/ADR-0005-authentication-and-sessions.md)). Alternative: better-auth (more features out of the box, but its schema and session model would need to fit Prisma, composite-key isolation, and the Bearer-token plan for native clients). Confirm before Stage 2.
 
 ### OQ-07: CI platform
 
@@ -138,7 +142,9 @@ R-ADM-05 says admin privileges never grant access to financial data, but R-BAK-0
 
 ### OQ-22: API token permission catalogue and lifecycle
 
-Personal API tokens are in scope (R-TOK-01..09, decided 2026-11-18). The design details that the requirements leave open follow the recommendation as **[Proposed]** ([api-tokens.md](../architecture/api-tokens.md), [ADR-0017](../decisions/ADR-0017-personal-api-tokens.md)).
+**Status: Closed (2026-11-19).** **Decision:** the design in [api-tokens.md](../architecture/api-tokens.md) as recommended below ([ADR-0017](../decisions/ADR-0017-personal-api-tokens.md), now Accepted, amended by [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)), with these changes. (1) The catalogue in `@monevo/contracts` and the creation form contain **only permissions whose routes exist**: Stage 2 ships `profile:read`, and each later stage adds the permissions of its routes; the table in api-tokens.md stays as the plan. (2) **Password-related revocation: not applicable.** Monevo has no passwords after the OIDC-only switch, so there is no password change or reset to react to (the earlier `PASSWORD_RESET` revocation is dropped). Tokens are still revoked on admin deactivation (`DEACTIVATED`) and backup restore (`RESTORE`). Creation requires a recent authentication, which is now a re-sign-in at the identity provider.
+
+**Original question:** personal API tokens are in scope (R-TOK-01..09, decided 2026-11-18). The design details that the requirements leave open follow the recommendation as **[Proposed]** ([api-tokens.md](../architecture/api-tokens.md), [ADR-0017](../decisions/ADR-0017-personal-api-tokens.md)).
 
 **Recommendation:** the permission catalogue in [api-tokens.md](../architecture/api-tokens.md#4-permission-catalogue) (independent read, create, update, and delete per resource where supported, with "also requires" for cross-resource writes); never available to tokens: auth, account and credential management, sessions, token management, push subscriptions, notification preferences, admin, sync, realtime, dashboard layout, and export/import; permissions fixed at creation (rename only); at most 50 active tokens per user; expiration optional with a 90-day UI default; creation requires a recent authentication; tokens revoked on deactivation and backup restore but kept on password change or reset; `If-Match` required for token updates and deletes. Alternatives: allow export/import or dashboard access with dedicated permissions; editable permissions; a mandatory maximum lifetime; revoking tokens on password reset. Confirm before Stage 2.
 

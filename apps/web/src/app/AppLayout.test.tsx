@@ -1,41 +1,27 @@
-import { screen, render, waitFor, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { createMemoryRouter, RouterProvider, type RouteObject } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createI18n, LANGUAGE_STORAGE_KEY } from '../i18n/i18n';
-import { AppProviders } from './AppProviders';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { LANGUAGE_STORAGE_KEY } from '../i18n/i18n';
+import { stubApi } from '../test/api';
+import { renderApp, useDesktopViewport } from '../test/render';
 import { isActivePath } from './navigation';
-import { routes } from './routes';
+import { createRoutes } from './routes';
 
-async function renderApp(path = '/', routeTable: RouteObject[] = routes) {
-  const i18n = await createI18n();
-  await i18n.changeLanguage('en');
-  const router = createMemoryRouter(routeTable, { initialEntries: [path] });
-  render(
-    <AppProviders i18n={i18n} env="test">
-      <RouterProvider router={router} />
-    </AppProviders>,
-  );
-  return { i18n, router };
-}
+let api: ReturnType<typeof stubApi>;
 
-/** jsdom's matchMedia stub (test/setup.ts) matches nothing, which gives the mobile layout. */
-function useDesktopViewport() {
-  const original = window.matchMedia.bind(window);
-  vi.spyOn(window, 'matchMedia').mockImplementation((query: string) => ({
-    ...original(query),
-    matches: query.includes('min-width'),
-  }));
-}
+beforeEach(() => {
+  api = stubApi({ role: 'USER' });
+});
 
 afterEach(() => {
   vi.restoreAllMocks();
+  vi.unstubAllGlobals();
 });
 
 describe('app shell (mobile)', () => {
   it('renders the bottom navigation with the current section marked', async () => {
     await renderApp('/budgets');
-    const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+    const nav = await screen.findByRole('navigation', { name: 'Main navigation' });
     expect(within(nav).getByRole('link', { name: 'Budgets' }).getAttribute('aria-current')).toBe(
       'page',
     );
@@ -46,7 +32,7 @@ describe('app shell (mobile)', () => {
 
   it('offers a skip link to the main content first', async () => {
     await renderApp('/');
-    const skip = screen.getByRole('link', { name: 'Skip to content' });
+    const skip = await screen.findByRole('link', { name: 'Skip to content' });
     expect(skip.getAttribute('href')).toBe('#main-content');
     expect(document.getElementById('main-content')).toBeTruthy();
     const user = userEvent.setup();
@@ -57,12 +43,13 @@ describe('app shell (mobile)', () => {
   it('opens the More sheet with the remaining sections', async () => {
     const user = userEvent.setup();
     await renderApp('/');
-    const moreButton = screen.getByRole('button', { name: 'More' });
+    const moreButton = await screen.findByRole('button', { name: 'More' });
     await user.click(moreButton);
     const sheet = await screen.findByRole('dialog', { name: 'More' });
     for (const name of ['Accounts', 'Reports', 'Settings']) {
       expect(within(sheet).getByRole('link', { name })).toBeTruthy();
     }
+    expect(within(sheet).queryByRole('link', { name: 'Administration' })).toBeNull();
     await user.click(within(sheet).getByRole('link', { name: 'Reports' }));
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: 'Reports' })).toBeTruthy(),
@@ -70,26 +57,56 @@ describe('app shell (mobile)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'More' })).toBeNull());
     expect(moreButton.hasAttribute('data-active')).toBe(true);
   });
+
+  it('ends the More sheet with Settings and, for admins, Administration as one group', async () => {
+    stubApi({ role: 'ADMIN' });
+    const user = userEvent.setup();
+    await renderApp('/');
+    await user.click(await screen.findByRole('button', { name: 'More' }));
+    const sheet = await screen.findByRole('dialog', { name: 'More' });
+    const items = within(sheet)
+      .getAllByRole('listitem')
+      .map((item) => [item.textContent, item.getAttribute('data-group')]);
+    expect(items).toEqual([
+      ['Accounts', 'secondary'],
+      ['Reports', 'secondary'],
+      ['Settings', 'system'],
+      ['Administration', 'system'],
+    ]);
+  });
 });
 
 describe('app shell (desktop)', () => {
   it('renders the rail with every section and no bottom bar', async () => {
     useDesktopViewport();
     await renderApp('/settings');
-    const nav = screen.getByRole('navigation', { name: 'Main navigation' });
+    const nav = await screen.findByRole('navigation', { name: 'Main navigation' });
     expect(within(nav).getAllByRole('link')).toHaveLength(7);
     expect(within(nav).getByRole('link', { name: 'Settings' }).getAttribute('aria-current')).toBe(
       'page',
     );
     expect(screen.queryByRole('button', { name: 'More' })).toBeNull();
-    expect(screen.getByRole('heading', { level: 1, name: 'Settings' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Settings' })).toBeTruthy();
+  });
+
+  it('pins Settings and, for admins, Administration together at the end of the rail', async () => {
+    stubApi({ role: 'ADMIN' });
+    useDesktopViewport();
+    await renderApp('/');
+    const nav = await screen.findByRole('navigation', { name: 'Main navigation' });
+    await within(nav).findByRole('link', { name: 'Administration' });
+    const system = within(nav)
+      .getAllByRole('listitem')
+      .filter((item) => item.getAttribute('data-group') === 'system')
+      .map((item) => item.textContent);
+    expect(system).toEqual(['Settings', 'Administration']);
   });
 });
 
 describe('page states', () => {
   it('shows the not-found page for unknown paths', async () => {
     await renderApp('/nope');
-    expect(screen.getByRole('heading', { level: 1, name: 'Page not found' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 1, name: 'Page not found' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Go to the dashboard' }).getAttribute('href')).toBe(
       '/',
     );
@@ -100,22 +117,7 @@ describe('page states', () => {
     function Broken(): never {
       throw new Error('boom');
     }
-    // The real route table, with one failing page added inside the shell.
-    const shell = routes[0];
-    const pages = shell?.children?.[0];
-    if (!shell || shell.index || !pages || pages.index) throw new Error('unexpected route table');
-    const routeTable: RouteObject[] = [
-      {
-        ...shell,
-        children: [
-          {
-            ...pages,
-            children: [...(pages.children ?? []), { path: '/broken', element: <Broken /> }],
-          },
-        ],
-      },
-    ];
-    await renderApp('/broken', routeTable);
+    await renderApp('/broken', createRoutes([{ path: '/broken', element: <Broken /> }]));
     expect(
       await screen.findByRole('heading', { level: 1, name: 'Something went wrong' }),
     ).toBeTruthy();
@@ -125,27 +127,41 @@ describe('page states', () => {
 });
 
 describe('preferences', () => {
-  it('switches the language and remembers the choice', async () => {
+  it('switches the language, saves it to the settings and remembers the choice', async () => {
     const user = userEvent.setup();
     await renderApp('/');
-    await user.click(screen.getByRole('button', { name: 'Language' }));
+    await user.click(await screen.findByRole('button', { name: 'Language' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Polski' }));
     await waitFor(() =>
       expect(screen.getByRole('heading', { level: 1, name: 'Pulpit' })).toBeTruthy(),
     );
     expect(document.documentElement.lang).toBe('pl');
     expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe('pl');
+    await waitFor(() =>
+      expect(api.calls).toContainEqual(
+        expect.objectContaining({
+          method: 'PATCH',
+          path: '/me/settings',
+          body: { locale: 'pl', version: 1 },
+        }),
+      ),
+    );
   });
 
-  it('switches the color scheme', async () => {
+  it('switches the color scheme and saves it to the settings', async () => {
     const user = userEvent.setup();
     await renderApp('/');
-    await user.click(screen.getByRole('button', { name: 'Color scheme' }));
+    await user.click(await screen.findByRole('button', { name: 'Color scheme' }));
     await user.click(await screen.findByRole('menuitem', { name: 'Dark' }));
     await waitFor(() =>
       expect(document.documentElement.getAttribute('data-mantine-color-scheme')).toBe('dark'),
     );
     expect(window.localStorage.getItem('monevo-color-scheme')).toBe('dark');
+    await waitFor(() =>
+      expect(api.calls).toContainEqual(
+        expect.objectContaining({ method: 'PATCH', body: { theme: 'DARK', version: 1 } }),
+      ),
+    );
   });
 });
 

@@ -20,19 +20,19 @@ This is the **canonical scope list**. Each requirement has a stable ID, which is
 
 | ID | Requirement |
 |---|---|
-| R-AUTH-01 | Local registration and email/password login with secure password hashing. |
-| R-AUTH-02 | Password reset. |
-| R-AUTH-03 | Email address management with verification. |
-| R-AUTH-04 | Account activation and deactivation (by an admin). A deactivated user cannot log in, and their sessions are revoked. |
-| R-AUTH-05 | One configurable OIDC provider at a time, configured by the admin, using standard OIDC and established libraries. The provider can be changed later. |
-| R-AUTH-06 | A local account can be linked with an OIDC identity where appropriate. |
-| R-AUTH-07 | No MFA for local accounts in v1. OIDC users rely on the IdP's MFA. |
+| R-AUTH-01 | Users sign in only through OpenID Connect with the operator's identity provider (Account Center), using standard OIDC and an established, certified library. *(Replaced 2026-11-19, [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md): previously local registration and email/password login.)* |
+| R-AUTH-02 | On the first successful sign-in, a Monevo user is provisioned automatically, keyed by the identity provider's issuer and subject (`iss` + `sub`), never by email address. *(Replaced 2026-11-19: previously password reset. Monevo has no local passwords, so there is no password reset.)* |
+| R-AUTH-03 | Monevo stores no credentials and sends no email: no local passwords, no password reset, no email verification. The email address and display name shown are informational; credentials and email are managed in the identity provider. *(Replaced 2026-11-19: previously email address management with verification.)* |
+| R-AUTH-04 | Account activation and deactivation (by an admin). A deactivated user cannot sign in, and their sessions and personal API tokens are revoked. |
+| R-AUTH-05 | Exactly one identity provider, configured by the operator through environment variables. *(Amended 2026-11-19: previously configured by the admin in the panel.)* |
+| R-AUTH-06 | No account linking: one Monevo user corresponds to exactly one identity at the configured provider. *(Replaced 2026-11-19: previously linking a local account with an OIDC identity.)* |
+| R-AUTH-07 | MFA, password policy, and account recovery are delegated to the identity provider. |
 | R-AUTH-08 | Users can view active sessions with device information and last activity, and revoke selected sessions. |
 | R-AUTH-09 | A secure session strategy with expiry, revocation, and renewal. |
 | R-ADM-01 | Admin panel: user list, activate/deactivate accounts. |
 | R-ADM-02 | Admin: basic application configuration, application version, system health/status. |
 | R-ADM-03 | Admin: storage configuration and per-user storage quota. |
-| R-ADM-04 | Admin: OIDC provider configuration. |
+| R-ADM-04 | Admin: read-only view of the identity provider status. The provider itself is configured through environment variables. *(Amended 2026-11-19, [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md).)* |
 | R-ADM-05 | Admin privileges never grant access to users' financial data. |
 | R-ADM-06 | Technical logs exist and are useful for troubleshooting. |
 
@@ -132,7 +132,7 @@ This is the **canonical scope list**. Each requirement has a stable ID, which is
 | R-NOT-02 | Browser/PWA push notifications on supported devices. |
 | R-NOT-03 | User-configurable notification types: payment reminders, budget thresholds, custom thresholds. |
 | R-NOT-04 | Suggestions: possible duplicates, unusually high expenses, budget overruns, missing expected recurring payments, balance discrepancies. They are suggestions only and never modify data. |
-| R-NOT-05 | No email notifications. *(Transactional auth emails such as verification and password reset are not notifications; see [OQ-03](../planning/open-questions.md#oq-03-smtp-for-authentication-emails).)* |
+| R-NOT-05 | No email notifications. Monevo sends no email at all: authentication is delegated to the identity provider ([OQ-03](../planning/open-questions.md#oq-03-smtp-for-authentication-emails), closed as obsolete). |
 
 ## Attachments
 
@@ -191,16 +191,16 @@ Design: [api-tokens.md](../architecture/api-tokens.md).
 | R-TOK-04 | Users see their tokens with name, creation date, expiration date, last-used timestamp, and status, and can revoke any token at any time. Revocation immediately prevents further use. |
 | R-TOK-05 | Tokens are generated with a cryptographically secure, standard method. The complete token is shown only once, after creation. Only a secure hash is stored, and stored hashes are never exposed through the API. |
 | R-TOK-06 | Every token belongs to exactly one user. Its permissions never exceed the owner's, are enforced on the backend, and strict user data isolation applies to every token-authenticated request. |
-| R-TOK-07 | Tokens never grant access to administrative functionality, interactive sessions, password management, or session management. |
+| R-TOK-07 | Tokens never grant access to administrative functionality, interactive sessions, credential management, or session management. |
 | R-TOK-08 | Token usage metadata (at least the last-used timestamp) is recorded. Operations authenticated by a token are clearly identified in transaction change history and relevant audit records. |
-| R-TOK-09 | Tokens are an additional authentication method for the versioned REST API and do not replace local authentication or OIDC. The API documentation explains the mechanism, the token format, and how integrations authenticate. Token management is available in the user interface and, with an interactive session, through the API. |
+| R-TOK-09 | Tokens are an additional authentication method for the versioned REST API and do not replace interactive sign-in through the identity provider (OIDC). The API documentation explains the mechanism, the token format, and how integrations authenticate. Token management is available in the user interface and, with an interactive session, through the API. |
 
 ## Security
 
 | ID | Requirement |
 |---|---|
 | R-SEC-01 | Every financial record belongs to one user. Every backend operation enforces ownership using the authenticated identity, never a client-supplied user ID. |
-| R-SEC-02 | Coverage of password hashing, session security, OIDC validation, CSRF, XSS, secure cookies, CORS, rate limiting, input validation, upload security, secrets, Docker, and backup security. |
+| R-SEC-02 | Coverage of session security, OIDC validation, CSRF, XSS, secure cookies, CORS, rate limiting, input validation, upload security, secrets, Docker, and backup security. |
 | R-SEC-03 | No custom cryptographic, JWT, OIDC, or authentication primitives. |
 
 ## Infrastructure
@@ -224,8 +224,9 @@ Design: [api-tokens.md](../architecture/api-tokens.md).
 - Tags or labels
 - A general-purpose automation or rule engine
 - Email notifications
-- MFA for local accounts
-- Multiple simultaneously configured OIDC providers
+- Local authentication: local passwords, registration, password reset, email verification, and SMTP ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md))
+- MFA inside Monevo (delegated to the identity provider)
+- Multiple identity providers, simultaneously or as alternatives, and account linking
 - Extensive admin analytics, an admin audit log dashboard, a log management platform
 - Automatic application updates from the admin panel
 - AI-powered financial analysis
@@ -234,4 +235,4 @@ Design: [api-tokens.md](../architecture/api-tokens.md).
 
 ## Deferred (possible later, design must not block)
 
-**[Deferred]**: native Android client, additional OIDC providers (one at a time remains the rule until revisited), additional rate and storage providers, optional AI-assisted analysis, offline attachment upload queue, PDF report export, PostgreSQL row-level security as defense in depth, user self-service account deletion.
+**[Deferred]**: native Android client, additional rate and storage providers, optional AI-assisted analysis, offline attachment upload queue, PDF report export, PostgreSQL row-level security as defense in depth, user self-service account deletion.

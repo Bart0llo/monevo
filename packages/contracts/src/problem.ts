@@ -23,6 +23,8 @@ export const ProblemSchema = z
     instance: z.string().optional(),
     requestId: z.string(),
     errors: z.array(ProblemFieldErrorSchema).optional(),
+    /** `VERSION_CONFLICT`: the current resource. */
+    current: z.unknown().optional(),
   })
   .openapi('Problem');
 

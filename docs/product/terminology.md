@@ -6,13 +6,13 @@ These terms are used precisely across code, API, UI copy (via translation keys),
 
 | Term | Code name | Definition |
 |---|---|---|
-| User | `User` | A person with a login. Every user owns exactly one private financial workspace. |
+| User | `User` | A person who signs in through the identity provider. Every user owns exactly one private financial workspace. |
 | Workspace | n/a | The set of all financial data owned by one user. It is **not** a separate entity: the workspace is implicitly identified by `userId`. There are no shared or multiple workspaces. |
 | Administrator | `role = ADMIN` | A user with access to the admin panel (operational settings, user activation). Admin rights grant **no** access to other users' financial data. An admin also has their own private workspace. |
-| Local account | n/a | A user with a password credential. |
-| Identity | `UserIdentity` | A link between a user and an external OIDC subject (`issuer` + `subject`). |
+| Identity provider (IdP) | n/a | The single external OpenID Provider that authenticates users, normally the operator's Account Center. Monevo stores no passwords. |
+| Identity | `UserIdentity` | The user's subject at the identity provider (`issuer` + `subject`), which is how Monevo recognizes the user at sign-in. Exactly one per user. |
 | Session | `Session` | A server-side record that represents one logged-in device or client. It is identified to the client by an opaque random token. |
-| Personal API token | `ApiToken` | A named, user-created credential (`mnv_pat_…`) that lets an external integration call the REST API on the user's behalf, limited to the permissions chosen for it. It is not a session and never grants admin, session, or password access. Shown once; only its hash is stored. Also "API token". |
+| Personal API token | `ApiToken` | A named, user-created credential (`mnv_pat_…`) that lets an external integration call the REST API on the user's behalf, limited to the permissions chosen for it. It is not a session and never grants admin, session, or credential access. Shown once; only its hash is stored. Also "API token". |
 | Permission | n/a | One `<resource>:<operation>` entry granted to a personal API token, for example `transactions:read`. |
 | Device | n/a | A human-readable description of a session's client (browser, OS, app), derived from the User-Agent and an optional user-provided name. |
 

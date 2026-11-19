@@ -25,7 +25,7 @@ Global elements: the quick entry FAB and a keyboard shortcut (`N`), the sync sta
 
 ## Onboarding
 
-On first login after registration:
+On the first sign-in (right after the user is provisioned from the identity provider):
 1. Language (pre-filled from the browser), time zone (pre-filled from `Intl.DateTimeFormat().resolvedOptions().timeZone`), and base currency (suggested from locale, e.g. `pl` → PLN).
 2. Create the first account (name, currency, opening balance).
 3. Optionally create a few categories. The UI offers *one-click suggestions to create*, which the user explicitly accepts, rather than a silent seed (R-CAT-01).

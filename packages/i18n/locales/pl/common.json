@@ -15,7 +15,8 @@
     "reports": "Raporty",
     "settings": "Ustawienia",
     "more": "Więcej",
-    "close": "Zamknij"
+    "close": "Zamknij",
+    "admin": "Administracja"
   },
   "sections": {
     "dashboard": "Przegląd Twoich finansów: salda, budżety i to, co nadchodzi.",
@@ -24,7 +25,8 @@
     "budgets": "Limity wydatków dla kategorii i ile w każdej zostało.",
     "calendar": "Przeszłe i zaplanowane transakcje ułożone według dat.",
     "reports": "Wydatki, przychody i trendy w czasie.",
-    "settings": "Twój profil, język, waluta i preferencje."
+    "settings": "Twój profil, język, waluta i preferencje.",
+    "admin": "Konta w tej instancji Monevo i połączenie z dostawcą tożsamości."
   },
   "placeholder": {
     "body": "Ta sekcja pojawi się w kolejnym etapie.",
@@ -58,5 +60,213 @@
     "updateMessage": "Nowa wersja Monevo jest gotowa.",
     "updateAction": "Odśwież",
     "offlineReady": "Monevo jest gotowe do pracy offline."
+  },
+  "auth": {
+    "loading": "Ładowanie",
+    "unreachableTitle": "Monevo nie może połączyć się z serwerem",
+    "unreachableBody": "Sprawdź połączenie i spróbuj ponownie.",
+    "retry": "Spróbuj ponownie"
+  },
+  "reauth": {
+    "title": "Potwierdź, że to Ty",
+    "body": "Ta czynność wymaga niedawnego logowania. Potwierdzisz tożsamość u dostawcy logowania i wrócisz tutaj; potem spróbuj ponownie.",
+    "confirm": "Przejdź do logowania"
+  },
+  "actions": {
+    "cancel": "Anuluj",
+    "save": "Zapisz zmiany",
+    "copy": "Kopiuj",
+    "copied": "Skopiowano",
+    "done": "Gotowe"
+  },
+  "account": {
+    "label": "Konto",
+    "signOut": "Wyloguj się"
+  },
+  "login": {
+    "title": "Zaloguj się",
+    "body": "Monevo loguje przez konto Twojej organizacji. Twoje dane finansowe pozostają prywatne.",
+    "signIn": "Zaloguj przez {{provider}}",
+    "hint": "Nastąpi przekierowanie do dostawcy logowania, a potem powrót tutaj.",
+    "errors": {
+      "idp_unavailable": "Dostawca logowania jest teraz niedostępny. Spróbuj za chwilę.",
+      "login_failed": "Logowanie się nie powiodło. Spróbuj ponownie.",
+      "access_denied": "Logowanie anulowano lub odmówiono dostępu.",
+      "account_deactivated": "To konto zostało dezaktywowane. Skontaktuj się z administratorem.",
+      "reauth_mismatch": "Potwierdzono innym kontem. Zaloguj się ponownie kontem, którego używasz w Monevo."
+    }
+  },
+  "onboarding": {
+    "title": "Witaj w Monevo",
+    "body": "Kilka ustawień na start. Język i strefę czasową zmienisz później.",
+    "baseCurrencyHint": "W tej walucie liczone są sumy i raporty. Po konfiguracji nie można jej zmienić.",
+    "submit": "Zacznij korzystać z Monevo"
+  },
+  "validation": {
+    "required": "To pole jest wymagane.",
+    "tooLong": "Użyj najwyżej {{max}} znaków."
+  },
+  "fieldErrors": {
+    "BASE_CURRENCY_LOCKED": "Waluty bazowej nie można zmienić po konfiguracji."
+  },
+  "roles": {
+    "USER": "Użytkownik",
+    "ADMIN": "Administrator"
+  },
+  "weekdays": {
+    "MONDAY": "Poniedziałek",
+    "TUESDAY": "Wtorek",
+    "WEDNESDAY": "Środa",
+    "THURSDAY": "Czwartek",
+    "FRIDAY": "Piątek",
+    "SATURDAY": "Sobota",
+    "SUNDAY": "Niedziela"
+  },
+  "settings": {
+    "language": "Język",
+    "timeZone": "Strefa czasowa",
+    "baseCurrency": "Waluta bazowa",
+    "nothingFound": "Nic nie znaleziono",
+    "saved": "Zapisano zmiany.",
+    "tabs": {
+      "label": "Sekcje ustawień",
+      "profile": "Profil",
+      "sessions": "Urządzenia",
+      "apiTokens": "Tokeny API"
+    },
+    "profile": {
+      "title": "Profil",
+      "displayName": "Wyświetlana nazwa",
+      "email": "E-mail",
+      "emailHint": "Pochodzi od dostawcy logowania.",
+      "role": "Rola: {{role}}"
+    },
+    "preferences": {
+      "title": "Preferencje",
+      "weekStart": "Pierwszy dzień tygodnia",
+      "dateFormat": "Format daty",
+      "dateFormatLocale": "Domyślny dla języka",
+      "baseCurrencyLocked": "Ustawiona podczas konfiguracji; nie można jej zmienić."
+    }
+  },
+  "sessions": {
+    "title": "Zalogowane urządzenia",
+    "body": "Wyloguj urządzenia, których nie rozpoznajesz lub już nie używasz.",
+    "revokeOthers": "Wyloguj wszystkie inne urządzenia",
+    "revoked": "Urządzenie wylogowane.",
+    "revokedOthers_one": "Wylogowano jedno urządzenie.",
+    "revokedOthers_few": "Wylogowano {{count}} urządzenia.",
+    "revokedOthers_many": "Wylogowano {{count}} urządzeń.",
+    "revokedOthers_other": "Wylogowano {{count}} urządzenia.",
+    "unknownDevice": "Nieznane urządzenie",
+    "current": "To urządzenie",
+    "lastSeen": "Ostatnia aktywność {{when}}",
+    "signedIn": "Zalogowano {{when}}",
+    "revoke": "Wyloguj",
+    "revokeNamed": "Wyloguj {{device}}"
+  },
+  "apiTokens": {
+    "title": "Osobiste tokeny API",
+    "body": "Tokeny pozwalają Twoim skryptom i integracjom korzystać z API Monevo z wybranymi uprawnieniami.",
+    "create": "Utwórz token",
+    "createTitle": "Nowy token API",
+    "createdTitle": "Token utworzony",
+    "empty": "Nie masz tokenów API.",
+    "name": "Nazwa",
+    "namePlaceholder": "np. Home Assistant",
+    "permissionsLabel": "Uprawnienia",
+    "permissionsRequired": "Wybierz co najmniej jedno uprawnienie.",
+    "permissions": {
+      "profileRead": "Odczyt profilu i ustawień"
+    },
+    "expiry": "Wygasa",
+    "expiryDays_one": "Za {{count}} dzień",
+    "expiryDays_few": "Za {{count}} dni",
+    "expiryDays_many": "Za {{count}} dni",
+    "expiryDays_other": "Za {{count}} dnia",
+    "noExpiry": "Nigdy",
+    "neverUsed": "nigdy",
+    "meta": "Utworzono {{created}} · Wygasa {{expires}} · Ostatnio użyto {{used}}",
+    "secretOnce": "Skopiuj token teraz. Ze względów bezpieczeństwa nie zostanie pokazany ponownie.",
+    "status": {
+      "ACTIVE": "Aktywny",
+      "EXPIRED": "Wygasł",
+      "REVOKED": "Unieważniony"
+    },
+    "revoke": "Unieważnij",
+    "revokeNamed": "Unieważnij {{name}}",
+    "revokeTitle": "Unieważnić token?",
+    "revokeBody": "Integracje korzystające z „{{name}}” natychmiast przestaną działać. Tego nie można cofnąć.",
+    "revoked": "Token unieważniony."
+  },
+  "admin": {
+    "title": "Użytkownicy",
+    "idp": {
+      "title": "Dostawca tożsamości",
+      "discovery": {
+        "OK": "Dostępny",
+        "ERROR": "Niedostępny"
+      },
+      "provider": "Dostawca",
+      "issuer": "Wystawca",
+      "clientId": "Identyfikator klienta",
+      "clientType": "Typ klienta",
+      "clientTypes": {
+        "CONFIDENTIAL": "Poufny (sekret klienta)",
+        "PUBLIC": "Publiczny (tylko PKCE)"
+      },
+      "scopes": "Zakresy",
+      "adminGroup": "Grupa administratorów",
+      "adminGroupUnset": "Nie ustawiono: role są zarządzane w Monevo",
+      "endSession": "Wylogowanie u dostawcy",
+      "yes": "Tak",
+      "no": "Nie"
+    },
+    "users": {
+      "title": "Konta",
+      "rolesManaged": "Role wynikają z grupy „{{group}}” u dostawcy tożsamości.",
+      "search": "Szukaj po nazwie lub e-mailu",
+      "statusFilter": "Stan konta",
+      "all": "Wszystkie",
+      "status": {
+        "ACTIVE": "Aktywne",
+        "DEACTIVATED": "Dezaktywowane"
+      },
+      "empty": "Brak pasujących kont.",
+      "user": "Użytkownik",
+      "role": "Rola",
+      "statusLabel": "Stan",
+      "lastLogin": "Ostatnie logowanie",
+      "sessions": "Sesje",
+      "actions": "Działania",
+      "actionsFor": "Działania dla: {{name}}",
+      "you": "Ty",
+      "loadMore": "Wczytaj więcej",
+      "updated": "Konto zaktualizowane.",
+      "actionLabels": {
+        "promote": "Nadaj rolę administratora",
+        "demote": "Zmień na zwykłego użytkownika",
+        "deactivate": "Dezaktywuj",
+        "activate": "Aktywuj ponownie"
+      },
+      "confirm": {
+        "promote": {
+          "title": "Nadać rolę administratora?",
+          "body": "Konto {{name}} uzyska dostęp do zarządzania kontami i ustawieniami instancji. Administratorzy nigdy nie widzą danych finansowych innych użytkowników."
+        },
+        "demote": {
+          "title": "Odebrać rolę administratora?",
+          "body": "Konto {{name}} straci dostęp do administracji."
+        },
+        "deactivate": {
+          "title": "Dezaktywować konto?",
+          "body": "Konto {{name}} zostanie wylogowane ze wszystkich urządzeń i nie będzie mogło się zalogować do czasu ponownej aktywacji. Dane zostaną zachowane."
+        },
+        "activate": {
+          "title": "Aktywować konto ponownie?",
+          "body": "Konto {{name}} znów będzie mogło się zalogować."
+        }
+      }
+    }
   }
 }

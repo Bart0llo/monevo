@@ -36,15 +36,13 @@ Status markers: **[Accepted]** means fixed by the project brief or confirmed by 
 | ORM | **Prisma 7** with the `@prisma/adapter-pg` driver adapter | Raw SQL in migrations for CHECK constraints, partial indexes, composite FKs where Prisma's schema DSL is insufficient. Verify the exact major version at Stage 1. |
 | Database | **External PostgreSQL**, minimum major 16 **[Accepted]** ([ADR-0018](../decisions/ADR-0018-postgresql-16-minimum.md)) | Supported range, TLS, pooling, and the `pg_dump` client version are canonical in [postgresql.md](../infrastructure/postgresql.md). |
 | Decimal math | **decimal.js** (via `@monevo/domain` money wrapper) | Prisma's `Decimal` is decimal.js, so no conversion layer is needed. |
-| Password hashing | **argon2** (node-argon2, argon2id) | |
-| OIDC | **openid-client** (v6+) | Certified relying-party library. Authorization Code + PKCE. |
-| Sessions | Own thin layer over DB table + `crypto.randomBytes` tokens | See [ADR-0005](../decisions/ADR-0005-authentication-and-sessions.md). The alternative (better-auth) is recorded there. Confirm before Stage 2. |
+| OIDC | **openid-client** (v6) | Certified relying-party library. The only sign-in method: Authorization Code + PKCE (S256) against Account Center ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)). |
+| Sessions | Own thin layer over DB table + `crypto.randomBytes` tokens | See [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md) and [authentication.md](authentication.md#4-sessions). |
 | Security headers | helmet | |
 | Rate limiting | express-rate-limit (memory store, single process) | A Postgres-backed store if multi-instance ever happens. |
 | Realtime | **Socket.IO 4** | Path `/api/v1/realtime`. |
 | Jobs | **pg-boss** | Durable Postgres-backed queue and cron. No Redis. See [ADR-0013](../decisions/ADR-0013-scheduled-transactions-and-jobs.md). |
 | Logging | **pino** + pino-http | JSON to stdout, with redaction. |
-| Email (auth only) | **nodemailer** (SMTP) | Verification and password reset only. See [OQ-03](../planning/open-questions.md#oq-03-smtp-for-authentication-emails). |
 | Web Push | **web-push** (VAPID) | |
 | Uploads | **busboy** (streaming multipart) | Streams directly to the storage driver with byte counting. |
 | File type detection | **file-type** | Magic-number sniffing. |

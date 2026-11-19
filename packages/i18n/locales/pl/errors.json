@@ -1,8 +1,23 @@
 {
   "MALFORMED_REQUEST": "Nie udało się odczytać żądania.",
+  "UNAUTHENTICATED": "Zaloguj się, aby kontynuować.",
+  "API_TOKEN_EXPIRED": "Ten token API wygasł.",
+  "API_TOKEN_REVOKED": "Ten token API został unieważniony.",
+  "FORBIDDEN": "Nie masz do tego dostępu.",
+  "CSRF_INVALID": "Weryfikacja sesji nie powiodła się. Odśwież stronę i spróbuj ponownie.",
+  "REAUTH_REQUIRED": "Potwierdź swoją tożsamość, aby kontynuować.",
+  "ACCOUNT_DEACTIVATED": "To konto zostało dezaktywowane.",
+  "API_TOKEN_NOT_ALLOWED": "Tokenów API nie można do tego użyć.",
+  "API_TOKEN_PERMISSION_DENIED": "Ten token API nie ma wymaganego uprawnienia.",
   "NOT_FOUND": "Nie znaleziono.",
+  "VERSION_CONFLICT": "Dane zostały zmienione w innym miejscu. Odśwież i spróbuj ponownie.",
+  "LAST_ADMIN": "Nie można usunąć ostatniego aktywnego administratora.",
+  "ROLE_MANAGED_BY_IDP": "Role są zarządzane u dostawcy tożsamości.",
   "PAYLOAD_TOO_LARGE": "Żądanie jest zbyt duże.",
   "UNSUPPORTED_MEDIA_TYPE": "Ten typ zawartości nie jest obsługiwany.",
   "VALIDATION_FAILED": "Niektóre pola są nieprawidłowe.",
+  "API_TOKEN_LIMIT_REACHED": "Osiągnięto maksymalną liczbę aktywnych tokenów API.",
+  "PRECONDITION_REQUIRED": "Ta zmiana wymaga bieżącej wersji (If-Match).",
+  "RATE_LIMITED": "Zbyt wiele żądań. Odczekaj chwilę i spróbuj ponownie.",
   "INTERNAL": "Coś poszło nie tak. Spróbuj ponownie."
 }

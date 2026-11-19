@@ -1,0 +1,13 @@
+{
+  "name": "@monevo/mock-idp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Test-only mock OpenID Provider standing in for Account Center. Never use in production.",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./server.d.mts",
+      "default": "./server.mjs"
+    }
+  }
+}

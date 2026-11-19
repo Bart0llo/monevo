@@ -1,7 +1,12 @@
 import { expect, test } from '@playwright/test';
+import { signIn } from './support/auth.js';
 
 // Stage 1 smoke: the app shell loads, the theme and language switch, and the PWA is installable
-// (manifest and an active service worker).
+// (manifest and an active service worker). Since Stage 2 the shell needs a signed-in user.
+
+test.beforeEach(async ({ page }) => {
+  await signIn(page);
+});
 
 test('app shell loads with navigation', async ({ page }) => {
   await page.goto('/');
@@ -85,7 +90,9 @@ test('PWA manifest and service worker are in place', async ({ page, request }) =
   expect(scope).toBe(new URL('/', page.url()).href);
 });
 
-test('API and docs are served from the same origin', async ({ request }) => {
+test('API and docs are served from the same origin', async ({ playwright, baseURL }) => {
+  // A fresh, signed-out client: these endpoints are public.
+  const request = await playwright.request.newContext({ baseURL: baseURL ?? '' });
   const ready = await request.get('/api/v1/health/ready');
   expect(ready.status()).toBe(200);
   const docs = await request.get('/api/v1/docs/');
@@ -93,4 +100,5 @@ test('API and docs are served from the same origin', async ({ request }) => {
   const unknownApi = await request.get('/api/v1/nope');
   expect(unknownApi.status()).toBe(404);
   expect(unknownApi.headers()['content-type']).toContain('application/problem+json');
+  await request.dispose();
 });

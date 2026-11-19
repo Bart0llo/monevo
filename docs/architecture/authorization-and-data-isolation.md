@@ -46,7 +46,7 @@ Requests authenticated by a **personal API token** add a third, narrowing check:
 
 ## 3. Role checks
 
-- Middleware `requireRole('ADMIN')` on the admin router. Sensitive admin actions (deactivate user, change OIDC, restore backup, generate reset link) also require a recent authentication (≤ 15 min, otherwise `REAUTH_REQUIRED`).
+- Middleware `requireRole('ADMIN')` on the admin router. Sensitive admin actions (deactivate user, change a user's role, restore backup) also require a recent authentication (≤ 15 min, otherwise `REAUTH_REQUIRED`).
 - Role changes take effect on the next request (role is read from the DB with the session, not cached in a token).
 - Personal API tokens never reach admin routes, even when the owner is an admin.
 

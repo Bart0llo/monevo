@@ -42,9 +42,12 @@
   letter-spacing: -0.01em;
 }
 
+/* The rail, bars and tabs sit on Mantine components (AppShell, UnstyledButton) whose stylesheet can
+   load after this one in production builds, so their rules use a doubled class to win. */
+
 /* Desktop rail */
 
-.mv-rail {
+.mv-rail.mv-rail {
   display: flex;
   flex-direction: column;
   background: var(--mv-cover-bg);
@@ -73,14 +76,16 @@
   list-style: none;
 }
 
-/* Secondary sections start a new group, and the system group sits at the bottom of the rail. */
+/* Secondary sections start a new group below a divider. The system group (Settings, and
+   Administration for admins) is pinned to the bottom of the rail: only its first item takes the
+   free space, so the rest stack directly under it with the regular item gap. */
 .mv-rail-item[data-group='primary'] + .mv-rail-item[data-group='secondary'] {
   margin-top: 0.75rem;
   padding-top: 0.75rem;
   border-top: 1px solid var(--mv-cover-border);
 }
 
-.mv-rail-item[data-group='system'] {
+.mv-rail-item:not([data-group='system']) + .mv-rail-item[data-group='system'] {
   margin-top: auto;
   padding-top: 0.75rem;
 }
@@ -153,7 +158,7 @@
 
 /* Mobile top bar */
 
-.mv-top-bar {
+.mv-top-bar.mv-top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -171,7 +176,7 @@
 
 /* Mobile bottom bar */
 
-.mv-bottom-bar {
+.mv-bottom-bar.mv-bottom-bar {
   box-sizing: content-box;
   padding-bottom: env(safe-area-inset-bottom);
   background: var(--mv-cover-bg);
@@ -186,7 +191,7 @@
   list-style: none;
 }
 
-.mv-tab {
+.mv-tab.mv-tab {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -217,7 +222,7 @@
   white-space: nowrap;
 }
 
-.mv-tab[data-active] {
+.mv-tab.mv-tab[data-active] {
   color: var(--mv-cover-fg-strong);
 }
 
@@ -232,7 +237,7 @@
 /* "More" sheet */
 
 .mv-sheet.mv-sheet {
-  flex: 0 0 auto;
+  flex: 0 0 100%;
   height: auto;
   max-height: 85dvh;
   border-radius: var(--mantine-radius-lg) var(--mantine-radius-lg) 0 0;
@@ -247,6 +252,13 @@
   margin: 0 0 0.5rem;
   padding: 0;
   list-style: none;
+}
+
+/* The system group (Settings, Administration) starts below a divider, as on the desktop rail. */
+.mv-sheet-item:not([data-group='system']) + .mv-sheet-item[data-group='system'] {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid var(--mantine-color-default-border);
 }
 
 .mv-sheet-link {

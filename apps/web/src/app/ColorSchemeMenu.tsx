@@ -1,7 +1,7 @@
 import { ActionIcon, Menu, useMantineColorScheme, type MantineColorScheme } from '@mantine/core';
 import { IconCheck, IconDeviceDesktop, IconMoon, IconSun } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
-import type { MenuControlProps } from './menuControl';
+import type { ColorSchemeMenuProps } from './menuControl';
 
 const OPTIONS = [
   { value: 'light', labelKey: 'theme.light', icon: IconSun },
@@ -13,7 +13,11 @@ const OPTIONS = [
   icon: unknown;
 }[];
 
-export function ColorSchemeMenu({ className, position = 'bottom-end' }: MenuControlProps) {
+export function ColorSchemeMenu({
+  className,
+  position = 'bottom-end',
+  onChange,
+}: ColorSchemeMenuProps) {
   const { t } = useTranslation();
   const { colorScheme, setColorScheme } = useMantineColorScheme();
   const current = OPTIONS.find((option) => option.value === colorScheme) ?? OPTIONS[2];
@@ -33,7 +37,10 @@ export function ColorSchemeMenu({ className, position = 'bottom-end' }: MenuCont
             key={value}
             leftSection={<OptionIcon size={16} stroke={1.5} />}
             rightSection={value === colorScheme ? <IconCheck size={14} /> : null}
-            onClick={() => setColorScheme(value)}
+            onClick={() => {
+              setColorScheme(value);
+              onChange?.(value);
+            }}
           >
             {t(labelKey)}
           </Menu.Item>

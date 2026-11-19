@@ -41,11 +41,21 @@ services:
       timeout: 3s
       retries: 20
 
-  mailpit:
-    image: axllent/mailpit:v1.27
+  mock-idp:
+    # Test-only mock OpenID Provider standing in for Account Center (tools/mock-idp). Never production.
+    image: node:24-alpine
+    command: ['node', '/mock-idp/server.mjs']
+    environment:
+      MOCK_IDP_PORT: '9400'
+      MOCK_IDP_ISSUER: http://localhost:9400
+      MOCK_IDP_CLIENT_ID: monevo-dev
+      MOCK_IDP_CLIENT_SECRET: monevo-dev-secret
+      MOCK_IDP_REDIRECT_URIS: http://localhost:5173/api/v1/auth/oidc/callback
+      MOCK_IDP_POST_LOGOUT_REDIRECT_URIS: http://localhost:5173/login
+    volumes:
+      - ./tools/mock-idp:/mock-idp:ro
     ports:
-      - '127.0.0.1:1025:1025'
-      - '127.0.0.1:8025:8025'
+      - '127.0.0.1:9400:9400'
 
 volumes:
   db:

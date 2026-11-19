@@ -23,13 +23,12 @@ Rules:
 
 | Variable | Default | Required | Description |
 |---|---|---|---|
-| `APP_URL` | none | **yes** | Public base URL, e.g. `https://money.example.com`. Used for OIDC redirect URIs, links in emails and push, cookie security decisions, and the PWA manifest scope. Must be `https://` unless `INSECURE_COOKIES=true`. |
+| `APP_URL` | none | **yes** | Public base URL, e.g. `https://money.example.com`. Used for the OIDC redirect URIs (`<APP_URL>/api/v1/auth/oidc/callback`, `<APP_URL>/login`), links in push notifications, cookie security decisions, and the PWA manifest scope. Must be `https://` unless `INSECURE_COOKIES=true`. |
 | `PORT` | `3000` | no | HTTP port inside the container. |
 | `NODE_ENV` | `production` (image) | no | Set by the image. Development tooling sets `development`/`test`. |
 | `TZ` | `UTC` | no | Container time zone. Only affects server-time job schedules (e.g. `insights.detect` at 03:00) and log timestamps' display; all user-facing dates use the user's time zone. Leave at UTC unless there is a reason. |
-| `APP_ENCRYPTION_KEY` *(secret)* | none | **yes** | 32 random bytes, base64. Encrypts secrets stored in `app_settings` (AES-256-GCM). Generate with the CLI `generate-key`. **Losing it makes stored secrets unreadable** (re-enter the OIDC secret; VAPID keys are regenerated, which invalidates push subscriptions). Keep it with the backups, but not inside them ([backups-and-restoration.md](backups-and-restoration.md#what-is-not-in-a-backup)). |
+| `APP_ENCRYPTION_KEY` *(secret)* | none | **yes** | 32 random bytes, base64. Encrypts secrets stored in `app_settings` and the IdP refresh tokens stored with sessions (AES-256-GCM), and keys the encrypted OIDC state cookie (via HKDF). Generate with the CLI `generate-key`. **Losing or changing it makes stored secrets unreadable** (sessions fail IdP revalidation and users sign in again; VAPID keys are regenerated, which invalidates push subscriptions). Keep it with the backups, but not inside them ([backups-and-restoration.md](backups-and-restoration.md#what-is-not-in-a-backup)). |
 | `LOG_LEVEL` | `info` | no | `fatal`, `error`, `warn`, `info`, `debug`, `trace` ([monitoring-and-logging.md](monitoring-and-logging.md)). |
-| `BOOTSTRAP_ADMIN_EMAIL` | none | no | If set and no user exists, the first registration or OIDC login with this email becomes ADMIN, and open first-user registration is disabled for any other email ([authentication.md](../architecture/authentication.md#7-admin-bootstrap)). |
 
 ### Database
 
@@ -47,8 +46,6 @@ Rules:
 | `CORS_ALLOWED_ORIGINS` | empty (CORS off) | no | Comma-separated origins for future external web clients. Credentials are never allowed cross-origin ([security.md](../architecture/security.md#cors)). |
 | `API_DOCS_ENABLED` | `true` | no | Serves `/api/v1/docs` and `/api/v1/openapi.json`. The OpenAPI document contains no secrets; disable to reduce surface. |
 | `HTTP_COMPRESSION` | `false` | no | Enables in-app `compression`. Normally the reverse proxy compresses. |
-| `SESSION_IDLE_DAYS` | `30` | no | Session idle timeout ([authentication.md](../architecture/authentication.md)). |
-| `SESSION_ABSOLUTE_DAYS` | `90` | no | Session absolute lifetime. Must be ≥ `SESSION_IDLE_DAYS`. |
 
 ### Storage
 
@@ -76,28 +73,22 @@ Rules:
 | `MONEVO_SKIP_PRE_UPGRADE_BACKUP` | `false` | no | One-off override: skip the automatic pre-upgrade backup on this start ([backups-and-restoration.md](backups-and-restoration.md#pre-upgrade-backup)). Remove it again afterwards. |
 | `BACKUP_S3_ENDPOINT`, `BACKUP_S3_REGION`, `BACKUP_S3_BUCKET`, `BACKUP_S3_PREFIX`, `BACKUP_S3_ACCESS_KEY_ID` *(secret)*, `BACKUP_S3_SECRET_ACCESS_KEY` *(secret)*, `BACKUP_S3_FORCE_PATH_STYLE` | none / `us-east-1` / none / `monevo/` / none / none / `true` | no | Optional off-site copy target. When set, they lock the runtime setting `backups.remote`. It should be a different bucket (ideally a different host) than attachment storage. |
 
-### Email (authentication only)
-
-| Variable | Default | Required | Description |
-|---|---|---|---|
-| `SMTP_HOST` | none | no | Enables verification and password-reset emails. Without it, see [OQ-03](../planning/open-questions.md#oq-03-smtp-for-authentication-emails). SMTP is configured **only** by environment. |
-| `SMTP_PORT` | `587` | no | |
-| `SMTP_SECURE` | `false` | no | `true` = implicit TLS (port 465). With `false`, STARTTLS is required when the server offers it. |
-| `SMTP_USER` | none | no | |
-| `SMTP_PASSWORD` *(secret)* | none | no | |
-| `SMTP_FROM` | `Monevo <no-reply@{APP_URL host}>` | no | |
-
 ### OIDC
 
+Authentication is OIDC-only with one identity provider, normally Account Center ([authentication.md](../architecture/authentication.md), [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)). It is configured **only** by environment; there is no admin form. Register Monevo in the IdP with the redirect URI `<APP_URL>/api/v1/auth/oidc/callback` and the post-logout redirect URI `<APP_URL>/login` ([deployment.md](deployment.md#registering-monevo-in-account-center)).
+
 | Variable | Default | Required | Description |
 |---|---|---|---|
-| `OIDC_ISSUER` | none | no | When set, OIDC is configured by environment and the admin OIDC form is read-only ([authentication.md](../architecture/authentication.md)). |
-| `OIDC_CLIENT_ID` | none | with issuer | |
-| `OIDC_CLIENT_SECRET` *(secret)* | none | with issuer | Public clients (PKCE only) are allowed by leaving it empty. |
-| `OIDC_SCOPES` | `openid email profile` | no | |
-| `OIDC_DISPLAY_NAME` | `Single sign-on` | no | Login button label. |
+| `OIDC_ISSUER` | none | **yes** | Issuer URL of the IdP (Account Center's `APP_URL`); discovery is read from `<issuer>/.well-known/openid-configuration`. Must be `https://` unless `INSECURE_COOKIES=true`. |
+| `OIDC_CLIENT_ID` | none | **yes** | Client ID of the Monevo application registered in the IdP. |
+| `OIDC_CLIENT_SECRET` *(secret)* | none | no | Client secret (confidential client, `client_secret_basic`; recommended). Empty → public client with PKCE only. |
+| `OIDC_SCOPES` | `openid profile email groups` | no | Space-separated; must include `openid`. `groups` is needed for `OIDC_ADMIN_GROUP` (and the group must be exposed to the application in Account Center). |
+| `OIDC_ADMIN_GROUP` | none | no | When set, users whose `groups` claim contains this group are ADMIN and everyone else is USER, synced at every sign-in and revalidation; roles cannot be changed in Monevo. When unset, the first provisioned user becomes ADMIN ([authentication.md](../architecture/authentication.md#7-admin-bootstrap)). |
+| `OIDC_DISPLAY_NAME` | `Account Center` | no | Provider name on the login button ("Sign in with …"). |
+| `SESSION_IDLE_DAYS` | `30` | no | Session idle timeout ([authentication.md](../architecture/authentication.md#4-sessions)). |
+| `SESSION_ABSOLUTE_DAYS` | `90` | no | Session absolute lifetime. Must be ≥ `SESSION_IDLE_DAYS`. |
 
-`allowAutoProvision` and `allowEmailLinking` remain runtime settings (default off) even when OIDC is env-configured.
+Monevo sends no email, so there are no SMTP variables ([OQ-03](../planning/open-questions.md#oq-03-smtp-for-authentication-emails)).
 
 ### Push, rates, sync
 
@@ -126,27 +117,23 @@ These are baked into the image at build time. Operators do not set them; they ar
 |---|---|---|---|
 | `VITE_PWA_DEV` | unset | no | Web dev server only (`apps/web`, read by Vite). `true` enables the service worker under `pnpm dev`; it is never in the production image. |
 | `TEST_DATABASE_URL`, `TESTCONTAINERS` | see [development-setup.md](../development/development-setup.md) | no | Integration-test database selection. |
+| `MOCK_IDP_PORT`, `MOCK_IDP_ISSUER`, `MOCK_IDP_CLIENT_ID`, `MOCK_IDP_CLIENT_SECRET`, `MOCK_IDP_REDIRECT_URIS`, `MOCK_IDP_POST_LOGOUT_REDIRECT_URIS` | `9400`, `http://localhost:9400`, `monevo-dev`, `monevo-dev-secret`, `http://localhost:5173/api/v1/auth/oidc/callback`, `http://localhost:5173/login` | no | The test-only mock OpenID Provider (`tools/mock-idp`) used in development and E2E ([development-setup.md](../development/development-setup.md)); URI lists are comma-separated. Never read by the application. |
 | `RELEASE_MODE`, `IMAGE_*`, `GHCR_TOKEN`, `GHCR_USERNAME`, `YES`, and the other release tooling variables | see [releasing.md](../development/releasing.md#variables) | no | Release tooling only (`make` targets); never read by the application. |
 
 <a id="runtime-settings-app_settings"></a>
 
 ## 3. Runtime settings (app_settings)
 
-One `app_settings` row per key; the value is JSONB validated by the key's Zod schema ([data-model.md](../data/data-model.md#app_settings)). Unknown keys are ignored; a missing key means "use the default". The admin UI groups these as described in [administration.md](../architecture/administration.md#settings-r-adm-02-r-adm-04-r-gen-06).
+One `app_settings` row per key; the value is JSONB validated by the key's Zod schema ([data-model.md](../data/data-model.md#app_settings)). Unknown keys are ignored; a missing key means "use the default". The admin UI groups these as described in [administration.md](../architecture/administration.md#settings-r-adm-02-r-gen-06).
 
 | Key | Type / shape | Default | Locked by env |
 |---|---|---|---|
-| `registration.mode` | `OPEN` \| `DISABLED` | `OPEN` until the first admin exists, then set to `DISABLED` once | n/a |
-| `registration.emailVerificationRequired` | bool | `false` (forced `false` without SMTP) | n/a |
 | `storage.defaultQuotaBytes` | int | 1 GiB | `DEFAULT_USER_QUOTA_BYTES` |
 | `storage.maxUploadBytes` | int ≤ `MAX_UPLOAD_BYTES` | `MAX_UPLOAD_BYTES` | n/a |
 | `branding.instanceName` | string ≤ 60 | `Monevo` | n/a |
 | `branding.logo` | `{ mime: png\|webp, dataBase64 }` ≤ 256 KB | none (built-in logo) | n/a |
 | `branding.accentColor` | hex color, contrast-checked against both themes | Mantine primary of the built-in theme | n/a |
 | `rates.provider` | `frankfurter` \| `nbp` | `frankfurter` | `RATE_PROVIDER` |
-| `oidc` | `{ issuer, clientId, clientSecret (encrypted), scopes, displayName }` | not configured | `OIDC_*` |
-| `oidc.allowAutoProvision` | bool | `false` | n/a |
-| `oidc.allowEmailLinking` | bool | `false` | n/a |
 | `backups.enabled` | bool | `true` | n/a |
 | `backups.schedule` | 5-field cron in the container time zone | `30 2 * * *` (daily 02:30) | n/a |
 | `backups.retention` | `{ keepLast: int ≥ 1, maxAgeDays: int? }` | `{ keepLast: 7, maxAgeDays: 30 }` | n/a |
@@ -172,6 +159,9 @@ A documented example ships as `.env.example` in Stage 1. Minimum for a working i
 APP_URL=https://money.example.com
 APP_ENCRYPTION_KEY=<output of: docker compose run --rm app node dist/cli.js generate-key>
 DATABASE_URL=postgresql://monevo:<password>@<db-host>:5432/monevo?sslmode=verify-full&sslrootcert=/run/secrets/postgres-ca.pem
+OIDC_ISSUER=https://accounts.example.com
+OIDC_CLIENT_ID=monevo
+OIDC_CLIENT_SECRET=<client secret from Account Center>
 ```
 
 ## 5. Testing

@@ -67,15 +67,15 @@ CREATE DATABASE monevo OWNER monevo ENCODING 'UTF8' TEMPLATE template0;
 
 ## Extensions
 
-Monevo uses only three extensions from the standard PostgreSQL distribution ([database-architecture.md](../architecture/database-architecture.md#1-conventions)):
+Monevo may use only these three extensions from the standard PostgreSQL distribution ([database-architecture.md](../architecture/database-architecture.md#1-conventions)):
 
 | Extension | Used for | Justification |
 |---|---|---|
-| `citext` | Case-insensitive unique `users.email` | Correct uniqueness without application-side normalization rules |
+| `citext` | Not used at present: since [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md) `users.email` is an informational, non-unique copy of the IdP claim | Kept on the allowed list for case-insensitive keys if one is needed later |
 | `pg_trgm` | Trigram GIN index for "contains" search on transaction descriptions | Fast substring search; there is no core alternative |
 | `unaccent` | Accent-insensitive search (Polish text) | Needed together with `pg_trgm` for usable search in `pl` |
 
-All three are marked **trusted** in every supported major, so the owning role can create them without superuser rights. Migrations run `CREATE EXTENSION IF NOT EXISTS`. If a provider restricts extensions, the database administrator creates them beforehand and the migration step is a no-op. Adding another extension needs a written justification in [database-architecture.md](../architecture/database-architecture.md) and an entry here.
+`pg_trgm` and `unaccent` arrive with transaction search (Stage 4). All three are marked **trusted** in every supported major, so the owning role can create them without superuser rights. Migrations run `CREATE EXTENSION IF NOT EXISTS`. If a provider restricts extensions, the database administrator creates them beforehand and the migration step is a no-op. Adding another extension needs a written justification in [database-architecture.md](../architecture/database-architecture.md) and an entry here.
 
 ## Backup client tools
 

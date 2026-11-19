@@ -34,20 +34,23 @@ Rules for every stage:
 
 ## Stage 2: Identity and users
 
-- **Objective:** users can register, log in, manage sessions and settings; admins can manage users; isolation is enforced and tested from the first owned table.
-- **Prerequisites:** Stage 1; [OQ-03](open-questions.md#oq-03-smtp-for-authentication-emails), [OQ-06](open-questions.md#oq-06-authentication-implementation), [OQ-22](open-questions.md#oq-22-api-token-permission-catalogue-and-lifecycle) resolved.
+**Status:** completed, awaiting acceptance (OIDC-only via Account Center, [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)). `pnpm validate` and `pnpm test:e2e` passed locally on 2026-11-19.
+
+- **Objective:** users sign in through Account Center (OIDC-only), manage sessions, settings and personal API tokens; admins can manage users; isolation is enforced and tested from the first owned table.
+- **Prerequisites:** Stage 1; [OQ-03](open-questions.md#oq-03-smtp-for-authentication-emails), [OQ-06](open-questions.md#oq-06-authentication-implementation), [OQ-22](open-questions.md#oq-22-api-token-permission-catalogue-and-lifecycle) resolved. Scope changed on 2026-11-19 to OIDC-only ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)); OIDC moved here from the removed Stage 14.
 - **Features and deliverables:**
-  - Local registration and login (argon2id), sessions (cookie + Bearer), CSRF, rate limits, logout, session list and revocation, password change ([authentication.md](../architecture/authentication.md)).
-  - The complete account model, OIDC-ready but without OIDC login: `user_identities` table, nullable `passwordHash`, `Session.authMethod` ([authentication.md](../architecture/authentication.md#1-account-model), extensibility rule).
-  - SMTP flows: email verification, password reset, email change; admin-generated reset link fallback.
-  - First-user admin bootstrap, CLI `create-admin`, `reset-password-link`, `set-role`, `generate-key`; `BOOTSTRAP_ADMIN_EMAIL`.
-  - Admin: users list, activate/deactivate (revokes sessions), roles, registration mode, recent-auth requirement ([administration.md](../architecture/administration.md)).
+  - OIDC login with `openid-client` (Authorization Code + PKCE S256, state, nonce, encrypted state cookie), automatic provisioning keyed by `(issuer, sub)`, deactivated-user rejection, re-authentication with `prompt=login`, IdP revalidation by refresh grant, RP-initiated logout ([authentication.md](../architecture/authentication.md)). Configuration through `OIDC_*` environment variables only ([configuration.md](../infrastructure/configuration.md#oidc)).
+  - Account model: `users`, `user_identities`, `sessions` ([authentication.md](../architecture/authentication.md#1-account-model)). Sessions (cookie only), CSRF, rate limits, logout, session list and revocation.
+  - Roles: `OIDC_ADMIN_GROUP` mapping or first-user admin; CLI `set-role`, `list-users`, `generate-key`.
+  - Admin: users list, activate/deactivate (revokes sessions and tokens), roles, recent-auth requirement, read-only identity provider status ([administration.md](../architecture/administration.md)).
   - `user_settings` and onboarding (language, time zone, base currency selection), settings screen.
   - Personal API tokens ([api-tokens.md](../architecture/api-tokens.md)): `api_tokens` table, token authentication path, permission framework (catalogue in `@monevo/contracts`, `x-monevo-permissions` in OpenAPI, the never-available list), management endpoints and Settings → API tokens screen, `apiToken` security scheme and "Authenticating integrations" API docs. `profile:read` is the first token-enabled permission; each later stage adds the permissions of its own routes.
+  - Job `sessions.purge` (old sessions and tokens).
   - Isolation test harness iterating the OpenAPI registry (session and token authentication); admin-route 403 suite; API token permission suite.
-- **Tests:** auth flows (integration, Mailpit in E2E), session expiry with an injected clock, CSRF, rate limit, last-admin protection, isolation harness self-test, API token lifecycle (create, use, expire, revoke, deactivation) and permission suite self-test.
-- **Acceptance criteria:** two users on one instance cannot see each other's settings, sessions, or API tokens; a deactivated user is logged out everywhere and their tokens stop working; password reset works with and without SMTP; a token is shown once, works only within its permissions, and fails immediately after revocation; a token cannot reach admin, session, or password endpoints.
-- **Requirements:** R-AUTH-01..04, R-AUTH-07..09, R-ADM-01, R-ADM-05, R-GEN-04, R-GEN-08, R-GEN-09, R-SEC-01..03, R-TOK-01..09 (framework; per-resource permissions follow in later stages).
+  - Mock OpenID Provider for tests (`tools/mock-idp`).
+- **Tests:** OIDC flows against the mock IdP (integration: login and provisioning, resolution by `iss` + `sub` and never by email, state/nonce mismatch, wrong signature, key rotation, deactivated login, admin group mapping, first-user admin, re-authentication, revalidation success / `invalid_grant` / IdP down, logout URL), session expiry with an injected clock, CSRF, rate limit, last-admin protection, isolation harness self-test, API token lifecycle (create, use, expire, revoke, deactivation) and permission suite self-test; E2E auth journey through the mock IdP.
+- **Acceptance criteria:** signing in through the IdP creates the user on first login and reuses it afterwards; two users on one instance cannot see each other's settings, sessions, or API tokens; a deactivated user is logged out everywhere and their tokens stop working; a session ends after the IdP revokes the grant; a token is shown once, works only within its permissions, and fails immediately after revocation; a token cannot reach admin, auth, session, or token-management endpoints. Verification against a real Account Center instance is a manual acceptance step.
+- **Requirements:** R-AUTH-01..09, R-ADM-01, R-ADM-04, R-ADM-05, R-GEN-04, R-GEN-08, R-GEN-09, R-SEC-01..03, R-TOK-01..09 (framework; per-resource permissions follow in later stages).
 
 ## Stage 3: Currencies, rates, accounts and categories
 
@@ -150,12 +153,7 @@ Rules for every stage:
 
 ## Stage 14: OIDC
 
-- **Objective:** one configurable OIDC provider with account linking. Can be scheduled any time after Stage 2.
-- **Prerequisites:** Stage 2.
-- **Features and deliverables:** OIDC login with PKCE/state/nonce, admin configuration (env or UI), test connection, auto-provisioning and email-linking switches, linking from settings ([authentication.md](../architecture/authentication.md)).
-- **Tests:** mock issuer integration (valid, wrong nonce, wrong audience, unverified email), linking rules, issuer change handling.
-- **Acceptance criteria:** login via a real provider (e.g. Authelia or Keycloak) works on the deployed instance.
-- **Requirements:** R-AUTH-05, R-AUTH-06, R-ADM-04.
+**Removed** (2026-11-19, [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)): OIDC moved into [Stage 2](#stage-2-identity-and-users) as the only authentication method. The heading stays so that stage numbers and links do not change.
 
 ## Stage 15: Backups, restore and admin operations
 
@@ -169,7 +167,7 @@ Rules for every stage:
 ## Stage 16: Hardening and v1.0
 
 - **Objective:** release quality.
-- **Prerequisites:** Stages 1–15; [OQ-16](open-questions.md#oq-16-user-account-deletion), [OQ-17](open-questions.md#oq-17-license) resolved.
+- **Prerequisites:** Stages 1–15 (Stage 14 removed); [OQ-16](open-questions.md#oq-16-user-account-deletion), [OQ-17](open-questions.md#oq-17-license) resolved.
 - **Features and deliverables:** security review against [security.md](../architecture/security.md), accessibility audit (axe, keyboard, screen reader spot checks), performance pass (list virtualization, query plans for 50k transactions), full E2E journey set ([testing-strategy.md](../development/testing-strategy.md#e2e-journeys-minimum-set-for-v10)), operator README, release notes, multi-arch images.
 - **Tests:** full suite; dependency and image scans; upgrade test from the previous release.
 - **Acceptance criteria:** all journeys pass; no high-severity findings open; the user accepts v1.0.

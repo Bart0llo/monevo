@@ -34,7 +34,7 @@ Every document uses the same markers to keep requirements, decisions, and ideas 
 - [architecture/frontend-architecture.md](architecture/frontend-architecture.md): React/Mantine app, local DB, state, PWA
 - [architecture/database-architecture.md](architecture/database-architecture.md): PostgreSQL/Prisma conventions, constraints, migrations
 - [architecture/api-design.md](architecture/api-design.md): REST conventions, errors, pagination, idempotency, OpenAPI, realtime
-- [architecture/authentication.md](architecture/authentication.md): local auth, OIDC, sessions, account linking
+- [architecture/authentication.md](architecture/authentication.md): OIDC-only sign-in with Account Center, provisioning, sessions
 - [architecture/api-tokens.md](architecture/api-tokens.md): personal API tokens, permissions, integration authentication
 - [architecture/authorization-and-data-isolation.md](architecture/authorization-and-data-isolation.md): ownership enforcement, admin separation
 - [architecture/financial-domain-model.md](architecture/financial-domain-model.md): transactions, postings, transfers, pots, goals

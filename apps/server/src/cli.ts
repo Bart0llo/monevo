@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
@@ -14,9 +15,10 @@ import {
 } from './infra/database.js';
 import { createLogger, type Logger } from './infra/logger.js';
 import { createPrismaClient, type PrismaClient } from './infra/prisma.js';
+import { findUser, listAllUsers, setUserRole, withAdminGuard } from './modules/users/index.js';
 
-// Operator CLI: `node dist/cli.js <command>`. Stage 1 ships `migrate` only (run by the container
-// entrypoint, docker-compose.md#entrypoint). Further commands arrive with their stages.
+// Operator CLI: `node dist/cli.js <command>` (administration.md#cli). `migrate` is run by the
+// container entrypoint (docker-compose.md#entrypoint). Further commands arrive with their stages.
 
 const DB_WAIT_MS = 60_000;
 const DB_RETRY_MS = 2_000;
@@ -90,12 +92,106 @@ async function migrate(): Promise<number> {
   return code;
 }
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function withPrisma<T>(
+  work: (prisma: PrismaClient, logger: Logger) => Promise<T>,
+): Promise<T> {
+  const config = loadConfig();
+  const logger = createLogger({ level: config.logLevel, nodeEnv: config.nodeEnv });
+  const prisma = createPrismaClient({ databaseUrl: config.databaseUrl, poolSize: 1 });
+  try {
+    return await work(prisma, logger);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+async function listUsersCommand(): Promise<number> {
+  return withPrisma(async (prisma) => {
+    const users = await listAllUsers(prisma);
+    const rows = users.map((user) => ({
+      id: user.id,
+      displayName: user.displayName,
+      email: user.email ?? '',
+      role: user.role,
+      status: user.status,
+      issuer: user.identities.map((identity) => identity.issuer).join(' '),
+      subject: user.identities.map((identity) => identity.subject).join(' '),
+    }));
+    if (rows.length === 0) process.stdout.write('No users.\n');
+    else console.table(rows);
+    return 0;
+  });
+}
+
+async function setRoleCommand(userId: string, role: string): Promise<number> {
+  if (!UUID_PATTERN.test(userId)) {
+    process.stderr.write('--user-id must be a UUID (see `list-users`).\n');
+    return 1;
+  }
+  if (role !== 'ADMIN' && role !== 'USER') {
+    process.stderr.write('--role must be ADMIN or USER.\n');
+    return 1;
+  }
+  const config = loadConfig();
+  if (config.oidc.adminGroup !== undefined) {
+    process.stderr.write(
+      `Roles are managed by the identity provider (OIDC_ADMIN_GROUP=${config.oidc.adminGroup}). Change the group membership in the identity provider instead.\n`,
+    );
+    return 1;
+  }
+  return withPrisma(async (prisma, logger) => {
+    const user = await findUser(prisma, userId);
+    if (!user) {
+      process.stderr.write(`No user with id ${userId}.\n`);
+      return 1;
+    }
+    const result = await withAdminGuard(prisma, role === 'USER' ? userId : undefined, (tx) =>
+      setUserRole(tx, userId, role),
+    );
+    if (result === 'LAST_ADMIN') {
+      process.stderr.write('Refused: this would leave the instance without an active admin.\n');
+      return 1;
+    }
+    logger.info(
+      { event: 'admin.action', action: 'user.role.set', actor: 'cli', targetUserId: userId, role },
+      'admin action: user.role.set',
+    );
+    process.stdout.write(`Role of ${userId} set to ${role}.\n`);
+    return 0;
+  });
+}
+
 const program = new Command('monevo').description('Monevo operator commands');
 program
   .command('migrate')
   .description('Wait for the database, check its version, and apply pending migrations')
   .action(async () => {
     process.exitCode = await migrate();
+  });
+
+program
+  .command('list-users')
+  .description('Print every user with id, display name, email, role, status, issuer and subject')
+  .action(async () => {
+    process.exitCode = await listUsersCommand();
+  });
+
+program
+  .command('set-role')
+  .description('Set a user role (refused when OIDC_ADMIN_GROUP is set)')
+  .requiredOption('--user-id <uuid>', 'user id (see list-users)')
+  .requiredOption('--role <role>', 'ADMIN or USER')
+  .action(async (options: { userId: string; role: string }) => {
+    process.exitCode = await setRoleCommand(options.userId, options.role);
+  });
+
+program
+  .command('generate-key')
+  .description('Print a new random APP_ENCRYPTION_KEY (32 bytes, base64)')
+  .action(() => {
+    process.stdout.write(`${randomBytes(32).toString('base64')}\n`);
   });
 
 program.parseAsync(process.argv).catch((error: unknown) => {

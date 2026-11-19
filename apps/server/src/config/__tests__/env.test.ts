@@ -8,6 +8,9 @@ const BASE = {
   APP_URL: 'https://money.example.com',
   APP_ENCRYPTION_KEY: KEY,
   DATABASE_URL: 'postgresql://monevo:secret@db:5432/monevo',
+  OIDC_ISSUER: 'https://accounts.example.com',
+  OIDC_CLIENT_ID: 'monevo',
+  OIDC_CLIENT_SECRET: 'client-secret',
 } as const;
 
 const noFiles = (path: string): string => {
@@ -39,6 +42,44 @@ describe('loadConfig', () => {
     expect(config.corsAllowedOrigins).toEqual([]);
     expect(config.apiDocsEnabled).toBe(true);
     expect(config.httpCompression).toBe(false);
+    expect(config.oidc).toEqual({
+      issuer: 'https://accounts.example.com',
+      clientId: 'monevo',
+      clientSecret: 'client-secret',
+      scopes: ['openid', 'profile', 'email', 'groups'],
+      adminGroup: undefined,
+      displayName: 'Account Center',
+      redirectUri: 'https://money.example.com/api/v1/auth/oidc/callback',
+      postLogoutRedirectUri: 'https://money.example.com/login',
+    });
+    expect(config.session).toEqual({ idleDays: 30, absoluteDays: 90 });
+  });
+
+  it('treats an empty client secret as a public client', () => {
+    const config = loadConfig({ ...BASE, OIDC_CLIENT_SECRET: '' }, noFiles);
+    expect(config.oidc.clientSecret).toBeUndefined();
+  });
+
+  it('parses explicit OIDC and session values', () => {
+    const config = loadConfig(
+      {
+        ...BASE,
+        OIDC_ISSUER: 'https://accounts.example.com/realm/',
+        OIDC_SCOPES: 'openid  profile openid',
+        OIDC_ADMIN_GROUP: ' Monevo-Admins ',
+        OIDC_DISPLAY_NAME: 'Family IdP',
+        SESSION_IDLE_DAYS: '7',
+        SESSION_ABSOLUTE_DAYS: '7',
+      },
+      noFiles,
+    );
+    expect(config.oidc).toMatchObject({
+      issuer: 'https://accounts.example.com/realm/',
+      scopes: ['openid', 'profile'],
+      adminGroup: 'Monevo-Admins',
+      displayName: 'Family IdP',
+    });
+    expect(config.session).toEqual({ idleDays: 7, absoluteDays: 7 });
   });
 
   it('treats empty strings as unset for optional variables', () => {
@@ -61,6 +102,7 @@ describe('loadConfig', () => {
         TRUST_PROXY: '1',
         INSECURE_COOKIES: 'true',
         APP_URL: 'http://localhost:5173',
+        OIDC_ISSUER: 'http://localhost:9400',
         CORS_ALLOWED_ORIGINS: 'https://a.example.com, http://localhost:4000',
         API_DOCS_ENABLED: 'false',
         HTTP_COMPRESSION: 'true',
@@ -82,7 +124,9 @@ describe('loadConfig', () => {
 
   it('reports every missing required variable at once, by name', () => {
     const problems = problemsOf({});
-    expect(problems).toHaveLength(3);
+    expect(problems).toHaveLength(5);
+    expect(problems.join('\n')).toMatch(/OIDC_ISSUER: is required/);
+    expect(problems.join('\n')).toMatch(/OIDC_CLIENT_ID: is required/);
     expect(problems.join('\n')).toMatch(/APP_URL: is required/);
     expect(problems.join('\n')).toMatch(/APP_ENCRYPTION_KEY: is required/);
     expect(problems.join('\n')).toMatch(/DATABASE_URL: is required/);
@@ -105,6 +149,13 @@ describe('loadConfig', () => {
     ['API_DOCS_ENABLED', '1'],
     ['CORS_ALLOWED_ORIGINS', 'https://a.example.com/path'],
     ['CORS_ALLOWED_ORIGINS', '*'],
+    ['OIDC_ISSUER', 'not a url'],
+    ['OIDC_ISSUER', 'http://accounts.example.com'],
+    ['OIDC_CLIENT_ID', ' '],
+    ['OIDC_SCOPES', 'profile email'],
+    ['OIDC_DISPLAY_NAME', 'x'.repeat(61)],
+    ['SESSION_IDLE_DAYS', '0'],
+    ['SESSION_ABSOLUTE_DAYS', '29'],
   ])('%s=%j produces a message naming the variable', (name, value) => {
     const problems = problemsOf({ ...BASE, [name]: value });
     expect(problems).toHaveLength(1);
@@ -125,6 +176,7 @@ describe('loadConfig', () => {
       ...BASE,
       APP_ENCRYPTION_KEY: 'c2VjcmV0LXZhbHVl',
       DATABASE_URL: 'mysql://user:hunter2@h/d',
+      OIDC_CLIENT_SECRET_FILE: '/run/secrets/oidc',
     }).join('\n');
     expect(message).not.toContain('c2VjcmV0LXZhbHVl');
     expect(message).not.toContain('hunter2');
@@ -134,6 +186,7 @@ describe('loadConfig', () => {
     const files: Record<string, string> = {
       '/run/secrets/key': `${KEY}\n`,
       '/run/secrets/db': 'postgresql://monevo:from-file@db:5432/monevo\r\n',
+      '/run/secrets/oidc': 'from-file-secret\n',
     };
     const readFile = (path: string): string => files[path] ?? noFiles(path);
 
@@ -143,11 +196,15 @@ describe('loadConfig', () => {
           APP_URL: BASE.APP_URL,
           APP_ENCRYPTION_KEY_FILE: '/run/secrets/key',
           DATABASE_URL_FILE: '/run/secrets/db',
+          OIDC_ISSUER: BASE.OIDC_ISSUER,
+          OIDC_CLIENT_ID: BASE.OIDC_CLIENT_ID,
+          OIDC_CLIENT_SECRET_FILE: '/run/secrets/oidc',
         },
         readFile,
       );
       expect(config.encryptionKey).toEqual(Buffer.alloc(32, 7));
       expect(config.databaseUrl).toBe('postgresql://monevo:from-file@db:5432/monevo');
+      expect(config.oidc.clientSecret).toBe('from-file-secret');
     });
 
     it.each(SECRET_VARIABLES)('fails when both %s and %s_FILE are set', (name) => {
@@ -157,7 +214,13 @@ describe('loadConfig', () => {
 
     it('reports an unreadable file once, naming the _FILE variable', () => {
       const problems = problemsOf(
-        { APP_URL: BASE.APP_URL, APP_ENCRYPTION_KEY: KEY, DATABASE_URL_FILE: '/missing' },
+        {
+          APP_URL: BASE.APP_URL,
+          APP_ENCRYPTION_KEY: KEY,
+          DATABASE_URL_FILE: '/missing',
+          OIDC_ISSUER: BASE.OIDC_ISSUER,
+          OIDC_CLIENT_ID: BASE.OIDC_CLIENT_ID,
+        },
         readFile,
       );
       expect(problems).toEqual(['DATABASE_URL_FILE: cannot read /missing (ENOENT)']);

@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { fileURLToPath } from 'node:url';
 import { createApp } from './app.js';
 import { ConfigError, loadConfig } from './config/env.js';
+import { systemClock } from './infra/clock.js';
 import {
   checkServerVersion,
   listMigrationNames,
@@ -14,7 +15,13 @@ import {
 } from './infra/database.js';
 import { startJobs } from './infra/jobs.js';
 import { createLogger } from './infra/logger.js';
+import { createOidcClient } from './infra/oidc.js';
 import { createPrismaClient } from './infra/prisma.js';
+import {
+  runSessionsPurge,
+  SESSIONS_PURGE_CRON,
+  SESSIONS_PURGE_QUEUE,
+} from './modules/auth/index.js';
 import { createReadinessChecker } from './modules/health/index.js';
 
 // Boot sequence: backend-architecture.md#1-process-layout. Stage 1 has no runtime settings,
@@ -74,7 +81,13 @@ async function main(): Promise<void> {
     );
   }
 
-  const jobs = await startJobs(config.databaseUrl, logger);
+  const jobs = await startJobs(config.databaseUrl, logger, [
+    {
+      queue: SESSIONS_PURGE_QUEUE,
+      cron: SESSIONS_PURGE_CRON,
+      run: () => runSessionsPurge(prisma, systemClock, logger),
+    },
+  ]);
 
   const lifecycle = { shuttingDown: false };
   const readiness = createReadinessChecker({
@@ -83,7 +96,8 @@ async function main(): Promise<void> {
     lifecycle,
     logger,
   });
-  const app = createApp({ config, logger, readiness, webRoot });
+  const identity = { prisma, oidc: createOidcClient(config.oidc), clock: systemClock, config };
+  const app = createApp({ config, logger, readiness, webRoot, identity });
   const server = createServer(app);
 
   const shutdown = (signal: string) => {

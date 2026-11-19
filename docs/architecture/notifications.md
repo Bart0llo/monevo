@@ -1,6 +1,6 @@
 # Notifications, Alert Rules, and Insights
 
-**[Proposed]** design for R-NOT-01..05 and R-BUD-03. Email notifications are **[Out of scope]** (R-NOT-05); transactional auth emails are a separate concern ([authentication.md](authentication.md), [OQ-03](../planning/open-questions.md#oq-03-smtp-for-authentication-emails)).
+**[Proposed]** design for R-NOT-01..05 and R-BUD-03. Email notifications are **[Out of scope]** (R-NOT-05). Monevo sends no email at all: sign-in, password, and account recovery are handled by the identity provider ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)).
 
 Four modules cooperate:
 

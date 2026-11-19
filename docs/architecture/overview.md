@@ -31,7 +31,7 @@ Monevo is a **modular monolith**: one Node.js process (Express) serves the React
         │ PostgreSQL ≥17 │                             │ S3/MinIO (opt.)  │
         │ (external)     │                             │ or local volume  │
         └────────────────┘                             └──────────────────┘
-External (outbound only): OIDC provider · exchange rate provider · Web Push services · SMTP (auth emails)
+External (outbound only): OIDC identity provider (Account Center) · exchange rate provider · Web Push services
 ```
 
 ## Key architectural decisions
@@ -44,7 +44,7 @@ External (outbound only): OIDC provider · exchange rate provider · Web Push se
 | Database versions | PostgreSQL 16 minimum, no 17+-only features | [ADR-0018](../decisions/ADR-0018-postgresql-16-minimum.md) |
 | Persistence | PostgreSQL + Prisma, raw SQL migrations for constraints | [ADR-0003](../decisions/ADR-0003-postgresql-and-prisma.md) |
 | API | REST `/api/v1`, Zod-defined contracts → OpenAPI 3.1 | [ADR-0004](../decisions/ADR-0004-rest-api-versioning-and-contracts.md) |
-| Auth | Local + one OIDC provider, server-side opaque sessions | [ADR-0005](../decisions/ADR-0005-authentication-and-sessions.md) |
+| Auth | OIDC-only via Account Center (one IdP, env-configured), own server-side opaque sessions | [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md) (supersedes ADR-0005) |
 | Isolation | `userId` on every owned row, composite FKs, scoped repositories | [ADR-0006](../decisions/ADR-0006-user-data-isolation.md) |
 | Money | `NUMERIC` + decimal.js, decimal strings in JSON, stored rate snapshots | [ADR-0007](../decisions/ADR-0007-money-and-multi-currency.md) |
 | Ledger | Transaction header + postings; transfers = 2 postings | [ADR-0008](../decisions/ADR-0008-transaction-and-transfer-model.md) |
@@ -65,7 +65,7 @@ Backend modules (each one owns its tables, services, routes, and contracts; see 
 | Module | Responsibility | Depends on |
 |---|---|---|
 | `system` | Health, version, config loading | n/a |
-| `auth` | Login, registration, sessions, OIDC, personal API tokens, single-use tokens, email flows | `users` |
+| `auth` | OIDC login and provisioning, sessions, IdP revalidation, re-authentication, personal API tokens | `users` |
 | `users` | User profile, settings (locale, tz, base currency) | n/a |
 | `admin` | Admin endpoints (users status, settings, status) | `users`, `auth`, `storage`, `backups` |
 | `currencies` | Currency reference, exchange rates, providers, conversion service | n/a |

@@ -20,7 +20,6 @@ This document consolidates the entity sketches from the architecture documents i
 | `users` | users / auth | (root) | no | [authentication.md](../architecture/authentication.md#1-account-model) |
 | `user_settings` | users | yes (PK = userId) | yes | this document |
 | `user_identities` | auth | yes | no | [authentication.md](../architecture/authentication.md#1-account-model) |
-| `auth_tokens` | auth | yes | no | [authentication.md](../architecture/authentication.md#1-account-model) |
 | `sessions` | auth | yes | no | [authentication.md](../architecture/authentication.md#4-sessions) |
 | `api_tokens` | auth | yes | no | [api-tokens.md](../architecture/api-tokens.md#1-token-model) |
 | `app_settings` | system / admin | no (instance) | no | [configuration.md](../infrastructure/configuration.md#runtime-settings-app_settings) |
@@ -65,68 +64,58 @@ pg-boss keeps its own tables in the `pgboss` schema. They are not part of the ap
 ### users
 | Column | Type | Notes |
 |---|---|---|
-| email | citext | unique |
-| emailVerifiedAt | timestamptz? | |
-| displayName | text | 1–100 chars |
+| email | text? | informational copy of the IdP `email` claim, updated at every sign-in; **not unique** and never used for identity ([authentication.md](../architecture/authentication.md#1-account-model)) |
+| displayName | text | 1–100 chars (`CHECK`); from the IdP at provisioning, then edited by the user |
 | role | enum `USER`, `ADMIN` | |
 | status | enum `ACTIVE`, `DEACTIVATED` | |
-| passwordHash | text? | argon2id encoded string; null = no local credential |
-| passwordChangedAt | timestamptz? | |
-| storageQuotaBytes | bigint? | null = instance default ([file-storage.md](../architecture/file-storage.md#5-quotas)) |
-| storageUsedBytes | bigint | default 0; maintained under a row lock |
-| maintenanceState | text? | `BASE_CURRENCY_CHANGE` while that job runs (→ `503 MAINTENANCE_USER`); null otherwise |
+| storageQuotaBytes | bigint? | null = instance default ([file-storage.md](../architecture/file-storage.md#5-quotas)); added in Stage 6 |
+| storageUsedBytes | bigint | default 0; maintained under a row lock; added in Stage 6 |
+| maintenanceState | text? | `BASE_CURRENCY_CHANGE` while that job runs (→ `503 MAINTENANCE_USER`); null otherwise; added in Stage 3 |
 | lastLoginAt | timestamptz? | |
 
 ### user_settings
-One row per user, created at registration or onboarding. Synced (merge groups in [offline-and-synchronization.md](../architecture/offline-and-synchronization.md#8-field-level-three-way-merge)).
+One row per user, created when the user is provisioned at the first sign-in. Synced (merge groups in [offline-and-synchronization.md](../architecture/offline-and-synchronization.md#8-field-level-three-way-merge)).
 
 | Column | Type | Notes |
 |---|---|---|
 | userId | uuid | PK, FK → users |
-| locale | text | BCP 47, `en` or `pl` initially |
+| locale | text | BCP 47, `en` or `pl` initially (`CHECK`) |
 | timeZone | text | IANA name, validated against the runtime tz database |
-| baseCurrency | ccy | changed only by the base currency change operation |
+| baseCurrency | ccy | `EUR` at provisioning, editable until onboarding is completed; afterwards changed only by the base currency change operation |
 | weekStart | enum `MONDAY` … `SUNDAY` | default from locale |
-| dateFormat | text | `LOCALE` (default) or an explicit pattern from an allowlist |
+| dateFormat | text | `LOCALE` (default) or an explicit pattern from the allowlist `YYYY-MM-DD`, `DD.MM.YYYY`, `DD/MM/YYYY`, `MM/DD/YYYY` (`CHECK`) |
 | theme | enum `LIGHT`, `DARK`, `SYSTEM` | default `SYSTEM` |
-| reminderTime | time | default `09:00` (local) |
-| pushContent | enum `FULL`, `GENERIC` | default `FULL` ([notifications.md](../architecture/notifications.md#3-web-push)) |
-| transactionListColumns | jsonb | visible column keys and order (not a saved view) |
+| reminderTime | time | default `09:00` (local); added in Stage 9 |
+| pushContent | enum `FULL`, `GENERIC` | default `FULL` ([notifications.md](../architecture/notifications.md#3-web-push)); added in Stage 9 |
+| transactionListColumns | jsonb | visible column keys and order (not a saved view); added in Stage 4 |
 | onboardingCompletedAt | timestamptz? | |
 | version | int | |
 
 ### user_identities
 | Column | Type | Notes |
 |---|---|---|
-| issuer | text | OIDC issuer URL |
-| subject | text | `sub` claim |
-| emailAtLink | citext? | |
-| linkedAt, lastUsedAt | timestamptz | |
+| issuer | text | OIDC issuer URL (`OIDC_ISSUER`) |
+| subject | text | `sub` claim (Account Center's stable user ID) |
+| createdAt | timestamptz | when the user was provisioned with this identity |
+| lastLoginAt | timestamptz? | last successful sign-in |
 
-Unique `(issuer, subject)` and `(userId, issuer)`.
-
-### auth_tokens
-| Column | Type | Notes |
-|---|---|---|
-| purpose | enum `EMAIL_VERIFY`, `PASSWORD_RESET`, `EMAIL_CHANGE`, `OIDC_LINK` | |
-| tokenHash | bytea | SHA-256 of the random token, unique |
-| payload | jsonb? | for example the new email address |
-| expiresAt | timestamptz | |
-| usedAt | timestamptz? | single use; purged 7 days after expiry or use |
+Unique `(issuer, subject)`, `(userId, issuer)`, and `(id, userId)`. There is no `updatedAt`.
 
 ### sessions
 | Column | Type | Notes |
 |---|---|---|
 | tokenHash | bytea | SHA-256, unique |
-| clientType | enum `WEB`, `NATIVE` | |
-| authMethod | enum `PASSWORD`, `OIDC` | |
 | lastSeenAt, idleExpiresAt, absoluteExpiresAt | timestamptz | lifetimes in [authentication.md](../architecture/authentication.md#4-sessions) |
 | userAgent | text? | |
-| deviceLabel | text? | parsed or user-renamed |
+| deviceLabel | text? | parsed from the user agent |
 | ipLast | inet? | display can be disabled by an instance setting |
-| csrfSecret | bytea? | WEB only |
+| csrfSecret | bytea | CSRF synchronizer token |
+| reauthenticatedAt | timestamptz? | last sign-in at the IdP for this session: `auth_time` at login, then the time of each re-authentication (`intent=reauth`); drives the 15-minute recent-authentication window ([authentication.md](../architecture/authentication.md#recent-authentication)) |
+| idTokenHint | text? | raw ID token of the last sign-in or refresh, used only as `id_token_hint` for RP-initiated logout; never returned by the API |
+| idpRefreshToken | bytea? | IdP refresh token, AES-256-GCM encrypted with `APP_ENCRYPTION_KEY`; null when the IdP issued none ([authentication.md](../architecture/authentication.md#3-idp-revalidation)) |
+| idpCheckedAt | timestamptz? | last successful IdP revalidation (or sign-in) |
 | revokedAt | timestamptz? | |
-| revokedReason | text? | `LOGOUT`, `USER_REVOKED`, `PASSWORD_CHANGED`, `DEACTIVATED`, `RESTORE`, `EVICTED` |
+| revokedReason | text? | `LOGOUT`, `USER_REVOKED`, `DEACTIVATED`, `RESTORE`, `EVICTED`, `IDP_REVOKED`, `REPLACED` (`TEXT + CHECK`) |
 
 ### api_tokens
 | Column | Type | Notes |
@@ -139,7 +128,7 @@ Unique `(issuer, subject)` and `(userId, issuer)`.
 | lastUsedAt | timestamptz? | throttled write (5 min) |
 | lastUsedIp | inet? | display can be disabled by an instance setting |
 | revokedAt | timestamptz? | |
-| revokedReason | text? | `USER_REVOKED`, `DEACTIVATED`, `RESTORE` |
+| revokedReason | text? | `USER_REVOKED`, `DEACTIVATED`, `RESTORE` (`TEXT + CHECK`; [lifecycle events](../architecture/api-tokens.md#lifecycle-events)) |
 
 `updatedAt` changes only on rename; no `version` (not synced). Status (`ACTIVE`, `EXPIRED`, `REVOKED`) is derived. Index `(userId, createdAt)`. Revoked and expired rows are purged 90 days after revocation or expiry.
 

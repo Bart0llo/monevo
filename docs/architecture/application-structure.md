@@ -14,7 +14,7 @@ monevo/
 ├── .nvmrc                       # 24
 ├── Dockerfile                   # single multi-stage image (Stage 1)
 ├── docker-compose.yml           # production example: app only, external PostgreSQL (Stage 1)
-├── docker-compose.dev.yml       # dev only: local postgres, minio, mailpit
+├── docker-compose.dev.yml       # dev only: local postgres, minio, mock identity provider
 ├── .env.example
 ├── apps/
 │   ├── server/                  # Express API + static hosting + jobs
@@ -24,9 +24,9 @@ monevo/
 │   │   ├── src/
 │   │   │   ├── main.ts          # process entry: config → db → jobs → http
 │   │   │   ├── app.ts           # express app factory (testable, no listen)
-│   │   │   ├── cli.ts           # create-admin, backup, restore, reset-password-link
+│   │   │   ├── cli.ts           # set-role, list-users, generate-key, backup, restore
 │   │   │   ├── config/          # env parsing (Zod), runtime settings
-│   │   │   ├── infra/           # prisma client, logger, mailer, storage drivers, job runner, socket
+│   │   │   ├── infra/           # prisma client, logger, OIDC client, storage drivers, job runner, socket
 │   │   │   ├── http/            # middleware: auth, csrf, validation, errors, rate limit
 │   │   │   ├── modules/
 │   │   │   │   ├── auth/
@@ -53,6 +53,8 @@ monevo/
 │   ├── domain/                  # @monevo/domain – pure logic: money, currency, recurrence, budgets, forecast, balances
 │   └── i18n/                    # @monevo/i18n – locale JSON (pl, en), shared keys for server-rendered push text
 ├── e2e/                         # Playwright tests (run against the docker image)
+├── tools/
+│   └── mock-idp/                # zero-dependency mock OpenID Provider for dev, integration and E2E tests
 └── docs/
 ```
 

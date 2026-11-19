@@ -206,7 +206,19 @@ describe('OpenAPI', () => {
     const { app } = makeApp();
     const doc = await request(app).get('/api/v1/openapi.json').expect(200);
     expect(doc.body.openapi).toBe('3.1.0');
-    expect(Object.keys(doc.body.paths)).toEqual(['/health', '/health/ready']);
+    expect(Object.keys(doc.body.paths)).toEqual(
+      expect.arrayContaining([
+        '/health',
+        '/health/ready',
+        '/auth/session',
+        '/me',
+        '/me/api-tokens',
+        '/admin/users',
+      ]),
+    );
+    expect(Object.keys(doc.body.components.securitySchemes)).toEqual(
+      expect.arrayContaining(['cookieAuth', 'apiToken']),
+    );
     const ui = await request(app).get('/api/v1/docs/').expect(200);
     expect(ui.text).toContain('swagger-ui');
     expect(ui.text).not.toMatch(/<script>(?!\s*<\/script>)/);

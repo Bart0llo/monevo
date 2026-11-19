@@ -1,8 +1,23 @@
 {
   "MALFORMED_REQUEST": "The request could not be read.",
+  "UNAUTHENTICATED": "Please sign in to continue.",
+  "API_TOKEN_EXPIRED": "This API token has expired.",
+  "API_TOKEN_REVOKED": "This API token has been revoked.",
+  "FORBIDDEN": "You don't have access to this.",
+  "CSRF_INVALID": "Your session check failed. Reload the page and try again.",
+  "REAUTH_REQUIRED": "Confirm your identity to continue.",
+  "ACCOUNT_DEACTIVATED": "This account has been deactivated.",
+  "API_TOKEN_NOT_ALLOWED": "API tokens can't be used for this.",
+  "API_TOKEN_PERMISSION_DENIED": "This API token doesn't have the required permission.",
   "NOT_FOUND": "Not found.",
+  "VERSION_CONFLICT": "This was changed elsewhere. Reload and try again.",
+  "LAST_ADMIN": "The last active administrator can't be removed.",
+  "ROLE_MANAGED_BY_IDP": "Roles are managed in the identity provider.",
   "PAYLOAD_TOO_LARGE": "The request is too large.",
   "UNSUPPORTED_MEDIA_TYPE": "This content type is not supported.",
   "VALIDATION_FAILED": "Some fields are invalid.",
+  "API_TOKEN_LIMIT_REACHED": "You've reached the maximum number of active API tokens.",
+  "PRECONDITION_REQUIRED": "This update needs the current version (If-Match).",
+  "RATE_LIMITED": "Too many requests. Wait a moment and try again.",
   "INTERNAL": "Something went wrong. Please try again."
 }

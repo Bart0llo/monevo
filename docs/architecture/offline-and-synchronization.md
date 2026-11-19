@@ -210,7 +210,7 @@ Balances, budgets progress, calendar, forecast, and simple dashboard widgets are
 
 ## 11. Realtime (Socket.IO)
 
-- Path: **`/api/v1/realtime`** (Socket.IO `path` option). Same origin, authenticated by the session cookie during the handshake (or `auth.token` for native clients). Revalidated every 5 min, and disconnected immediately on session revocation.
+- Path: **`/api/v1/realtime`** (Socket.IO `path` option). Same origin, authenticated by the session cookie during the handshake (token-based handshakes for native clients are **[Deferred]**). Revalidated every 5 min, and disconnected immediately on session revocation.
 - Room per user: `user:<userId>`.
 - Server → client events: `sync:poke { seq }`, `notification:new { id }`, `session:revoked { sessionId }`, `system:maintenance { mode }`.
 - Client → server: none required (all writes go through REST/sync).

@@ -1,5 +1,11 @@
 export { z } from './zod.js';
-export { ERROR_CODES, ERROR_STATUS, type ErrorCode } from './error-codes.js';
+export {
+  ERROR_CODES,
+  ERROR_STATUS,
+  type ErrorCode,
+  FIELD_ERROR_CODES,
+  type FieldErrorCode,
+} from './error-codes.js';
 export {
   ErrorCodeSchema,
   PROBLEM_CONTENT_TYPE,
@@ -17,3 +23,7 @@ export {
   type ReadinessResponse,
   ReadinessResponseSchema,
 } from './health.js';
+export * from './auth.js';
+export * from './me.js';
+export * from './api-tokens.js';
+export * from './admin.js';

@@ -8,11 +8,17 @@ import { parseBoolean, parseTrustProxy } from './parsers.js';
 const LOG_LEVELS = ['fatal', 'error', 'warn', 'info', 'debug', 'trace'] as const;
 export type LogLevel = (typeof LOG_LEVELS)[number];
 
+const DEFAULT_OIDC_SCOPES = 'openid profile email groups';
+
 const NODE_ENVS = ['production', 'development', 'test'] as const;
 export type NodeEnv = (typeof NODE_ENVS)[number];
 
 /** Variables that also accept `<NAME>_FILE` (configuration.md, rule 3). */
-export const SECRET_VARIABLES = ['APP_ENCRYPTION_KEY', 'DATABASE_URL'] as const;
+export const SECRET_VARIABLES = [
+  'APP_ENCRYPTION_KEY',
+  'DATABASE_URL',
+  'OIDC_CLIENT_SECRET',
+] as const;
 
 const booleanVar = (fallback: boolean) =>
   z
@@ -121,6 +127,47 @@ export const ENV_SCHEMA = z
       }),
     API_DOCS_ENABLED: booleanVar(true),
     HTTP_COMPRESSION: booleanVar(false),
+    OIDC_ISSUER: z
+      .string({ error: 'is required' })
+      .min(1, 'is required')
+      .refine(
+        (value) => URL.canParse(value),
+        'must be an absolute URL, e.g. https://accounts.example.com',
+      )
+      .transform((value) => new URL(value)),
+    OIDC_CLIENT_ID: z.string({ error: 'is required' }).trim().min(1, 'is required'),
+    OIDC_CLIENT_SECRET: z
+      .string()
+      .optional()
+      .transform((value) => (value === undefined || value === '' ? undefined : value)),
+    OIDC_SCOPES: z
+      .string()
+      .optional()
+      .transform((value, ctx) => {
+        const scopes = (value === undefined || value.trim() === '' ? DEFAULT_OIDC_SCOPES : value)
+          .split(/\s+/)
+          .filter((scope) => scope.length > 0);
+        if (!scopes.includes('openid')) {
+          ctx.addIssue({ code: 'custom', message: 'must include openid' });
+          return z.NEVER;
+        }
+        return [...new Set(scopes)];
+      }),
+    OIDC_ADMIN_GROUP: z
+      .string()
+      .optional()
+      .transform((value) =>
+        value === undefined || value.trim() === '' ? undefined : value.trim(),
+      ),
+    OIDC_DISPLAY_NAME: z
+      .string()
+      .optional()
+      .transform((value) =>
+        value === undefined || value.trim() === '' ? 'Account Center' : value.trim(),
+      )
+      .refine((value) => value.length <= 60, 'must be at most 60 characters'),
+    SESSION_IDLE_DAYS: integerVar(30, 1, 3650),
+    SESSION_ABSOLUTE_DAYS: integerVar(90, 1, 3650),
   })
   .superRefine((env, ctx) => {
     if (
@@ -131,6 +178,23 @@ export const ENV_SCHEMA = z
         code: 'custom',
         path: ['APP_URL'],
         message: 'must start with https:// (http:// is allowed only with INSECURE_COOKIES=true)',
+      });
+    }
+    if (
+      env.OIDC_ISSUER.protocol !== 'https:' &&
+      !(env.OIDC_ISSUER.protocol === 'http:' && env.INSECURE_COOKIES)
+    ) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['OIDC_ISSUER'],
+        message: 'must start with https:// (http:// is allowed only with INSECURE_COOKIES=true)',
+      });
+    }
+    if (env.SESSION_ABSOLUTE_DAYS < env.SESSION_IDLE_DAYS) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['SESSION_ABSOLUTE_DAYS'],
+        message: 'must be greater than or equal to SESSION_IDLE_DAYS',
       });
     }
   });
@@ -148,6 +212,28 @@ export interface Config {
   readonly corsAllowedOrigins: readonly string[];
   readonly apiDocsEnabled: boolean;
   readonly httpCompression: boolean;
+  readonly oidc: OidcConfig;
+  readonly session: SessionConfig;
+}
+
+export interface OidcConfig {
+  /** Issuer exactly as configured (string form, no normalization beyond URL parsing). */
+  readonly issuer: string;
+  readonly clientId: string;
+  /** Undefined → public client (PKCE only). */
+  readonly clientSecret: string | undefined;
+  readonly scopes: readonly string[];
+  readonly adminGroup: string | undefined;
+  readonly displayName: string;
+  /** `<APP_URL>/api/v1/auth/oidc/callback` */
+  readonly redirectUri: string;
+  /** `<APP_URL>/login` */
+  readonly postLogoutRedirectUri: string;
+}
+
+export interface SessionConfig {
+  readonly idleDays: number;
+  readonly absoluteDays: number;
 }
 
 /** Startup configuration failure with one readable line per problem (never a stack trace). */
@@ -220,5 +306,25 @@ export function loadConfig(env: Env = process.env, readFile: ReadFile = readUtf8
     corsAllowedOrigins: Object.freeze(data.CORS_ALLOWED_ORIGINS),
     apiDocsEnabled: data.API_DOCS_ENABLED,
     httpCompression: data.HTTP_COMPRESSION,
+    oidc: Object.freeze({
+      issuer: issuerString(data.OIDC_ISSUER),
+      clientId: data.OIDC_CLIENT_ID,
+      clientSecret: data.OIDC_CLIENT_SECRET,
+      scopes: Object.freeze(data.OIDC_SCOPES),
+      adminGroup: data.OIDC_ADMIN_GROUP,
+      displayName: data.OIDC_DISPLAY_NAME,
+      redirectUri: new URL('/api/v1/auth/oidc/callback', data.APP_URL).href,
+      postLogoutRedirectUri: new URL('/login', data.APP_URL).href,
+    }),
+    session: Object.freeze({
+      idleDays: data.SESSION_IDLE_DAYS,
+      absoluteDays: data.SESSION_ABSOLUTE_DAYS,
+    }),
   });
+}
+
+/** `https://ac.example.com/` → `https://ac.example.com` (URL adds a trailing slash to bare origins). */
+function issuerString(url: URL): string {
+  const href = url.href;
+  return url.pathname === '/' && !url.search && href.endsWith('/') ? href.slice(0, -1) : href;
 }

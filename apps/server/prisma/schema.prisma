@@ -1,5 +1,12 @@
 // Database conventions: docs/architecture/database-architecture.md
 // Keep docs/data/data-model.md and docs/data/entity-relationships.md in sync with migrations.
+//
+// Constraints written in raw SQL in the migrations (not expressible in the Prisma DSL):
+// - currencies: code format, exponent range (20261118000000_foundation).
+// - users: display_name length 1–100 (20261119000000_identity).
+// - user_settings: locale allowlist (`en`, `pl`), date_format allowlist.
+// - sessions.revoked_reason, api_tokens.revoked_reason: TEXT + CHECK value sets.
+// - api_tokens: name length 1–100.
 
 generator client {
   provider     = "prisma-client"
@@ -28,5 +35,141 @@ model Currency {
   name     String
   active   Boolean
 
+  userSettings UserSetting[]
+
   @@map("currencies")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  DEACTIVATED
+}
+
+enum WeekStart {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum Theme {
+  LIGHT
+  DARK
+  SYSTEM
+}
+
+/// Account root (authentication.md#1-account-model). Not owned; every owned table references it.
+/// Provisioned at the first OIDC sign-in; `email` is informational only, never identity.
+model User {
+  id          String     @id @db.Uuid
+  email       String?
+  displayName String     @map("display_name")
+  role        UserRole   @default(USER)
+  status      UserStatus @default(ACTIVE)
+  lastLoginAt DateTime?  @map("last_login_at") @db.Timestamptz(6)
+  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  settings   UserSetting?
+  identities UserIdentity[]
+  sessions   Session[]
+  apiTokens  ApiToken[]
+
+  @@map("users")
+}
+
+/// One row per user (data-model.md#user_settings). Synced from Stage 5.
+model UserSetting {
+  userId                String    @id @map("user_id") @db.Uuid
+  locale                String
+  timeZone              String    @map("time_zone")
+  baseCurrency          String    @map("base_currency") @db.Char(3)
+  weekStart             WeekStart @map("week_start")
+  dateFormat            String    @default("LOCALE") @map("date_format")
+  theme                 Theme     @default(SYSTEM)
+  onboardingCompletedAt DateTime? @map("onboarding_completed_at") @db.Timestamptz(6)
+  version               Int       @default(1)
+  createdAt             DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currency Currency @relation(fields: [baseCurrency], references: [code], onDelete: NoAction)
+
+  @@map("user_settings")
+}
+
+/// OIDC identities keyed by (issuer, subject) (authentication.md#1-account-model).
+model UserIdentity {
+  id          String    @id @db.Uuid
+  userId      String    @map("user_id") @db.Uuid
+  issuer      String
+  subject     String
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastLoginAt DateTime? @map("last_login_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([id, userId])
+  @@unique([issuer, subject])
+  @@unique([userId, issuer])
+  @@map("user_identities")
+}
+
+/// Opaque server-side sessions (authentication.md#4-sessions).
+model Session {
+  id                String    @id @db.Uuid
+  userId            String    @map("user_id") @db.Uuid
+  tokenHash         Bytes     @unique @map("token_hash")
+  lastSeenAt        DateTime  @map("last_seen_at") @db.Timestamptz(6)
+  idleExpiresAt     DateTime  @map("idle_expires_at") @db.Timestamptz(6)
+  absoluteExpiresAt DateTime  @map("absolute_expires_at") @db.Timestamptz(6)
+  userAgent         String?   @map("user_agent")
+  deviceLabel       String?   @map("device_label")
+  ipLast            String?   @map("ip_last") @db.Inet
+  csrfSecret        Bytes     @map("csrf_secret")
+  reauthenticatedAt DateTime? @map("reauthenticated_at") @db.Timestamptz(6)
+  idTokenHint       String?   @map("id_token_hint")
+  idpRefreshToken   Bytes?    @map("idp_refresh_token")
+  idpCheckedAt      DateTime? @map("idp_checked_at") @db.Timestamptz(6)
+  revokedAt         DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason     String?   @map("revoked_reason")
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([id, userId])
+  @@index([userId])
+  @@map("sessions")
+}
+
+/// Personal API tokens (api-tokens.md#1-token-model); only the SHA-256 hash is stored.
+model ApiToken {
+  id            String    @id @db.Uuid
+  userId        String    @map("user_id") @db.Uuid
+  name          String
+  tokenHash     Bytes     @unique @map("token_hash")
+  displayPrefix String    @map("display_prefix")
+  permissions   String[]
+  expiresAt     DateTime? @map("expires_at") @db.Timestamptz(6)
+  lastUsedAt    DateTime? @map("last_used_at") @db.Timestamptz(6)
+  lastUsedIp    String?   @map("last_used_ip") @db.Inet
+  revokedAt     DateTime? @map("revoked_at") @db.Timestamptz(6)
+  revokedReason String?   @map("revoked_reason")
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([id, userId])
+  @@index([userId, createdAt])
+  @@map("api_tokens")
 }

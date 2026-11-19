@@ -1,6 +1,6 @@
 # ADR-0005: Authentication and sessions
 
-- **Status:** Proposed (extended by [ADR-0017](ADR-0017-personal-api-tokens.md))
+- **Status:** Superseded by [ADR-0020](ADR-0020-oidc-only-authentication.md)
 - **Date:** 2026-11-18
 
 ## Context
@@ -14,12 +14,14 @@ Requirements: local email/password accounts, one configurable OIDC provider, acc
 - Passwords with argon2id (`argon2`); OIDC with `openid-client` (Authorization Code + PKCE, state, nonce); OIDC client secret encrypted with `APP_ENCRYPTION_KEY`.
 - An **own thin layer** over these vetted primitives (no custom crypto or protocol code).
 
-Details: [authentication.md](../architecture/authentication.md). The implementation approach is [OQ-06](../planning/open-questions.md#oq-06-authentication-implementation).
+- Supporting primitives (decided with OQ-06): `express-rate-limit` with its in-memory store (one container; counters reset on restart) and `nodemailer` for optional SMTP. Sensitive actions require a recent authentication (15 min), recorded on the session by `POST /auth/reauth`.
+
+Details: [authentication.md](../architecture/authentication.md). The implementation approach was decided with [OQ-06](../planning/open-questions.md#oq-06-authentication-implementation).
 
 ## Alternatives considered
 
 - **JWT access + refresh tokens:** revocation is hard and token theft lasts until expiry.
-- **better-auth:** feature-rich, but its schema and session model must fit Prisma, composite-key isolation, and Bearer tokens; kept as the main alternative until OQ-06 is decided.
+- **better-auth:** feature-rich, but its schema and session model must fit Prisma, composite-key isolation, and Bearer tokens.
 - **Lucia:** deprecated.
 - **Passport.js:** dated strategy model; still needs session handling.
 
@@ -30,4 +32,4 @@ Details: [authentication.md](../architecture/authentication.md). The implementat
 
 ## Status
 
-Proposed. Confirm before the stage that first depends on it (see [open-questions.md](../planning/open-questions.md)); until then it is the default.
+Superseded by [ADR-0020](ADR-0020-oidc-only-authentication.md) (OIDC-only, user decision 2026-11-19). Previously accepted (user decision on OQ-06, 2026-11-19; extended by ADR-0017).

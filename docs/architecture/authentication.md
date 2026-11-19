@@ -1,103 +1,115 @@
 # Authentication and Sessions
 
-**[Proposed]**, see [ADR-0005](../decisions/ADR-0005-authentication-and-sessions.md). Confirm the implementation approach (own thin layer vs. better-auth) before Stage 2. This is the canonical document for session parameters. Covers R-AUTH-01..09. Personal API tokens for integrations are a separate credential type, canonical in [api-tokens.md](api-tokens.md) ([ADR-0017](../decisions/ADR-0017-personal-api-tokens.md)).
+**[Accepted]**, see [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md) (supersedes [ADR-0005](../decisions/ADR-0005-authentication-and-sessions.md)): **OIDC-only** authentication with the operator's Account Center (AC) as the single identity provider (IdP), on top of Monevo's own server-side sessions. Built in Stage 2. Monevo has no local passwords, registration, password reset, email verification or SMTP. This is the canonical document for the login flow and the session parameters. Covers R-AUTH-01..09. Personal API tokens for integrations are a separate credential type, canonical in [api-tokens.md](api-tokens.md) ([ADR-0017](../decisions/ADR-0017-personal-api-tokens.md)).
 
 ## 1. Account model
 
 ```
-User:          id, email (citext, unique), emailVerifiedAt?, displayName, role (USER|ADMIN),
-               status (ACTIVE|DEACTIVATED), passwordHash? (null = no local credential),
-               passwordChangedAt?, storageQuotaBytes? (null = instance default), storageUsedBytes,
-               lastLoginAt?, createdAt
-UserIdentity:  id, userId, issuer, subject, emailAtLink?, linkedAt, lastUsedAt
-               UNIQUE(issuer, subject); UNIQUE(userId, issuer)   -- one identity per provider per user
-AuthToken:     id, userId, purpose (EMAIL_VERIFY|PASSWORD_RESET|EMAIL_CHANGE|OIDC_LINK),
-               tokenHash, payload (e.g. new email), expiresAt, usedAt?
+User:          id, displayName, email? (informational copy of the IdP claim, not unique, never used
+               for identity), role (USER|ADMIN), status (ACTIVE|DEACTIVATED),
+               storageQuotaBytes? (null = instance default), storageUsedBytes, lastLoginAt?, createdAt
+UserIdentity:  id, userId, issuer, subject, createdAt, lastLoginAt?
+               UNIQUE(issuer, subject); UNIQUE(userId, issuer)   -- one identity per user and issuer
 Session:       see §4
 ```
 
-One user can have a password, an OIDC identity, or both. Login method does not create separate accounts.
+A user is identified **only** by `(issuer, sub)` from a validated ID token. Monevo never looks users up, links them, or merges them by email address: AC lets users edit their email and does not verify it. There is no account linking and no local credential.
 
-**Extensibility rule:** Stage 2 builds this model completely, including `user_identities`, a nullable `passwordHash`, `Session.authMethod`, and an authentication pipeline that resolves any credential to `req.auth`. OIDC ([Stage 14](../planning/implementation-stages.md#stage-14-oidc)) then only adds the login flow, identity rows, and admin configuration, with no change to the user, identity, or session model.
-
-## 2. Local authentication
+## 2. OIDC login
 
 | Aspect | Rule |
 |---|---|
-| Hashing | **argon2id** via `argon2`, OWASP parameters (m=19 MiB, t=2, p=1 minimum; tune to ~250 ms on target hardware). The parameters are stored in the hash string, so rehash on login if they are outdated. |
-| Password policy | Min 12 characters, max 256, no composition rules. Reject the top-10k common passwords (bundled list) and passwords equal to the email. (NIST SP 800-63B.) |
-| Registration | `POST /auth/register` (email, password, displayName, locale, timeZone, baseCurrency). Allowed only when `registrationMode = OPEN` (admin setting; `DISABLED` by default after bootstrap; see §7). It creates the user and sends a verification email. |
-| Email verification | A random 32-byte token (base64url) stored **hashed** (SHA-256), 24 h validity, single use. Unverified users can log in **[Proposed]** but see a banner. Password reset requires a verified email. |
-| Login | `POST /auth/login` (email, password). Constant-time behaviour: hash a dummy when the user doesn't exist. Generic error `INVALID_CREDENTIALS`. Deactivated → `ACCOUNT_DEACTIVATED` (only after a correct password, to avoid account enumeration). |
-| Password reset | `POST /auth/password-reset/request` (always 202) → emailed token (1 h, single use) → `POST /auth/password-reset/confirm` → sets the password, **revokes all sessions**, and sends no further email. |
-| Password change | Requires the current password (or a recent login within 10 min for OIDC-only users setting a first password). It revokes all other sessions. |
-| Email change | `POST /me/email-change` → token to the **new** address → confirm → email updated, `emailVerifiedAt` set. Requires the current password or recent re-authentication. |
-| Brute force | Rate limits (see [security.md](security.md#rate-limiting)), plus progressive delay per account after 5 failures within 15 min (lockout up to 15 min, never permanent). |
-| Without SMTP | If SMTP is not configured: verification is skipped (emails are treated as unverified-but-allowed), and password reset works only via an **admin-generated reset link** (`/admin/users/:id/password-reset-link`, 1 h, shown once to the admin, no access to data). See [OQ-03](../planning/open-questions.md#oq-03-smtp-for-authentication-emails). |
+| Provider | Exactly one OpenID Provider, configured by environment variables ([configuration.md](../infrastructure/configuration.md#oidc)): `OIDC_ISSUER`, `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET` (empty = public client, PKCE only), `OIDC_SCOPES` (default `openid profile email groups`), `OIDC_ADMIN_GROUP`, `OIDC_DISPLAY_NAME` (login button label). There is no admin form. The operator registers Monevo in AC ([deployment.md](../infrastructure/deployment.md#registering-monevo-in-account-center)). |
+| Library | **openid-client** v6 (certified Relying Party). No hand-rolled protocol or token validation. |
+| Discovery | `discovery()` from `OIDC_ISSUER` (`/.well-known/openid-configuration`), cached in-process after the first success. A failed discovery is not cached; the next login retries. HTTP requests to the IdP time out after about 5 s. Plain `http` issuers are allowed only together with `INSECURE_COOKIES=true` (development and E2E). |
+| Flow | Authorization Code + **PKCE S256** + `state` + `nonce`, `response_type=code`. The authorization response `iss` parameter (RFC 9207) is checked when the IdP sends it. |
+| Client auth | `client_secret_basic` with `OIDC_CLIENT_SECRET` (confidential client, recommended), or none (public client) when the secret is empty. |
+| Validation | The library validates the ID token signature against the JWKS (non-repudiation checks enabled; an unknown `kid` refetches the JWKS, so IdP key rotation works), `iss`, `aud`, `exp`, `iat`, `nonce`, and `state`. We additionally require `sub` and `auth_time`. |
+| Redirect URIs | Callback `<APP_URL>/api/v1/auth/oidc/callback`; post-logout `<APP_URL>/login`. Both must be registered in AC byte for byte. |
+| Transient state | `state`, `nonce`, `code_verifier`, `returnTo`, `intent`, the locale and time zone hints, and `startedAt` are kept in a short-lived (10 min) cookie `monevo_oidc` (`__Host-` prefix unless `INSECURE_COOKIES=true`; HttpOnly, SameSite=Lax, Path=/), encrypted with AES-256-GCM under a key derived from `APP_ENCRYPTION_KEY` with HKDF. The callback always clears it. |
 
-## 3. OIDC
+### Endpoints
 
-| Aspect | Rule |
+- `GET /api/v1/auth/config` (public) → `{ providerName }` for the login button.
+- `GET /api/v1/auth/oidc/start?intent=login|reauth&returnTo=&locale=&timeZone=` → `302` to the IdP's authorization endpoint. `returnTo` must be a same-origin relative path (otherwise `/`). `locale` and `timeZone` are the browser's hints for provisioning. `intent=reauth` requires a session and adds `prompt=login`.
+- `GET /api/v1/auth/oidc/callback` → `302` to `returnTo`, or to `/login?error=<code>` with one of `idp_unavailable` (discovery, network or token endpoint failure), `login_failed` (state, nonce, PKCE, signature or claim validation failed, or a missing/expired state cookie), `access_denied` (the IdP returned an error, e.g. the user is not in an allowed group or cancelled), `account_deactivated`, `reauth_mismatch`.
+
+### Account resolution on callback
+
+1. Find `UserIdentity(issuer, sub)`.
+2. **Not found → provision** in one transaction (serialized with a PostgreSQL advisory lock): create the user (`displayName` from `name`, else `preferred_username`, else "User", trimmed to 100 characters; `email` from the claim or null), the identity row, and `user_settings` (locale and time zone from the start hints if valid, else `en` and `UTC`; base currency `EUR`; week start `MONDAY`; onboarding not completed, so the web app runs onboarding next). The role follows §7.
+3. User `DEACTIVATED` → no session, `account_deactivated`.
+4. Every login updates `email` from the claim, `users.lastLoginAt`, `user_identities.lastLoginAt`, and the role when `OIDC_ADMIN_GROUP` is set (§7).
+5. A valid Monevo session cookie sent with the callback is revoked (`REPLACED`) and a new session is created (rotation). The session stores the raw ID token as the logout hint (`idTokenHint`), the IdP refresh token encrypted with `APP_ENCRYPTION_KEY` (`idpRefreshToken`), `idpCheckedAt = now`, and `reauthenticatedAt = auth_time`.
+
+### Logout
+
+`POST /api/v1/auth/logout` (CSRF) revokes the current session (`LOGOUT`), clears the cookie, and returns `200 { endSessionUrl }`: the IdP's `end_session_endpoint` with `id_token_hint`, `client_id` and `post_logout_redirect_uri=<APP_URL>/login` (RP-Initiated Logout 1.0), or `null` when the IdP has none. The web app navigates there, which also ends the AC session; AC logs out without a confirmation page when the hint is valid.
+
+### Account Center specifics
+
+- `sub` is AC's stable user ID. The `groups` claim lists group names and is sent only when the AC application has **exposed groups** configured; otherwise AC silently drops the `groups` scope.
+- Refresh tokens are opaque, sliding 30 days, **rotated on every use**; reusing an old one revokes the whole token family, so Monevo never refreshes one session concurrently.
+- AC grants are bound to the AC browser session: an AC logout, session revocation, password change, disable, or a new sign-in over an existing AC cookie (`prompt=login`) revokes the old grants, after which a refresh fails with `invalid_grant`.
+- AC has no back-channel or front-channel logout and no revocation or introspection endpoint; Monevo learns about IdP-side changes through revalidation (§3). AC restricts access per application with allowed groups, so Monevo has no allowed-group setting of its own.
+- The discovery document answers `503` until an AC admin generates a signing key; Monevo then reports `idp_unavailable`.
+- After an AC signing-key rotation, the OIDC client refetches the JWKS for an unknown `kid` only when its cached copy is at least 60 seconds old, so a sign-in within that minute can fail with `login_failed` and succeeds on retry.
+
+## 3. IdP revalidation
+
+On a session-authenticated request, if the session has an `idpRefreshToken` and `idpCheckedAt` is older than **15 minutes**, the server runs a refresh token grant before handling the request. Refreshes are serialized per session with an in-process mutex (one container), because AC revokes the token family on reuse.
+
+| Result | Effect |
 |---|---|
-| Library | **openid-client** (certified RP). No hand-rolled token validation. |
-| Flow | Authorization Code + **PKCE** (S256) + `state` + `nonce`, `response_type=code`. Scopes `openid email profile`. |
-| Discovery | From `issuer` via `.well-known/openid-configuration`. The JWKS is cached by the library. |
-| Client auth | `client_secret_basic` (default) or `client_secret_post`, or a public client with PKCE only. |
-| Validation | The library validates the ID token signature, `iss`, `aud`, `exp`, `iat`, and `nonce`. We additionally require `sub`. |
-| Endpoints | `GET /api/v1/auth/oidc/start?mode=login|link&returnTo=` → redirect. `GET /api/v1/auth/oidc/callback` → session. `returnTo` is validated against same-origin relative paths only. |
-| Transient state | `state`, `nonce`, and `code_verifier` are stored in a short-lived (10 min), signed, HttpOnly cookie `monevo_oidc` (encrypted with the app key). |
-| Configuration | Admin panel **or** environment. Fields: display name, issuer URL, client ID, client secret, scopes, `allowAutoProvision` (create a user on first OIDC login, default off), `allowEmailLinking` (default off). The secret is encrypted at rest (AES-256-GCM via Node `crypto` with `APP_ENCRYPTION_KEY`). If `OIDC_*` env vars are set, they take precedence and the UI is read-only. |
-| Logout | Local session logout. RP-initiated logout (`end_session_endpoint`) is offered if the provider supports it **[Proposed]**. |
+| Success | Store the rotated refresh token and the new ID token hint, update the role when `OIDC_ADMIN_GROUP` is set, set `idpCheckedAt = now`. |
+| OAuth error (`invalid_grant` and similar) | Revoke the session (`IDP_REVOKED`) → `401 UNAUTHENTICATED`. |
+| Network error, timeout, or 5xx | Keep the session (fail-open), log a warning, retry this session after 1 minute (in-memory backoff). |
+| No refresh token was issued | No revalidation; the session lives until its own expiry. |
 
-### Account resolution on OIDC callback
-1. Find `UserIdentity(issuer, sub)` → user found → if ACTIVE, create a session.
-2. Not found and `mode = link` (a user is already logged in and started linking) → create the identity for the current user. Reject if this `(issuer, sub)` is linked elsewhere.
-3. Not found, `mode = login`:
-   - `allowEmailLinking` on, the ID token has `email_verified = true`, and a local user with that email exists → link and log in. *(Off by default, because trusting IdP email verification is an account-takeover risk if the IdP is misconfigured.)*
-   - Else, `allowAutoProvision` on and registration permitted → create a user (no password, email from the token, `emailVerifiedAt` set if `email_verified`), then run onboarding.
-   - Else → error page "No account linked to this identity. Log in with your password and link it in settings."
-4. Unlinking: allowed only if the user still has a password (so they cannot lock themselves out).
-
-### Changing the provider
-Identities are keyed by `issuer`. After the admin switches to a provider with a different issuer, old identities simply no longer match (they are kept for audit and can be cleaned up from the admin panel). Users re-link by logging in with their password, or via verified-email linking if the admin enables it. OIDC-only users without a password need the admin reset link (or email reset) to set one first. The admin UI warns about this before saving a new issuer, showing how many users are OIDC-only.
+An IdP-side logout, disable or group change therefore reaches Monevo within about 15 minutes of the next request, or later while the IdP is unreachable ([security.md](security.md#threat-model)).
 
 ## 4. Sessions
 
-**Opaque, server-side sessions** (not JWT): instant revocation, a simple device list, and no token-validation primitives to get wrong.
+**Opaque, server-side sessions** (not JWT, and not the IdP's tokens): instant revocation, a simple device list, and no token-validation primitives to get wrong. The browser never receives IdP tokens.
 
 ```
 Session: id (UUID), userId, tokenHash (SHA-256 of the 32-byte random token, unique),
-         clientType (WEB|NATIVE), authMethod (PASSWORD|OIDC),
          createdAt, lastSeenAt, idleExpiresAt, absoluteExpiresAt,
-         userAgent, deviceLabel (parsed "Firefox 140 on Linux" or user-renamed), ipLast (see privacy),
-         csrfSecret (WEB only), revokedAt?, revokedReason?
+         userAgent, deviceLabel (parsed "Firefox 140 on Linux"), ipLast (see privacy),
+         csrfSecret, reauthenticatedAt?, idTokenHint?, idpRefreshToken? (encrypted), idpCheckedAt?,
+         revokedAt?, revokedReason?
 ```
 
 | Parameter | Default | Env |
 |---|---|---|
 | Idle timeout | 30 days | `SESSION_IDLE_DAYS` |
-| Absolute lifetime | 90 days | `SESSION_ABSOLUTE_DAYS` |
+| Absolute lifetime | 90 days | `SESSION_ABSOLUTE_DAYS` (≥ idle) |
 | `lastSeenAt` write throttle | 5 min | n/a |
-| Admin re-auth window (sensitive admin actions) | 15 min | n/a |
-| Max sessions per user | 50 (oldest idle evicted) | n/a |
+| IdP revalidation interval | 15 min (1 min retry after a network failure) | n/a |
+| Recent-authentication window (sensitive actions) | 15 min | n/a |
+| Max sessions per user | 50 (oldest evicted, `EVICTED`) | n/a |
 
-**Renewal (sliding):** each authenticated request extends `idleExpiresAt = now + idle` (throttled with `lastSeenAt`), never past `absoluteExpiresAt`. There is no separate refresh token for the web: the cookie is the session. At absolute expiry the user logs in again (OIDC users are usually re-authenticated silently by the IdP).
+**Renewal (sliding):** each authenticated request extends `idleExpiresAt = now + idle` (throttled with `lastSeenAt`), never past `absoluteExpiresAt`. At absolute expiry the user signs in again; the IdP usually re-authenticates them silently while its own session is alive.
 
-**Token transport:**
-- Web: cookie `monevo_session` with `HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=<absolute>`. `__Host-` prefix when served over HTTPS at the root (default). `Secure` can only be disabled by an explicit `INSECURE_COOKIES=true` for local HTTP testing.
-- Native (future Android) / scripts: `POST /auth/login` with `clientType: "NATIVE"` returns `{ token }` once, sent as `Authorization: Bearer <token>`. Same session table, same revocation, same listing. Integrations use personal API tokens instead (`Authorization: Bearer mnv_pat_…`, scoped permissions, no session; see [api-tokens.md](api-tokens.md)).
+**Token transport:** cookie `__Host-monevo_session` with `HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=<absolute>`. With `INSECURE_COOKIES=true` (local HTTP testing only) the cookie is `monevo_session` without `Secure` and without the prefix. Bearer authentication is used only for personal API tokens (`Authorization: Bearer mnv_pat_…`, [api-tokens.md](api-tokens.md)); native-client sessions are deferred with the Android client.
 
-**Rotation:** a new session token is issued on login, and the session is recreated after a password change and after OIDC linking. Session fixation is impossible because tokens are only ever created server-side after authentication.
+**Rotation:** a new session token is issued on every login, and a session cookie present at login is revoked (`REPLACED`). Session fixation is impossible because tokens are only ever created server-side after authentication.
 
-**Revocation:** `DELETE /me/sessions/:id` (any of the user's own sessions), `POST /me/sessions/revoke-others`, `POST /auth/logout` (current). Deactivation by admin revokes all sessions (and all personal API tokens). A revoked session's sockets are disconnected (`session:revoked`). Revocation takes effect on the very next request because every request looks up the session (an indexed lookup by `tokenHash`, which is cheap at this scale).
+**Revocation reasons:** `LOGOUT` (`POST /auth/logout`), `USER_REVOKED` (`DELETE /me/sessions/:id`, `POST /me/sessions/revoke-others`), `DEACTIVATED` (admin deactivation revokes all sessions and all personal API tokens), `RESTORE` (backup restore), `EVICTED` (session limit), `IDP_REVOKED` (revalidation failed), `REPLACED` (rotation at login). A revoked session's sockets are disconnected (`session:revoked`). Revocation takes effect on the very next request because every request looks up the session (an indexed lookup by `tokenHash`, which is cheap at this scale).
 
-**Device info shown:** device label, client type, auth method, created, last active, approximate location: **none** (no GeoIP, to avoid an external dependency and for privacy). The IP address is shown (last seen) and can be hidden by an instance setting. Sessions are purged 30 days after expiry or revocation.
+**Device info shown:** device label, created, last active, approximate location: **none** (no GeoIP, to avoid an external dependency and for privacy). The IP address is shown (last seen) and can be hidden by an instance setting. The `sessions.purge` job deletes sessions 30 days after expiry or revocation.
+
+### Recent authentication
+
+Sensitive actions require that the current session re-authenticated within the last **15 minutes**: creating a personal API token, and deactivating a user or changing a role in the admin panel ([administration.md](administration.md#2-access-control)). Otherwise the API answers `403 REAUTH_REQUIRED`.
+
+Re-authentication is a fresh sign-in at the IdP: `GET /auth/oidc/start?intent=reauth&returnTo=…` sends `prompt=login`. The callback must return the same `iss` + `sub` as the current session (otherwise `reauth_mismatch`, and the session is unchanged), and `auth_time` must not be older than the start of the flow (5 s clock skew allowed). It then sets the current session's `reauthenticatedAt = now` and replaces its refresh token and ID token hint, because AC ends the old AC session's grants on `prompt=login`. `GET /auth/session` returns `recentAuthUntil`, so the web app offers "Confirm identity" before opening a dialog whose request would fail.
 
 ## 5. CSRF
 
-- Cookie-authenticated **state-changing** requests (`POST/PUT/PATCH/DELETE`) must send the header `X-CSRF-Token` equal to the session's CSRF token, which is obtained from `GET /api/v1/auth/session` (synchronizer token pattern). `SameSite=Lax` is a second layer.
-- Bearer-authenticated requests are exempt (not ambient credentials).
-- Login, registration, and password-reset endpoints (no session yet) rely on SameSite + `Origin` header verification against `APP_URL`.
+- Cookie-authenticated **state-changing** requests (`POST/PUT/PATCH/DELETE`) must send the header `X-CSRF-Token` equal to the session's CSRF token, which is obtained from `GET /api/v1/auth/session` (synchronizer token pattern). `SameSite=Lax` is a second layer. A mismatch → `403 CSRF_INVALID`.
+- Bearer-authenticated requests (personal API tokens) are exempt (not ambient credentials).
+- The OIDC start and callback are top-level `GET` navigations protected by `state`, `nonce` and PKCE bound to the encrypted state cookie.
 - Socket.IO handshake: the `Origin` is checked against `APP_URL`.
 
 ## 6. Request authentication pipeline
@@ -105,20 +117,23 @@ Session: id (UUID), userId, tokenHash (SHA-256 of the 32-byte random token, uniq
 ```
 request → parse cookie/bearer
   → bearer starts with "mnv_pat_" → personal API token path ([api-tokens.md](api-tokens.md#3-authentication))
-  → otherwise: hash token → SELECT session JOIN user WHERE tokenHash = $1
-  → reject if revoked / expired / user DEACTIVATED → touch (throttled)
-  → req.auth = { userId, role, credential: { type: SESSION, sessionId, clientType } }
-  → CSRF check (cookie + unsafe method) → route
+  → other bearer → 401 UNAUTHENTICATED
+  → otherwise: hash cookie token → SELECT session JOIN user WHERE tokenHash = $1
+  → reject if revoked / expired / user DEACTIVATED
+  → IdP revalidation if due (§3) → touch (throttled)
+  → req.auth = { userId, role, credential: { type: SESSION, sessionId } }
+  → CSRF check (unsafe method) → route
 ```
 `req.auth.userId` is the **only** source of the acting user, whichever credential authenticated the request (see [authorization-and-data-isolation.md](authorization-and-data-isolation.md)).
 
 ## 7. Admin bootstrap
 
-- On first start with no users, registration is open **for the first user only**, who becomes ADMIN. Alternatively the operator runs `docker compose exec app node dist/cli.js create-admin --email …` (recommended for public instances; `BOOTSTRAP_ADMIN_EMAIL` limits first-user registration to that email).
-- After bootstrap, `registrationMode` defaults to `DISABLED`. The admin can switch to `OPEN`. Invite links are **[Deferred]**.
-- An admin cannot deactivate or demote themselves if they are the last active admin.
+- **`OIDC_ADMIN_GROUP` set:** the role is ADMIN exactly when the `groups` claim contains that group name, synced at every login and revalidation. A missing `groups` claim means USER and logs a warning (the group is probably not exposed to the Monevo application in AC). Roles cannot be changed in Monevo (`409 ROLE_MANAGED_BY_IDP`, and the CLI refuses).
+- **`OIDC_ADMIN_GROUP` unset:** the first provisioned user becomes ADMIN. Later roles change in the admin UI or with the CLI `set-role` ([administration.md](administration.md#users-r-adm-01-r-auth-04)).
+- An admin cannot deactivate themselves, and the last active admin cannot be deactivated or demoted (`409 LAST_ADMIN`).
+- Who may use Monevo at all is decided in the IdP (AC allowed groups for the application). Invite links are not needed.
 
 ## 8. API surface (summary)
 
-`/api/v1/auth/*`: `register`, `login`, `logout`, `session` (GET current + CSRF token), `password-reset/request|confirm`, `email/verify`, `oidc/start`, `oidc/callback`, `config` (public: registration mode, OIDC button label, instance branding).
-`/api/v1/me/*`: profile, `email-change`, `password`, `sessions`, `identities` (list, unlink), `oidc/link` (starts the link flow), `api-tokens` ([api-tokens.md](api-tokens.md#5-token-management)).
+`/api/v1/auth/*`: `config` (public: provider name), `oidc/start`, `oidc/callback`, `session` (GET current user, CSRF token, `recentAuthUntil`, `onboardingRequired`), `logout`.
+`/api/v1/me/*`: profile (`GET/PATCH /me`, display name only; the email is read-only and managed in the IdP), `settings` (`GET/PATCH`), `sessions` (list, `DELETE /:id`, `revoke-others`), `api-tokens` ([api-tokens.md](api-tokens.md#5-token-management)).
