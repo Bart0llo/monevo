@@ -55,7 +55,7 @@ Sign-in through the identity provider and first-user admin; re-authentication an
 - Factories (`test/factories/*`) build valid entities through the domain/command layer, not raw inserts, so constraints and change logs stay realistic.
 - Each integration test file gets a fresh schema (template database cloned per worker) for parallelism and isolation.
 - External services are faked behind interfaces: rate provider, push (a fake endpoint server), OIDC (the zero-dependency mock OpenID Provider in `tools/mock-idp/`, started in-process by integration tests via `startMockIdp()`, whose `misbehave('bad-signature' | 'wrong-nonce')` hook produces invalid ID tokens for negative cases, and as a process in development and E2E). Monevo sends no email, so there is no mailer to fake.
-- No real network calls in tests: every external service is faked as above.
+- No real network calls in tests: every external service is faked as above. Rate providers get an injected `fetch` with recorded fixtures in integration tests; E2E tests create manual rates first, which resolution prefers over any provider ([multi-currency.md](../architecture/multi-currency.md#5-rate-resolution-algorithm)), so the app container never calls Frankfurter or NBP.
 
 ## 5. Local validation
 

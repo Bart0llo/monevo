@@ -1,4 +1,5 @@
 import { InstantSchema, UserRoleSchema, UserStatusSchema, UuidSchema } from './auth.js';
+import { RateProviderIdSchema } from './currencies.js';
 import { z } from './zod.js';
 
 // Admin DTOs: operational data only, never financial fields (administration.md#1-boundaries).
@@ -54,3 +55,29 @@ export type AdminUserListQuery = z.infer<typeof AdminUserListQuerySchema>;
 export type AdminUserPage = z.infer<typeof AdminUserPageSchema>;
 export type AdminUserUpdate = z.infer<typeof AdminUserUpdateSchema>;
 export type IdentityProviderStatus = z.infer<typeof IdentityProviderStatusSchema>;
+
+/** One runtime setting as seen by the admin UI (configuration.md#runtime-settings-app_settings). */
+function adminSettingSchema<T extends z.ZodType>(value: T) {
+  return z.object({
+    /** Effective value (environment value when locked). */
+    value,
+    default: value,
+    /** Set by an environment variable: PATCH returns `SETTING_LOCKED_BY_ENV`. */
+    lockedByEnv: z.boolean(),
+  });
+}
+
+export const AdminSettingsSchema = z
+  .object({
+    rates: z.object({ provider: adminSettingSchema(RateProviderIdSchema) }),
+  })
+  .openapi('AdminSettings');
+
+export const AdminSettingsUpdateSchema = z
+  .strictObject({
+    rates: z.strictObject({ provider: RateProviderIdSchema }),
+  })
+  .openapi('AdminSettingsUpdate');
+
+export type AdminSettings = z.infer<typeof AdminSettingsSchema>;
+export type AdminSettingsUpdate = z.infer<typeof AdminSettingsUpdateSchema>;

@@ -1,6 +1,9 @@
 import { vi } from 'vitest';
 import {
+  type Account,
   type ApiToken,
+  type Category,
+  type Currency,
   type AuthSessionResponse,
   type ErrorCode,
   ERROR_STATUS,
@@ -67,6 +70,52 @@ export function tokenFixture(overrides: Partial<ApiToken> = {}): ApiToken {
   };
 }
 
+export const CURRENCIES: Currency[] = [
+  { code: 'EUR', exponent: 2, name: 'Euro', active: true },
+  { code: 'HRK', exponent: 2, name: 'Croatian Kuna', active: false },
+  { code: 'JPY', exponent: 0, name: 'Japanese Yen', active: true },
+  { code: 'PLN', exponent: 2, name: 'Polish Zloty', active: true },
+  { code: 'USD', exponent: 2, name: 'US Dollar', active: true },
+];
+
+export function accountFixture(overrides: Partial<Account> = {}): Account {
+  return {
+    id: '33333333-3333-4333-8333-333333333333',
+    name: 'Main bank',
+    currency: 'PLN',
+    kind: 'BANK',
+    customKindLabel: null,
+    icon: 'bank',
+    color: 'blue',
+    openingBalance: '1250.50',
+    openingDate: '2026-11-01',
+    includeInNetWorthWidget: true,
+    sortOrder: 0,
+    archivedAt: null,
+    version: 1,
+    createdAt: NOW,
+    updatedAt: NOW,
+    ...overrides,
+  };
+}
+
+export function categoryFixture(overrides: Partial<Category> = {}): Category {
+  return {
+    id: '44444444-4444-4444-8444-444444444444',
+    name: 'Food',
+    type: 'EXPENSE',
+    parentId: null,
+    icon: 'shopping-cart',
+    color: 'green',
+    sortOrder: 0,
+    archivedAt: null,
+    version: 1,
+    createdAt: NOW,
+    updatedAt: NOW,
+    ...overrides,
+  };
+}
+
 export function stubApi(options: ApiStubOptions = {}) {
   const role = options.role === undefined ? 'USER' : options.role;
   const calls: StubRequest[] = [];
@@ -114,6 +163,18 @@ export function stubApi(options: ApiStubOptions = {}) {
     'GET /me/sessions': () => ok({ items: [] }),
     'GET /me/api-tokens': () => ok({ items: [] }),
     'GET /admin/users': () => ok({ items: [], nextCursor: null }),
+    'GET /currencies': () => ok({ items: CURRENCIES }),
+    'GET /accounts': () => ok({ items: [] }),
+    'GET /categories': () => ok({ items: [] }),
+    'GET /admin/settings': () =>
+      ok({
+        rates: { provider: { value: 'frankfurter', default: 'frankfurter', lockedByEnv: false } },
+      }),
+    'POST /me/base-currency-change': ({ body }) => {
+      const { baseCurrency } = body as { baseCurrency: string };
+      settings = { ...settings, baseCurrency, version: settings.version + 1 };
+      return ok(settings);
+    },
   };
   const routes = { ...defaults, ...options.routes };
 

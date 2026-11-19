@@ -1,11 +1,12 @@
 import express, { type Router } from 'express';
 import {
+  BaseCurrencyChangeSchema,
   type Profile,
   ProfileUpdateSchema,
   type UserSettings,
   UserSettingsUpdateSchema,
 } from '@monevo/contracts';
-import { AppError } from '../../http/errors.js';
+import { AppError, fieldError } from '../../http/errors.js';
 import { authOf, type Guards, sessionOf } from '../../http/guards.js';
 import { expectedVersion, setVersionTag } from '../../http/versioning.js';
 import type { Clock } from '../../infra/clock.js';
@@ -127,6 +128,37 @@ export function meRouter(deps: MeDeps, guards: Guards): Router {
         : {}),
     };
     const updated = await updateSettings(prisma, userId, version, changes);
+    if (!updated) {
+      const latest = await loadSettings(userId);
+      throw new AppError('VERSION_CONFLICT', undefined, undefined, toSettingsDto(latest));
+    }
+    setVersionTag(res, updated.version);
+    res.json(toSettingsDto(updated));
+  });
+
+  // Explicit, confirmed base currency change (OQ-05). Stage 3 has no postings, so only the setting
+  // changes; Stage 4 adds the recalculation job (multi-currency.md#9-base-currency-change).
+  router.post('/me/base-currency-change', ...guards.requireAuth(), async (req, res) => {
+    const { userId } = sessionOf(req);
+    const body = BaseCurrencyChangeSchema.parse(req.body);
+    const version = expectedVersion(req, body.version);
+    const current = await loadSettings(userId);
+    if (current.version !== version) {
+      throw new AppError('VERSION_CONFLICT', undefined, undefined, toSettingsDto(current));
+    }
+    if (body.baseCurrency === current.baseCurrency) {
+      throw fieldError(
+        'baseCurrency',
+        'BASE_CURRENCY_UNCHANGED',
+        'This is already the base currency.',
+      );
+    }
+    if (!(await currencyIsActive(prisma, body.baseCurrency))) {
+      throw fieldError('baseCurrency', 'CURRENCY_INACTIVE', 'The currency is not available.');
+    }
+    const updated = await updateSettings(prisma, userId, version, {
+      baseCurrency: body.baseCurrency,
+    });
     if (!updated) {
       const latest = await loadSettings(userId);
       throw new AppError('VERSION_CONFLICT', undefined, undefined, toSettingsDto(latest));

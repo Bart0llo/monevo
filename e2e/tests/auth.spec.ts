@@ -42,6 +42,8 @@ test('auth journey: sign in, onboarding, settings, API token, sign out', async (
   await page.getByRole('button', { name: 'Create token' }).click();
   const dialog = page.getByRole('dialog', { name: 'New API token' });
   await dialog.getByRole('textbox', { name: 'Name' }).fill('E2E script');
+  // No permission is selected by default (api-tokens.md §6).
+  await dialog.getByRole('checkbox', { name: 'Read your profile and settings' }).check();
   await dialog.getByRole('button', { name: 'Create token' }).click();
   const secret = await page.getByTestId('api-token-secret').textContent();
   expect(secret).toMatch(/^mnv_pat_/);

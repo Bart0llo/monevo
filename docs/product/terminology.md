@@ -38,10 +38,11 @@ These terms are used precisely across code, API, UI copy (via translation keys),
 |---|---|---|
 | Account | `Account` | A user-defined container of money in one currency (a bank account, cash, Revolut, a savings account…). |
 | Account kind | `account.kind` | A suggested account type (`BANK`, `CASH`, `SAVINGS`, `CREDIT_CARD`, `E_WALLET`, `OTHER`) or `CUSTOM` with a free-text label. Purely descriptive; it has no effect on calculations. |
-| Transaction | `Transaction` | A **completed** (actual) financial operation that already happened. Types: `INCOME`, `EXPENSE`, `TRANSFER`, `ADJUSTMENT`. |
-| Posting | `Posting` | One balance-affecting line of a transaction against one account, with a signed amount. Income and expense have 1 posting, a transfer has 2, and an adjustment has 1. Postings are never edited independently of their transaction. |
+| Transaction | `Transaction` | A **completed** (actual) financial operation that already happened. Types: `INCOME`, `EXPENSE`, `TRANSFER`, `REFUND`, `ADJUSTMENT`. |
+| Posting | `Posting` | One balance-affecting line of a transaction against one account, with a signed amount. Income, expense, refund, and adjustment have 1 posting; a transfer has 2. Postings are never edited independently of their transaction. |
 | Transfer | `type = TRANSFER` | A movement between two accounts of the same user. It is neither income nor expense. Cross-currency transfers carry an explicit transfer rate. |
-| Adjustment | `type = ADJUSTMENT` | A balance correction (reconciliation) that is neither income nor expense. See [financial-domain-model.md](../architecture/financial-domain-model.md#adjustments). |
+| Refund | `type = REFUND` | Money returned for an earlier expense, linked to it by `refundOfId`. It increases the receiving account's balance and reduces expense in the original expense's category; it is never income. See [financial-domain-model.md](../architecture/financial-domain-model.md#refunds). |
+| Adjustment | `type = ADJUSTMENT` | A balance correction (reconciliation) with a required reason that is neither income nor expense. See [financial-domain-model.md](../architecture/financial-domain-model.md#adjustments). |
 | Opening balance | `account.openingBalance` | The balance of an account at its `openingDate`, before any postings. |
 | Balance | n/a | The actual balance of an account: opening balance plus the sum of its postings. Never includes projections. |
 | Category | `Category` | A user-defined classifier of type `INCOME` or `EXPENSE`, with at most one level of subcategories. |
@@ -50,7 +51,7 @@ These terms are used precisely across code, API, UI copy (via translation keys),
 | Template | `TransactionTemplate` | A saved set of default transaction fields used to pre-fill entry forms. |
 | Custom field | `CustomFieldDefinition` | A user-defined extra transaction field (text, number, date, boolean, or single-select). **Not** a tag or label. |
 | Attachment | `Attachment` | A file attached to a transaction. Its metadata lives in PostgreSQL; its content lives in the storage backend. |
-| Transaction history | `TransactionAudit` | An append-only change record for a transaction (create, update with old and new values, delete). |
+| Transaction history | `TransactionAudit` | An append-only change record for a transaction (create, update with old and new values, and a minimal delete record with only the time and the actor). |
 
 ## Planning and forecasting
 

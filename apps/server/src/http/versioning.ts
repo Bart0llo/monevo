@@ -21,3 +21,18 @@ export function expectedVersion(req: Request, bodyVersion: number | undefined): 
   if (bodyVersion !== undefined) return bodyVersion;
   throw new AppError('PRECONDITION_REQUIRED', 'Send If-Match or version.');
 }
+
+/**
+ * The version precondition of an owned-resource write: optional for browser sessions, required
+ * (`428`) when `required` (API tokens, api-design.md#3-conventions). Undefined = no precondition.
+ */
+export function versionPrecondition(
+  req: Request,
+  bodyVersion: number | undefined,
+  required: boolean,
+): number | undefined {
+  if (required || req.get('If-Match') !== undefined || bodyVersion !== undefined) {
+    return expectedVersion(req, bodyVersion);
+  }
+  return undefined;
+}

@@ -81,12 +81,17 @@
           "API_TOKEN_PERMISSION_DENIED",
           "NOT_FOUND",
           "VERSION_CONFLICT",
+          "ID_CONFLICT",
           "LAST_ADMIN",
           "ROLE_MANAGED_BY_IDP",
+          "SETTING_LOCKED_BY_ENV",
           "PAYLOAD_TOO_LARGE",
           "UNSUPPORTED_MEDIA_TYPE",
           "VALIDATION_FAILED",
           "API_TOKEN_LIMIT_REACHED",
+          "CATEGORY_TYPE_MISMATCH",
+          "CATEGORY_DEPTH_EXCEEDED",
+          "CATEGORY_PARENT_ARCHIVED",
           "PRECONDITION_REQUIRED",
           "RATE_LIMITED",
           "INTERNAL"
@@ -519,6 +524,29 @@
         "type": "string",
         "example": "PLN"
       },
+      "BaseCurrencyChange": {
+        "type": "object",
+        "properties": {
+          "baseCurrency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "confirm": {
+            "type": "boolean",
+            "enum": [
+              true
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "required": [
+          "baseCurrency",
+          "confirm"
+        ],
+        "additionalProperties": false
+      },
       "ApiTokenListResponse": {
         "type": "object",
         "properties": {
@@ -607,7 +635,17 @@
       "ApiTokenPermission": {
         "type": "string",
         "enum": [
-          "profile:read"
+          "profile:read",
+          "currencies:read",
+          "exchange-rates:create",
+          "accounts:read",
+          "accounts:create",
+          "accounts:update",
+          "accounts:delete",
+          "categories:read",
+          "categories:create",
+          "categories:update",
+          "categories:delete"
         ]
       },
       "ApiTokenStatus": {
@@ -647,7 +685,7 @@
               "$ref": "#/components/schemas/ApiTokenPermission"
             },
             "minItems": 1,
-            "maxItems": 1
+            "maxItems": 11
           },
           "expiresAt": {
             "type": [
@@ -823,6 +861,808 @@
           "discovery",
           "endSessionSupported"
         ]
+      },
+      "AdminSettings": {
+        "type": "object",
+        "properties": {
+          "rates": {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "type": "object",
+                "properties": {
+                  "value": {
+                    "$ref": "#/components/schemas/RateProviderId"
+                  },
+                  "default": {
+                    "$ref": "#/components/schemas/RateProviderId"
+                  },
+                  "lockedByEnv": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "value",
+                  "default",
+                  "lockedByEnv"
+                ]
+              }
+            },
+            "required": [
+              "provider"
+            ]
+          }
+        },
+        "required": [
+          "rates"
+        ]
+      },
+      "RateProviderId": {
+        "type": "string",
+        "enum": [
+          "frankfurter",
+          "nbp"
+        ]
+      },
+      "AdminSettingsUpdate": {
+        "type": "object",
+        "properties": {
+          "rates": {
+            "type": "object",
+            "properties": {
+              "provider": {
+                "$ref": "#/components/schemas/RateProviderId"
+              }
+            },
+            "required": [
+              "provider"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "rates"
+        ],
+        "additionalProperties": false
+      },
+      "CurrencyListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Currency"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "Currency": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "exponent": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "name": {
+            "type": "string"
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "code",
+          "exponent",
+          "name",
+          "active"
+        ]
+      },
+      "ExchangeRateListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExchangeRate"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "ExchangeRate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "fromCurrency": {
+            "type": "string"
+          },
+          "toCurrency": {
+            "type": "string"
+          },
+          "rateDate": {
+            "$ref": "#/components/schemas/LocalDate"
+          },
+          "rate": {
+            "type": "string"
+          },
+          "source": {
+            "$ref": "#/components/schemas/RateSource"
+          },
+          "providerId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "publishedOn": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LocalDate"
+              },
+              {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            ]
+          },
+          "fetchedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-19T10:00:00.000Z"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-19T10:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-19T10:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "fromCurrency",
+          "toCurrency",
+          "rateDate",
+          "rate",
+          "source",
+          "providerId",
+          "publishedOn",
+          "fetchedAt",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "LocalDate": {
+        "type": "string",
+        "example": "2026-11-19"
+      },
+      "RateSource": {
+        "type": "string",
+        "enum": [
+          "PROVIDER",
+          "MANUAL"
+        ]
+      },
+      "ExchangeRateCreate": {
+        "type": "object",
+        "properties": {
+          "fromCurrency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "toCurrency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "rateDate": {
+            "$ref": "#/components/schemas/LocalDate"
+          },
+          "rate": {
+            "$ref": "#/components/schemas/RateString"
+          }
+        },
+        "required": [
+          "fromCurrency",
+          "toCurrency",
+          "rateDate",
+          "rate"
+        ],
+        "additionalProperties": false
+      },
+      "RateString": {
+        "type": "string",
+        "example": "4.265000000000"
+      },
+      "ResolvedRate": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "FOUND",
+              "MISSING"
+            ]
+          },
+          "fromCurrency": {
+            "type": "string"
+          },
+          "toCurrency": {
+            "type": "string"
+          },
+          "date": {
+            "$ref": "#/components/schemas/LocalDate"
+          },
+          "rate": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "IDENTITY",
+              "MANUAL",
+              "PROVIDER",
+              null
+            ]
+          },
+          "providerId": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "rateDate": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LocalDate"
+              },
+              {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            ]
+          },
+          "publishedOn": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/LocalDate"
+              },
+              {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            ]
+          },
+          "method": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "DIRECT",
+              "INVERSE",
+              "CROSS",
+              null
+            ]
+          },
+          "pivot": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "stale": {
+            "type": "boolean"
+          },
+          "estimate": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "status",
+          "fromCurrency",
+          "toCurrency",
+          "date",
+          "rate",
+          "source",
+          "providerId",
+          "rateDate",
+          "publishedOn",
+          "method",
+          "pivot",
+          "stale",
+          "estimate"
+        ]
+      },
+      "ExchangeRateResolveRequest": {
+        "type": "object",
+        "properties": {
+          "fromCurrency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "toCurrency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "date": {
+            "$ref": "#/components/schemas/LocalDate"
+          }
+        },
+        "required": [
+          "fromCurrency",
+          "toCurrency",
+          "date"
+        ],
+        "additionalProperties": false
+      },
+      "AccountListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Account"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "Account": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AccountKind"
+          },
+          "customKindLabel": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "icon": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "openingBalance": {
+            "type": "string"
+          },
+          "openingDate": {
+            "$ref": "#/components/schemas/LocalDate"
+          },
+          "includeInNetWorthWidget": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "archivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-19T10:00:00.000Z"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-19T10:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-19T10:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "currency",
+          "kind",
+          "customKindLabel",
+          "icon",
+          "color",
+          "openingBalance",
+          "openingDate",
+          "includeInNetWorthWidget",
+          "sortOrder",
+          "archivedAt",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "AccountKind": {
+        "type": "string",
+        "enum": [
+          "BANK",
+          "CASH",
+          "SAVINGS",
+          "CREDIT_CARD",
+          "E_WALLET",
+          "OTHER",
+          "CUSTOM"
+        ]
+      },
+      "AccountCreate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "currency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AccountKind"
+          },
+          "customKindLabel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "icon": {
+            "$ref": "#/components/schemas/IconKey"
+          },
+          "color": {
+            "$ref": "#/components/schemas/Color"
+          },
+          "openingBalance": {
+            "$ref": "#/components/schemas/DecimalString"
+          },
+          "openingDate": {
+            "$ref": "#/components/schemas/LocalDate"
+          },
+          "includeInNetWorthWidget": {
+            "type": "boolean",
+            "default": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          }
+        },
+        "required": [
+          "name",
+          "currency",
+          "kind",
+          "icon",
+          "color",
+          "openingDate"
+        ],
+        "additionalProperties": false
+      },
+      "IconKey": {
+        "type": "string",
+        "enum": [
+          "wallet",
+          "bank",
+          "cash",
+          "credit-card",
+          "piggy-bank",
+          "coins",
+          "receipt",
+          "briefcase",
+          "gift",
+          "trending-up",
+          "home",
+          "bolt",
+          "droplet",
+          "flame",
+          "wifi",
+          "phone",
+          "shopping-cart",
+          "shopping-bag",
+          "tools-kitchen",
+          "coffee",
+          "car",
+          "gas-station",
+          "bus",
+          "plane",
+          "bike",
+          "heart",
+          "pill",
+          "stethoscope",
+          "school",
+          "book",
+          "device-tv",
+          "device-gamepad",
+          "music",
+          "movie",
+          "shirt",
+          "paw",
+          "baby",
+          "barbell",
+          "beach",
+          "building",
+          "tag",
+          "dots"
+        ]
+      },
+      "Color": {
+        "type": "string",
+        "example": "blue"
+      },
+      "DecimalString": {
+        "type": "string",
+        "default": "0",
+        "example": "1234.50"
+      },
+      "AccountUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "currency": {
+            "$ref": "#/components/schemas/CurrencyCode"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AccountKind"
+          },
+          "customKindLabel": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "icon": {
+            "$ref": "#/components/schemas/IconKey"
+          },
+          "color": {
+            "$ref": "#/components/schemas/Color"
+          },
+          "openingBalance": {
+            "$ref": "#/components/schemas/DecimalString"
+          },
+          "openingDate": {
+            "$ref": "#/components/schemas/LocalDate"
+          },
+          "includeInNetWorthWidget": {
+            "type": "boolean"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
+      },
+      "CategoryListResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "$ref": "#/components/schemas/CategoryType"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "icon": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "archivedAt": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "example": "2026-11-19T10:00:00.000Z"
+          },
+          "version": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-19T10:00:00.000Z"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-11-19T10:00:00.000Z"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "type",
+          "parentId",
+          "icon",
+          "color",
+          "sortOrder",
+          "archivedAt",
+          "version",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CategoryType": {
+        "type": "string",
+        "enum": [
+          "INCOME",
+          "EXPENSE"
+        ]
+      },
+      "CategoryCreate": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "type": {
+            "$ref": "#/components/schemas/CategoryType"
+          },
+          "parentId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/IconKey"
+          },
+          "color": {
+            "$ref": "#/components/schemas/Color"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1000000
+          }
+        },
+        "required": [
+          "name",
+          "type",
+          "icon",
+          "color"
+        ],
+        "additionalProperties": false
+      },
+      "CategoryReorder": {
+        "type": "object",
+        "properties": {
+          "ids": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "minItems": 1,
+            "maxItems": 500
+          }
+        },
+        "required": [
+          "ids"
+        ],
+        "additionalProperties": false
+      },
+      "CategoryUpdate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "type": {
+            "$ref": "#/components/schemas/CategoryType"
+          },
+          "parentId": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "uuid"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/IconKey"
+          },
+          "color": {
+            "$ref": "#/components/schemas/Color"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1
+          }
+        },
+        "additionalProperties": false
       }
     },
     "parameters": {}
@@ -1530,6 +2370,123 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/UserSettingsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserSettings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`MALFORMED_REQUEST`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_NOT_ALLOWED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`VERSION_CONFLICT`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`VALIDATION_FAILED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`PRECONDITION_REQUIRED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/me/base-currency-change": {
+      "post": {
+        "operationId": "changeBaseCurrency",
+        "tags": [
+          "me"
+        ],
+        "summary": "Change the base currency (explicit confirmation)",
+        "description": "Session only; never available to API tokens. Needs `confirm: true` and `If-Match: \"<version>\"` or `version`. Allowed before and after onboarding. Original amounts are never changed.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "If-Match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BaseCurrencyChange"
               }
             }
           }
@@ -2402,6 +3359,1914 @@
           },
           "403": {
             "description": "`API_TOKEN_NOT_ALLOWED`, `FORBIDDEN`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/admin/settings": {
+      "get": {
+        "operationId": "adminGetSettings",
+        "tags": [
+          "admin"
+        ],
+        "summary": "Instance runtime settings",
+        "description": "Settings set by an environment variable are reported with `lockedByEnv: true`.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_NOT_ALLOWED`, `FORBIDDEN`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "adminUpdateSettings",
+        "tags": [
+          "admin"
+        ],
+        "summary": "Change instance runtime settings",
+        "description": "Changing a setting enforced by an environment variable returns `SETTING_LOCKED_BY_ENV`.",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminSettingsUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminSettings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_NOT_ALLOWED`, `CSRF_INVALID`, `FORBIDDEN`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`SETTING_LOCKED_BY_ENV`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`VALIDATION_FAILED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/currencies": {
+      "get": {
+        "operationId": "listCurrencies",
+        "tags": [
+          "currencies"
+        ],
+        "summary": "ISO 4217 currencies with their exponent",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "currencies:read"
+        ],
+        "responses": {
+          "200": {
+            "description": "Currencies",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CurrencyListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exchange-rates": {
+      "get": {
+        "operationId": "listExchangeRates",
+        "tags": [
+          "currencies"
+        ],
+        "summary": "Stored rates: the caller’s manual rates and cached provider rates",
+        "description": "Newest `rateDate` first.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "currencies:read"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "$ref": "#/components/schemas/CurrencyCode"
+            },
+            "required": false,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/CurrencyCode"
+            },
+            "required": false,
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/LocalDate"
+            },
+            "required": false,
+            "name": "date",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200,
+              "default": 50
+            },
+            "required": false,
+            "name": "limit",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Rates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangeRateListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`VALIDATION_FAILED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "putManualExchangeRate",
+        "tags": [
+          "currencies"
+        ],
+        "summary": "Create or replace a manual rate for a pair and date",
+        "description": "Manual rates take precedence over provider rates for the same date. `201` when created, `200` when an existing manual rate was replaced.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "exchange-rates:create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExchangeRateCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Replaced",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangeRate"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExchangeRate"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`VALIDATION_FAILED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/exchange-rates/resolve": {
+      "post": {
+        "operationId": "resolveExchangeRate",
+        "tags": [
+          "currencies"
+        ],
+        "summary": "Resolve the rate for a pair and date",
+        "description": "Runs the resolution algorithm (manual, cached provider rate, on-demand provider fetch, stale rate up to 7 days). A missing rate or provider outage returns `status: MISSING`, never an error. Future dates use the latest rate and set `estimate`.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "exchange-rates:create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ExchangeRateResolveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resolved rate",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResolvedRate"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`VALIDATION_FAILED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts": {
+      "get": {
+        "operationId": "listAccounts",
+        "tags": [
+          "accounts"
+        ],
+        "summary": "All accounts, archived included",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "accounts:read"
+        ],
+        "responses": {
+          "200": {
+            "description": "Accounts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createAccount",
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Create an account",
+        "description": "The client may supply the `id` (offline-first); an id already in use returns `ID_CONFLICT`. The opening balance must fit the currency exponent (`errors[].code` `AMOUNT_PRECISION`); inactive currencies are refused (`CURRENCY_INACTIVE`).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "accounts:create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`ID_CONFLICT`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`VALIDATION_FAILED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{id}": {
+      "get": {
+        "operationId": "getAccount",
+        "tags": [
+          "accounts"
+        ],
+        "summary": "One account",
+        "description": "The `ETag` header carries the version for `If-Match`.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "accounts:read"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateAccount",
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Change an account",
+        "description": "`If-Match: \"<version>\"` (or `version`) is optional for browser sessions and required for API tokens (`428`). The currency stays editable while the account has no postings.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "accounts:update"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "If-Match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AccountUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`MALFORMED_REQUEST`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`VERSION_CONFLICT`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`VALIDATION_FAILED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`PRECONDITION_REQUIRED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteAccount",
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Delete an unused account",
+        "description": "`If-Match: \"<version>\"` (or `version`) is optional for browser sessions and required for API tokens (`428`).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "accounts:delete"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "If-Match",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "description": "`MALFORMED_REQUEST`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`VERSION_CONFLICT`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`PRECONDITION_REQUIRED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{id}/archive": {
+      "post": {
+        "operationId": "archiveAccount",
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Archive an account",
+        "description": "Idempotent.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "accounts:update"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/accounts/{id}/unarchive": {
+      "post": {
+        "operationId": "unarchiveAccount",
+        "tags": [
+          "accounts"
+        ],
+        "summary": "Restore an archived account",
+        "description": "Idempotent.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "accounts:update"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "operationId": "listCategories",
+        "tags": [
+          "categories"
+        ],
+        "summary": "All categories, archived included",
+        "description": "A flat list; subcategories reference their parent. An archived parent hides its subcategories.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "categories:read"
+        ],
+        "responses": {
+          "200": {
+            "description": "Categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createCategory",
+        "tags": [
+          "categories"
+        ],
+        "summary": "Create a category or subcategory",
+        "description": "The parent must be a top-level, non-archived category of the same type. The client may supply the `id`; an id already in use returns `ID_CONFLICT`.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "categories:create"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryCreate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`ID_CONFLICT`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`VALIDATION_FAILED`, `CATEGORY_TYPE_MISMATCH`, `CATEGORY_DEPTH_EXCEEDED`, `CATEGORY_PARENT_ARCHIVED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/reorder": {
+      "post": {
+        "operationId": "reorderCategories",
+        "tags": [
+          "categories"
+        ],
+        "summary": "Reorder sibling categories",
+        "description": "Sets `sortOrder` to the position in `ids`. All ids must be siblings (same parent and type). Returns every category.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "categories:update"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryReorder"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`VALIDATION_FAILED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/{id}": {
+      "get": {
+        "operationId": "getCategory",
+        "tags": [
+          "categories"
+        ],
+        "summary": "One category",
+        "description": "The `ETag` header carries the version for `If-Match`.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "categories:read"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateCategory",
+        "tags": [
+          "categories"
+        ],
+        "summary": "Change, move or promote a category",
+        "description": "`If-Match: \"<version>\"` (or `version`) is optional for browser sessions and required for API tokens (`428`). `parentId: null` promotes a subcategory. The type of a category with subcategories cannot change.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "categories:update"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "If-Match",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CategoryUpdate"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "`MALFORMED_REQUEST`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`VERSION_CONFLICT`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "`VALIDATION_FAILED`, `CATEGORY_TYPE_MISMATCH`, `CATEGORY_DEPTH_EXCEEDED`, `CATEGORY_PARENT_ARCHIVED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`PRECONDITION_REQUIRED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "deleteCategory",
+        "tags": [
+          "categories"
+        ],
+        "summary": "Delete a category and its subcategories",
+        "description": "`If-Match: \"<version>\"` (or `version`) is optional for browser sessions and required for API tokens (`428`).",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "categories:delete"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string"
+            },
+            "required": false,
+            "name": "If-Match",
+            "in": "header"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "400": {
+            "description": "`MALFORMED_REQUEST`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "`VERSION_CONFLICT`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "428": {
+            "description": "`PRECONDITION_REQUIRED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/{id}/archive": {
+      "post": {
+        "operationId": "archiveCategory",
+        "tags": [
+          "categories"
+        ],
+        "summary": "Archive a category",
+        "description": "Idempotent. Subcategories keep their own state but are hidden while the parent is archived.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "categories:update"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "`RATE_LIMITED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/categories/{id}/unarchive": {
+      "post": {
+        "operationId": "unarchiveCategory",
+        "tags": [
+          "categories"
+        ],
+        "summary": "Restore an archived category",
+        "description": "Idempotent. A subcategory under an archived parent stays hidden until the parent is restored.",
+        "security": [
+          {
+            "cookieAuth": []
+          },
+          {
+            "apiToken": []
+          }
+        ],
+        "x-monevo-permissions": [
+          "categories:update"
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "`UNAUTHENTICATED`, `API_TOKEN_EXPIRED`, `API_TOKEN_REVOKED`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "`API_TOKEN_PERMISSION_DENIED`, `CSRF_INVALID`",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "`NOT_FOUND`",
             "content": {
               "application/problem+json": {
                 "schema": {

@@ -8,4 +8,10 @@ export const queryKeys = {
   apiTokens: ['me', 'api-tokens'] as const,
   adminUsers: (q: string) => ['admin', 'users', q] as const,
   identityProvider: ['admin', 'identity-provider'] as const,
+  adminSettings: ['admin', 'settings'] as const,
+  currencies: ['currencies'] as const,
+  accounts: ['accounts'] as const,
+  categories: ['categories'] as const,
+  resolvedRate: (from: string, to: string, date: string) =>
+    ['exchange-rates', 'resolve', from, to, date] as const,
 };

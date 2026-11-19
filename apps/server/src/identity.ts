@@ -5,6 +5,7 @@ import type { Clock } from './infra/clock.js';
 import type { Logger } from './infra/logger.js';
 import type { OidcClient } from './infra/oidc.js';
 import type { PrismaClient } from './infra/prisma.js';
+import { accountsRouter } from './modules/accounts/index.js';
 import { adminRouter } from './modules/admin/index.js';
 import { apiTokensRouter } from './modules/api-tokens/index.js';
 import {
@@ -16,14 +17,21 @@ import {
   createSessionService,
   sessionsRouter,
 } from './modules/auth/index.js';
+import { categoriesRouter } from './modules/categories/index.js';
+import {
+  createProviders,
+  createRateService,
+  currenciesRouter,
+  type FetchLike,
+} from './modules/currencies/index.js';
 import { meRouter } from './modules/users/index.js';
 
-// Composition root of the identity modules (users, auth, api-tokens, admin). The auth module
-// implements the guards; the other routers receive them as a parameter.
+// Composition root of the API modules (users, auth, api-tokens, admin, currencies, accounts,
+// categories). The auth module implements the guards; the other routers receive them as a parameter.
 
 export type IdentityConfig = Pick<
   Config,
-  'appUrl' | 'insecureCookies' | 'encryptionKey' | 'oidc' | 'session'
+  'appUrl' | 'insecureCookies' | 'encryptionKey' | 'oidc' | 'session' | 'rateProvider'
 >;
 
 export interface IdentityDeps {
@@ -33,6 +41,8 @@ export interface IdentityDeps {
   readonly config: IdentityConfig;
   /** Overrides for tests. */
   readonly limits?: Partial<IdentityRateLimits>;
+  /** HTTP client of the rate providers; tests inject a fake so they never reach the network. */
+  readonly fetch?: FetchLike;
 }
 
 export function createIdentityRouter(deps: IdentityDeps, logger: Logger): Router {
@@ -49,6 +59,13 @@ export function createIdentityRouter(deps: IdentityDeps, logger: Logger): Router
   const guards = createGuards({ prisma, clock, sessions, revalidator, cookies, limits });
   const login = createLoginService({ prisma, oidc, clock, logger, sessions });
   const sealer = createOidcStateSealer(config.encryptionKey);
+  const rates = createRateService({
+    prisma,
+    clock,
+    logger,
+    providers: createProviders(deps.fetch ?? globalThis.fetch),
+    rateProviderEnv: config.rateProvider,
+  });
 
   const router = express.Router();
   router.use(
@@ -57,6 +74,11 @@ export function createIdentityRouter(deps: IdentityDeps, logger: Logger): Router
   router.use(sessionsRouter({ prisma, clock, logger, cookies }, guards));
   router.use(meRouter({ prisma, clock }, guards));
   router.use(apiTokensRouter({ prisma, clock, logger }, guards));
-  router.use(adminRouter({ prisma, oidc, clock, logger }, guards));
+  router.use(
+    adminRouter({ prisma, oidc, clock, logger, rateProviderEnv: config.rateProvider }, guards),
+  );
+  router.use(currenciesRouter({ prisma, rates }, guards));
+  router.use(accountsRouter({ prisma, clock }, guards));
+  router.use(categoriesRouter({ prisma, clock }, guards));
   return router;
 }

@@ -7,6 +7,12 @@
 // - user_settings: locale allowlist (`en`, `pl`), date_format allowlist.
 // - sessions.revoked_reason, api_tokens.revoked_reason: TEXT + CHECK value sets.
 // - api_tokens: name length 1–100.
+// - users.maintenance_state: TEXT + CHECK value set (20261120000000_reference_data).
+// - exchange_rates: from <> to, rate > 0, source/user/provider shape, unique expression index
+//   over (COALESCE(user_id, nil), source, COALESCE(provider_id, ''), from, to, rate_date).
+// - accounts: name length 1–100, custom_kind_label iff kind = CUSTOM (1–50), |opening_balance| < 1e15.
+// - categories: name length 1–100, parent <> self, composite FK (parent_id, user_id) ON DELETE
+//   CASCADE, hierarchy trigger categories_hierarchy_check (depth ≤ 2, parent type).
 
 generator client {
   provider     = "prisma-client"
@@ -36,6 +42,9 @@ model Currency {
   active   Boolean
 
   userSettings UserSetting[]
+  ratesFrom    ExchangeRate[] @relation("RateFrom")
+  ratesTo      ExchangeRate[] @relation("RateTo")
+  accounts     Account[]
 
   @@map("currencies")
 }
@@ -69,19 +78,24 @@ enum Theme {
 /// Account root (authentication.md#1-account-model). Not owned; every owned table references it.
 /// Provisioned at the first OIDC sign-in; `email` is informational only, never identity.
 model User {
-  id          String     @id @db.Uuid
-  email       String?
-  displayName String     @map("display_name")
-  role        UserRole   @default(USER)
-  status      UserStatus @default(ACTIVE)
-  lastLoginAt DateTime?  @map("last_login_at") @db.Timestamptz(6)
-  createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt   DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id               String     @id @db.Uuid
+  email            String?
+  displayName      String     @map("display_name")
+  role             UserRole   @default(USER)
+  status           UserStatus @default(ACTIVE)
+  /// `BASE_CURRENCY_CHANGE` while that operation runs (Stage 4); null otherwise.
+  maintenanceState String?    @map("maintenance_state")
+  lastLoginAt      DateTime?  @map("last_login_at") @db.Timestamptz(6)
+  createdAt        DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  settings   UserSetting?
-  identities UserIdentity[]
-  sessions   Session[]
-  apiTokens  ApiToken[]
+  settings      UserSetting?
+  identities    UserIdentity[]
+  sessions      Session[]
+  apiTokens     ApiToken[]
+  exchangeRates ExchangeRate[]
+  accounts      Account[]
+  categories    Category[]
 
   @@map("users")
 }
@@ -172,4 +186,103 @@ model ApiToken {
   @@unique([id, userId])
   @@index([userId, createdAt])
   @@map("api_tokens")
+}
+
+enum RateSource {
+  PROVIDER
+  MANUAL
+}
+
+/// Provider rates (global, user_id null) and user manual rates (multi-currency.md#4-exchange-rate-storage).
+/// 1 from_currency = rate to_currency. Not owned in the composite-FK sense; manual rates are
+/// user-scoped by every query.
+model ExchangeRate {
+  id           String     @id @db.Uuid
+  userId       String?    @map("user_id") @db.Uuid
+  fromCurrency String     @map("from_currency") @db.Char(3)
+  toCurrency   String     @map("to_currency") @db.Char(3)
+  rateDate     DateTime   @map("rate_date") @db.Date
+  rate         Decimal    @db.Decimal(24, 12)
+  source       RateSource
+  providerId   String?    @map("provider_id")
+  publishedOn  DateTime?  @map("published_on") @db.Date
+  metadata     Json?
+  fetchedAt    DateTime?  @map("fetched_at") @db.Timestamptz(6)
+  createdAt    DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime   @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  from Currency @relation("RateFrom", fields: [fromCurrency], references: [code], onDelete: NoAction)
+  to   Currency @relation("RateTo", fields: [toCurrency], references: [code], onDelete: NoAction)
+
+  @@index([fromCurrency, toCurrency, rateDate(sort: Desc)])
+  @@index([userId])
+  @@map("exchange_rates")
+}
+
+enum AccountKind {
+  BANK
+  CASH
+  SAVINGS
+  CREDIT_CARD
+  E_WALLET
+  OTHER
+  CUSTOM
+}
+
+/// User accounts (data-model.md#accounts). Stage 3 stores the opening balance only.
+model Account {
+  id                      String      @id @db.Uuid
+  userId                  String      @map("user_id") @db.Uuid
+  name                    String
+  currency                String      @db.Char(3)
+  kind                    AccountKind
+  customKindLabel         String?     @map("custom_kind_label")
+  icon                    String
+  color                   String
+  openingBalance          Decimal     @default(0) @map("opening_balance") @db.Decimal(19, 4)
+  openingDate             DateTime    @map("opening_date") @db.Date
+  includeInNetWorthWidget Boolean     @default(true) @map("include_in_net_worth_widget")
+  sortOrder               Int         @default(0) @map("sort_order")
+  archivedAt              DateTime?   @map("archived_at") @db.Timestamptz(6)
+  version                 Int         @default(1)
+  createdAt               DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime    @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  currencyRef Currency @relation(fields: [currency], references: [code], onDelete: NoAction)
+
+  @@unique([id, userId])
+  @@index([userId, sortOrder])
+  @@map("accounts")
+}
+
+enum CategoryType {
+  INCOME
+  EXPENSE
+}
+
+/// Two-level category tree (data-model.md#categories). Deleting a parent deletes its children.
+model Category {
+  id         String       @id @db.Uuid
+  userId     String       @map("user_id") @db.Uuid
+  name       String
+  type       CategoryType
+  parentId   String?      @map("parent_id") @db.Uuid
+  icon       String
+  color      String
+  sortOrder  Int          @default(0) @map("sort_order")
+  archivedAt DateTime?    @map("archived_at") @db.Timestamptz(6)
+  version    Int          @default(1)
+  createdAt  DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime     @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  user     User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   Category?  @relation("CategoryTree", fields: [parentId, userId], references: [id, userId], onDelete: Cascade)
+  children Category[] @relation("CategoryTree")
+
+  @@unique([id, userId])
+  @@index([userId, type, sortOrder])
+  @@index([parentId])
+  @@map("categories")
 }

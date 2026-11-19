@@ -4,6 +4,7 @@ import {
   Center,
   Group,
   Loader,
+  Modal,
   Select,
   Text,
   TextInput,
@@ -12,7 +13,7 @@ import {
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
 import { notifications } from '@mantine/notifications';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   DATE_FORMATS,
@@ -28,6 +29,8 @@ import {
 } from '@monevo/contracts';
 import { THEME_TO_SCHEME } from '../../app/preferences';
 import { useErrorMessage, useFieldErrors } from '../../data/errors';
+import { useCurrencyName } from '../../data/money';
+import { useChangeBaseCurrency, useCurrencies } from '../../data/reference';
 import { useProfile, useSettings, useUpdateProfile, useUpdateSettings } from '../../data/settings';
 import { timeZoneOptions } from './options';
 
@@ -47,7 +50,112 @@ export function ProfileSettings() {
     <>
       <ProfileSection profile={profile.data} />
       <PreferencesSection key={settings.data.version} settings={settings.data} />
+      <BaseCurrencySection key={`base-${String(settings.data.version)}`} settings={settings.data} />
     </>
+  );
+}
+
+/**
+ * Base currency change (multi-currency.md#9-base-currency-change). Stage 3 only switches the
+ * setting; there are no stored base amounts to recalculate yet.
+ */
+function BaseCurrencySection({ settings }: { readonly settings: UserSettings }) {
+  const { t } = useTranslation();
+  const currencies = useCurrencies();
+  const currencyName = useCurrencyName();
+  const change = useChangeBaseCurrency();
+  const errorMessage = useErrorMessage();
+  const fieldErrors = useFieldErrors();
+  const [selected, setSelected] = useState(settings.baseCurrency);
+  const [confirming, setConfirming] = useState(false);
+  const [fieldError, setFieldError] = useState<string | null>(null);
+
+  const options = (currencies.data ?? [])
+    .filter((currency) => currency.active || currency.code === settings.baseCurrency)
+    .map((currency) => ({
+      value: currency.code,
+      label: `${currency.code} · ${currencyName(currency)}`,
+    }));
+
+  const confirm = () =>
+    change.mutate(
+      { baseCurrency: selected, version: settings.version },
+      {
+        onSuccess: (saved) => {
+          setConfirming(false);
+          notifications.show({
+            message: t('settings.baseCurrencyChange.done', { currency: saved.baseCurrency }),
+            color: 'teal',
+          });
+        },
+        onError: (error) => {
+          setConfirming(false);
+          setFieldError(fieldErrors(error).baseCurrency ?? null);
+        },
+      },
+    );
+
+  return (
+    <section className="mv-section" aria-labelledby="base-currency-title">
+      <Title order={2} size="h4" id="base-currency-title">
+        {t('settings.baseCurrencyChange.title')}
+      </Title>
+      <Text size="sm" c="dimmed">
+        {t('settings.baseCurrencyChange.description')}
+      </Text>
+      <form
+        className="mv-form"
+        noValidate
+        onSubmit={(event) => {
+          event.preventDefault();
+          setConfirming(true);
+        }}
+      >
+        <Select
+          label={t('settings.baseCurrency')}
+          data={options}
+          searchable
+          allowDeselect={false}
+          nothingFoundMessage={t('settings.nothingFound')}
+          value={selected}
+          error={fieldError}
+          onChange={(value) => {
+            if (value) setSelected(value);
+            setFieldError(null);
+          }}
+        />
+        {change.isError && !fieldError ? (
+          <Alert color="red" variant="light" role="alert">
+            {errorMessage(change.error)}
+          </Alert>
+        ) : null}
+        <Group>
+          <Button type="submit" disabled={selected === settings.baseCurrency}>
+            {t('settings.baseCurrencyChange.submit')}
+          </Button>
+        </Group>
+      </form>
+      <Modal
+        opened={confirming}
+        onClose={() => setConfirming(false)}
+        title={t('settings.baseCurrencyChange.confirmTitle')}
+      >
+        <Text size="sm">
+          {t('settings.baseCurrencyChange.confirmBody', {
+            from: settings.baseCurrency,
+            to: selected,
+          })}
+        </Text>
+        <Group justify="flex-end" mt="md">
+          <Button variant="default" onClick={() => setConfirming(false)}>
+            {t('actions.cancel')}
+          </Button>
+          <Button loading={change.isPending} onClick={confirm}>
+            {t('settings.baseCurrencyChange.confirm')}
+          </Button>
+        </Group>
+      </Modal>
+    </section>
   );
 }
 
@@ -184,12 +292,6 @@ function PreferencesSection({ settings }: { readonly settings: UserSettings }) {
           }))}
           allowDeselect={false}
           {...form.getInputProps('theme')}
-        />
-        <TextInput
-          label={t('settings.baseCurrency')}
-          description={t('settings.preferences.baseCurrencyLocked')}
-          value={settings.baseCurrency}
-          readOnly
         />
         {update.isError ? (
           <Alert color="red" variant="light" role="alert">

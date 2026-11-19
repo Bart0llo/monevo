@@ -47,7 +47,7 @@ External (outbound only): OIDC identity provider (Account Center) · exchange ra
 | Auth | OIDC-only via Account Center (one IdP, env-configured), own server-side opaque sessions | [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md) (supersedes ADR-0005) |
 | Isolation | `userId` on every owned row, composite FKs, scoped repositories | [ADR-0006](../decisions/ADR-0006-user-data-isolation.md) |
 | Money | `NUMERIC` + decimal.js, decimal strings in JSON, stored rate snapshots | [ADR-0007](../decisions/ADR-0007-money-and-multi-currency.md) |
-| Ledger | Transaction header + postings; transfers = 2 postings | [ADR-0008](../decisions/ADR-0008-transaction-and-transfer-model.md) |
+| Ledger | Transaction header + postings; transfers = 2 postings; `REFUND` (linked to its expense) and `ADJUSTMENT` = 1 posting | [ADR-0008](../decisions/ADR-0008-transaction-and-transfer-model.md), [ADR-0021](../decisions/ADR-0021-refund-and-adjustment-transaction-types.md) |
 | Offline | Per-user change log with monotonic seq, idempotent mutations, field-level 3-way merge | [ADR-0009](../decisions/ADR-0009-offline-synchronization.md) |
 | Files | Storage driver abstraction (local / S3), quotas in DB | [ADR-0010](../decisions/ADR-0010-file-storage-abstraction.md) |
 | Backups | pg_dump + immutable attachment copy, delayed physical deletion | [ADR-0011](../decisions/ADR-0011-backup-and-restore.md) |
@@ -71,7 +71,7 @@ Backend modules (each one owns its tables, services, routes, and contracts; see 
 | `currencies` | Currency reference, exchange rates, providers, conversion service | n/a |
 | `accounts` | Accounts, balances | `currencies` |
 | `categories` | Category tree | n/a |
-| `transactions` | Transactions, postings, transfers, adjustments, templates, custom fields, history | `accounts`, `categories`, `currencies` |
+| `transactions` | Transactions, postings, transfers, refunds, adjustments, templates, custom fields, history | `accounts`, `categories`, `currencies` |
 | `attachments` | Attachment metadata, upload/download, quota | `transactions`, `storage` |
 | `storage` | Storage drivers (infrastructure) | n/a |
 | `scheduling` | Scheduled transactions, occurrences, generation, reminders | `transactions` |

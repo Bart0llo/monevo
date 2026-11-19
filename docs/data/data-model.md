@@ -163,10 +163,12 @@ Seeded by migration; no `id`, no timestamps.
 | rate | rate | CHECK `> 0` |
 | source | enum `PROVIDER`, `MANUAL` | |
 | providerId | text? | `frankfurter`, `nbp`, … |
-| metadata | jsonb? | `publishedDate`, pivot currency |
-| fetchedAt | timestamptz? | |
+| publishedOn | date? | provider rates: the provider's actual publication date (may be before `rateDate` on weekends and holidays) |
+| metadata | jsonb? | provider rates: `{ pivot }` |
+| fetchedAt | timestamptz? | provider rates |
+| createdAt, updatedAt | timestamptz | |
 
-Unique expression index over `(COALESCE(userId, nil), source, COALESCE(providerId, ''), fromCurrency, toCurrency, rateDate)`. Not owned in the composite-FK sense (no children reference it), but manual rates are user-scoped by every query.
+CHECK: `MANUAL` rows have `userId` and no `providerId`; `PROVIDER` rows have `providerId` and no `userId`. Unique expression index over `(COALESCE(userId, nil), source, COALESCE(providerId, ''), fromCurrency, toCurrency, rateDate)`; saving a manual rate for an existing pair and date replaces it, and manual rates are not deleted. Indexes on `(fromCurrency, toCurrency, rateDate DESC)` and `userId`. Not owned in the composite-FK sense (no children reference it), but manual rates are user-scoped by every query.
 
 ## Ledger
 
@@ -174,7 +176,7 @@ Unique expression index over `(COALESCE(userId, nil), source, COALESCE(providerI
 | Column | Type | Notes |
 |---|---|---|
 | name | text | 1–100 chars |
-| currency | ccy | immutable once postings exist |
+| currency | ccy | FK → currencies; immutable once postings exist |
 | kind | enum `BANK`, `CASH`, `SAVINGS`, `CREDIT_CARD`, `E_WALLET`, `OTHER`, `CUSTOM` | |
 | customKindLabel | text? | required when `kind = CUSTOM` (CHECK) |
 | icon, color | text | icon key from the bundled set, color token or hex |
@@ -188,22 +190,24 @@ Unique expression index over `(COALESCE(userId, nil), source, COALESCE(providerI
 ### categories
 | Column | Type | Notes |
 |---|---|---|
-| name | text | |
-| type | enum `INCOME`, `EXPENSE` | equals the parent's type |
-| parentId | uuid? | composite FK `(parentId, userId)` → categories; depth ≤ 2 (trigger) |
+| name | text | 1–100 chars |
+| type | enum `INCOME`, `EXPENSE` | equals the parent's type (trigger) |
+| parentId | uuid? | composite FK `(parentId, userId)` → categories, `ON DELETE CASCADE` (deleting a parent deletes its subcategories); depth ≤ 2 (trigger) |
 | icon, color | text | |
 | sortOrder | int | |
+| archivedAt | timestamptz? | null = active. An archived parent hides its subcategories, which keep their own value; no new subcategory under an archived parent (service rule, [features.md](../product/features.md#categories)) |
 | version | int | |
 
 ### transactions
 | Column | Type | Notes |
 |---|---|---|
-| type | enum `INCOME`, `EXPENSE`, `TRANSFER`, `ADJUSTMENT` | |
+| type | enum `INCOME`, `EXPENSE`, `TRANSFER`, `REFUND`, `ADJUSTMENT` | posting shape per type: INV-4 in [financial-domain-model.md](../architecture/financial-domain-model.md#core-invariants) |
 | occurredOn | date | authoritative user-local date |
 | occurredAt | timestamptz? | optional exact time |
-| description | text? | max 500; trigram index |
+| description | text? | max 500; trigram index; required (non-blank) for `ADJUSTMENT` (CHECK) |
 | notes | text? | max 5 000 |
-| categoryId | uuid? | composite FK; income/expense only |
+| categoryId | uuid? | composite FK; income/expense only (null for `TRANSFER`, `REFUND`, `ADJUSTMENT`, CHECK) |
+| refundOfId | uuid? | composite FK `(refundOfId, userId)` → transactions, `NoAction`; set exactly when `type = REFUND` (CHECK); immutable; must point to an `EXPENSE` (service; also covered by `posting_shape_check` if Stage 4 adopts it, [database-architecture.md](../architecture/database-architecture.md#3-constraints-beyond-prismas-dsl)); index `(userId, refundOfId)` |
 | customFields | jsonb | `{ [definitionId]: value }`, default `{}` |
 | source | enum `MANUAL`, `TEMPLATE`, `SCHEDULE_AUTO`, `SCHEDULE_CONFIRMED`, `IMPORT` | |
 | templateId | uuid? | provenance only, **no FK** (templates can be deleted freely) |
@@ -246,15 +250,15 @@ No `version` and no timestamps of their own: postings are always written with th
 | apiTokenName | text? | copied at write time |
 | deviceLabel | text? | copied at write time |
 | clientChangedAt | timestamptz? | from the sync mutation |
-| changes | jsonb | shape per action in [financial-domain-model.md](../architecture/financial-domain-model.md#transaction-history-audit) |
+| changes | jsonb | shape per action in [financial-domain-model.md](../architecture/financial-domain-model.md#transaction-history-audit); `{}` for `DELETE` |
 
-Append-only. Indexes `(userId, transactionId, at)` and `(userId, at DESC)`.
+Append-only. Kept for the lifetime of the user account, including the `CREATE`/`UPDATE` rows of deleted transactions ([OQ-11](../planning/open-questions.md#oq-11-history-retention-for-deleted-transactions)). Indexes `(userId, transactionId, at)` and `(userId, at DESC)`.
 
 ### transaction_templates
 | Column | Type | Notes |
 |---|---|---|
 | name | text | |
-| type | enum `INCOME`, `EXPENSE`, `TRANSFER` | |
+| type | enum `INCOME`, `EXPENSE`, `TRANSFER` | no `REFUND` or `ADJUSTMENT` templates |
 | accountId, destinationAccountId | uuid? | composite FKs, `SET NULL` semantics handled by the service (see ER doc) |
 | categoryId | uuid? | composite FK |
 | amount | money? | |

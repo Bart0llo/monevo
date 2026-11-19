@@ -91,7 +91,7 @@ describe('administration', () => {
     await waitFor(() =>
       expect(within(nav).getByRole('link', { name: 'Administration' })).toBeTruthy(),
     );
-    expect(within(nav).getAllByRole('link')).toHaveLength(8);
+    expect(within(nav).getAllByRole('link')).toHaveLength(9);
   });
 
   it('hides the administration section and page from users', async () => {

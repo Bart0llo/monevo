@@ -1,14 +1,23 @@
 import express, { type Request, type Router } from 'express';
 import {
+  type AdminSettings,
+  AdminSettingsUpdateSchema,
   type AdminUser,
   AdminUserListQuerySchema,
   type AdminUserPage,
   AdminUserUpdateSchema,
+  DEFAULT_RATE_PROVIDER,
   type IdentityProviderStatus,
+  type RateProviderId,
 } from '@monevo/contracts';
 import { AppError } from '../../http/errors.js';
 import { authOf, type Guards } from '../../http/guards.js';
 import { uuidParam } from '../../http/params.js';
+import {
+  effectiveRateProvider,
+  RATES_PROVIDER_KEY,
+  writeAppSetting,
+} from '../../infra/app-settings.js';
 import type { Clock } from '../../infra/clock.js';
 import type { Logger } from '../../infra/logger.js';
 import type { OidcClient } from '../../infra/oidc.js';
@@ -33,6 +42,8 @@ export interface AdminRouteDeps {
   readonly oidc: OidcClient;
   readonly clock: Clock;
   readonly logger: Logger;
+  /** `RATE_PROVIDER`: locks `rates.provider` when set. */
+  readonly rateProviderEnv: RateProviderId | undefined;
 }
 
 function toAdminUser(user: AdminUserRecord): AdminUser {
@@ -184,6 +195,43 @@ export function adminRouter(deps: AdminRouteDeps, guards: Guards): Router {
       endSessionSupported: status.endSessionSupported,
     };
     res.json(body);
+  });
+
+  async function loadSettings(): Promise<AdminSettings> {
+    return {
+      rates: {
+        provider: {
+          value: await effectiveRateProvider(prisma, deps.rateProviderEnv),
+          default: DEFAULT_RATE_PROVIDER,
+          lockedByEnv: deps.rateProviderEnv !== undefined,
+        },
+      },
+    };
+  }
+
+  router.get('/admin/settings', ...admin, async (_req, res) => {
+    res.json(await loadSettings());
+  });
+
+  router.patch('/admin/settings', ...admin, async (req, res) => {
+    const body = AdminSettingsUpdateSchema.parse(req.body);
+    if (deps.rateProviderEnv !== undefined) {
+      throw new AppError('SETTING_LOCKED_BY_ENV', 'rates.provider is set by RATE_PROVIDER.');
+    }
+    const { userId } = authOf(req);
+    await writeAppSetting(prisma, RATES_PROVIDER_KEY, body.rates.provider, userId);
+    logger.info(
+      {
+        event: 'admin.action',
+        action: 'settings.changed',
+        actorUserId: userId,
+        key: RATES_PROVIDER_KEY,
+        value: body.rates.provider,
+        requestId: req.requestId,
+      },
+      'admin action: settings.changed',
+    );
+    res.json(await loadSettings());
   });
 
   return router;

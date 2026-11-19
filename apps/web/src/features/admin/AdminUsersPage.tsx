@@ -9,6 +9,7 @@ import {
   Menu,
   Modal,
   SegmentedControl,
+  Select,
   Stack,
   Table,
   Text,
@@ -22,11 +23,13 @@ import { IconDots, IconSearch } from '@tabler/icons-react';
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type {
-  AdminUser,
-  AdminUserPage,
-  IdentityProviderStatus,
-  UserStatus,
+import {
+  type AdminUser,
+  type AdminUserPage,
+  type IdentityProviderStatus,
+  RATE_PROVIDERS,
+  type RateProviderId,
+  type UserStatus,
 } from '@monevo/contracts';
 import { ReauthModal } from '../../auth/ReauthModal';
 import { useSession } from '../../auth/session';
@@ -34,6 +37,7 @@ import { PageHeader } from '../../components/PageHeader';
 import { api, isApiError } from '../../data/api';
 import { useErrorMessage } from '../../data/errors';
 import { queryKeys } from '../../data/queryKeys';
+import { useAdminSettings, useUpdateRateProvider } from '../../data/reference';
 import { useFormatInstant } from '../settings/format';
 
 // User administration (administration.md): operational data only, never financial data.
@@ -47,8 +51,65 @@ export function AdminUsersPage() {
     <>
       <PageHeader title={t('admin.title')} description={t('sections.admin')} />
       <IdentityProviderCard />
+      <InstanceSettingsSection />
       <UsersSection />
     </>
+  );
+}
+
+/** Runtime settings (configuration.md#runtime-settings-app_settings); env values win. */
+function InstanceSettingsSection() {
+  const { t } = useTranslation();
+  const errorMessage = useErrorMessage();
+  const settings = useAdminSettings();
+  const update = useUpdateRateProvider();
+  const provider = settings.data?.rates.provider;
+  return (
+    <section className="mv-section" aria-labelledby="instance-settings-title">
+      <Title order={2} size="h4" id="instance-settings-title">
+        {t('admin.settings.title')}
+      </Title>
+      {settings.isPending ? (
+        <Loader size="sm" aria-label={t('auth.loading')} />
+      ) : settings.isError || !provider ? (
+        <Alert color="red" variant="light" role="alert">
+          {errorMessage(settings.error)}
+        </Alert>
+      ) : (
+        <Stack gap="xs" className="mv-form">
+          <Select
+            label={t('admin.settings.rateProvider')}
+            description={t('admin.settings.rateProviderHint')}
+            data={RATE_PROVIDERS.map((value) => ({
+              value,
+              label: t(`rates.providers.${value}`),
+            }))}
+            value={provider.value}
+            allowDeselect={false}
+            disabled={provider.lockedByEnv || update.isPending}
+            onChange={(value) => {
+              if (!value || value === provider.value) return;
+              update.mutate(value as RateProviderId, {
+                onSuccess: () =>
+                  notifications.show({ message: t('admin.settings.saved'), color: 'teal' }),
+              });
+            }}
+          />
+          {provider.lockedByEnv ? (
+            <Group>
+              <Badge variant="light" color="gray">
+                {t('admin.settings.lockedByEnv')}
+              </Badge>
+            </Group>
+          ) : null}
+          {update.isError ? (
+            <Alert color="red" variant="light" role="alert">
+              {errorMessage(update.error)}
+            </Alert>
+          ) : null}
+        </Stack>
+      )}
+    </section>
   );
 }
 

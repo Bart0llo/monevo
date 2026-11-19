@@ -114,6 +114,22 @@
   border-top: 1px solid var(--mv-border);
 }
 
+/* Category tree: a top-level row with its subcategories indented underneath. */
+.mv-category-branch {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.mv-category-children {
+  margin-inline-start: 2.25rem;
+  border-inline-start: 1px solid var(--mv-border);
+  padding-inline-start: 0.75rem;
+}
+
+.mv-category-children > .mv-list-item {
+  padding: 0.5rem 0;
+}
+
 .mv-secret {
   font-family: var(--mantine-font-family-monospace);
   word-break: break-all;

@@ -21,6 +21,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  API_TOKEN_PERMISSION_REQUIRES,
   API_TOKEN_PERMISSIONS,
   type ApiToken,
   type ApiTokenCreate,
@@ -39,7 +40,37 @@ import { useFormatInstant } from './format';
 
 const PERMISSION_LABELS = {
   'profile:read': 'apiTokens.permissions.profileRead',
+  'currencies:read': 'apiTokens.permissions.currenciesRead',
+  'exchange-rates:create': 'apiTokens.permissions.exchangeRatesCreate',
+  'accounts:read': 'apiTokens.permissions.accountsRead',
+  'accounts:create': 'apiTokens.permissions.accountsCreate',
+  'accounts:update': 'apiTokens.permissions.accountsUpdate',
+  'accounts:delete': 'apiTokens.permissions.accountsDelete',
+  'categories:read': 'apiTokens.permissions.categoriesRead',
+  'categories:create': 'apiTokens.permissions.categoriesCreate',
+  'categories:update': 'apiTokens.permissions.categoriesUpdate',
+  'categories:delete': 'apiTokens.permissions.categoriesDelete',
 } as const satisfies Record<ApiTokenPermission, `apiTokens.permissions.${string}`>;
+
+type Resource = ApiTokenPermission extends `${infer R}:${string}` ? R : never;
+
+const RESOURCE_LABELS = {
+  profile: 'apiTokens.resources.profile',
+  currencies: 'apiTokens.resources.currencies',
+  'exchange-rates': 'apiTokens.resources.exchangeRates',
+  accounts: 'apiTokens.resources.accounts',
+  categories: 'apiTokens.resources.categories',
+} as const satisfies Record<Resource, `apiTokens.resources.${string}`>;
+
+/** The catalogue grouped by resource, in catalogue order (api-tokens.md#6-user-interface). */
+const PERMISSION_GROUPS: readonly (readonly [Resource, ApiTokenPermission[]])[] = (() => {
+  const groups = new Map<Resource, ApiTokenPermission[]>();
+  for (const permission of API_TOKEN_PERMISSIONS) {
+    const resource = permission.slice(0, permission.indexOf(':')) as Resource;
+    groups.set(resource, [...(groups.get(resource) ?? []), permission]);
+  }
+  return [...groups];
+})();
 
 const EXPIRY_DAYS = ['30', '90', '365', 'never'] as const;
 type Expiry = (typeof EXPIRY_DAYS)[number];
@@ -202,7 +233,7 @@ function CreateTokenModal({
   const fieldErrors = useFieldErrors();
   const [secret, setSecret] = useState<string | null>(null);
   const form = useForm<CreateValues>({
-    initialValues: { name: '', permissions: [...API_TOKEN_PERMISSIONS], expiry: '90' },
+    initialValues: { name: '', permissions: [], expiry: '90' },
     validate: {
       name: (value) => (value.trim() ? null : t('validation.required')),
       permissions: (value) => (value.length ? null : t('apiTokens.permissionsRequired')),
@@ -286,13 +317,32 @@ function CreateTokenModal({
             label={t('apiTokens.permissionsLabel')}
             {...form.getInputProps('permissions')}
           >
-            <Stack gap="xs" mt="xs">
-              {API_TOKEN_PERMISSIONS.map((permission) => (
-                <Checkbox
-                  key={permission}
-                  value={permission}
-                  label={t(PERMISSION_LABELS[permission])}
-                />
+            <Stack gap="sm" mt="xs">
+              {PERMISSION_GROUPS.map(([resource, permissions]) => (
+                <Stack key={resource} gap={6} role="group" aria-labelledby={`perm-${resource}`}>
+                  <Text size="sm" fw={600} id={`perm-${resource}`}>
+                    {t(RESOURCE_LABELS[resource])}
+                  </Text>
+                  {permissions.map((permission) => {
+                    const requires = API_TOKEN_PERMISSION_REQUIRES[permission];
+                    return (
+                      <Checkbox
+                        key={permission}
+                        value={permission}
+                        label={t(PERMISSION_LABELS[permission])}
+                        description={
+                          requires.length > 0
+                            ? t('apiTokens.alsoRequires', {
+                                permissions: requires
+                                  .map((required) => t(PERMISSION_LABELS[required]))
+                                  .join(', '),
+                              })
+                            : undefined
+                        }
+                      />
+                    );
+                  })}
+                </Stack>
               ))}
             </Stack>
           </Checkbox.Group>

@@ -84,6 +84,16 @@ export const UserSettingsUpdateSchema = z
   })
   .openapi('UserSettingsUpdate');
 
+/** Explicit, confirmed base currency change (OQ-05). Session only; never an API token. */
+export const BaseCurrencyChangeSchema = z
+  .strictObject({
+    baseCurrency: CurrencyCodeSchema,
+    confirm: z.literal(true),
+    /** Alternative to `If-Match`. */
+    version: z.number().int().min(1).optional(),
+  })
+  .openapi('BaseCurrencyChange');
+
 export const SessionInfoSchema = z
   .object({
     id: UuidSchema,
@@ -109,6 +119,7 @@ export type Profile = z.infer<typeof ProfileSchema>;
 export type ProfileUpdate = z.infer<typeof ProfileUpdateSchema>;
 export type UserSettings = z.infer<typeof UserSettingsSchema>;
 export type UserSettingsUpdate = z.infer<typeof UserSettingsUpdateSchema>;
+export type BaseCurrencyChange = z.infer<typeof BaseCurrencyChangeSchema>;
 export type SessionInfo = z.infer<typeof SessionInfoSchema>;
 export type SessionListResponse = z.infer<typeof SessionListResponseSchema>;
 export type RevokeOthersResponse = z.infer<typeof RevokeOthersResponseSchema>;

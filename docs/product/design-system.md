@@ -65,6 +65,8 @@ In [`apps/web/src/components/`](../../apps/web/src/components):
 | `PageHeader` | The page's single `h1` plus an optional description; sets the document title to "Page · Monevo" |
 | `StatePanel` | Bordered panel for empty, not-found and error states; `planned` renders it dashed |
 | `PlannedBadge` | Dashed pill labelling planned or not-yet-built content |
+| `EntityIcon` | An account's or category's icon in a tinted circle of its color (`EntityIcon.tsx`, which also maps the curated `IconKey` set from `@monevo/contracts` to Tabler icons) |
+| `IconPicker`, `ColorPicker` | Selection grids for the curated icon set and the color tokens (or a hex color), each option with an accessible name |
 
 Shell pieces live in `apps/web/src/app/` (`AppLayout`, `Wordmark`, `RouteError`, `NotFoundPage`). Styles are plain CSS with `mv-` prefixed class names (`shell.css`, `components.css`).
 

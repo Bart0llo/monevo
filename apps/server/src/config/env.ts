@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { z } from 'zod';
+import { RATE_PROVIDERS, type RateProviderId } from '@monevo/contracts';
 import { parseBoolean, parseTrustProxy } from './parsers.js';
 
 // Environment configuration. The canonical list of variables, defaults and rules is
@@ -168,6 +169,18 @@ export const ENV_SCHEMA = z
       .refine((value) => value.length <= 60, 'must be at most 60 characters'),
     SESSION_IDLE_DAYS: integerVar(30, 1, 3650),
     SESSION_ABSOLUTE_DAYS: integerVar(90, 1, 3650),
+    RATE_PROVIDER: z
+      .string()
+      .optional()
+      .transform((value, ctx) => {
+        const trimmed = value?.trim().toLowerCase() ?? '';
+        if (trimmed === '') return undefined;
+        if (!(RATE_PROVIDERS as readonly string[]).includes(trimmed)) {
+          ctx.addIssue({ code: 'custom', message: `must be one of ${RATE_PROVIDERS.join(', ')}` });
+          return z.NEVER;
+        }
+        return trimmed as RateProviderId;
+      }),
   })
   .superRefine((env, ctx) => {
     if (
@@ -214,6 +227,8 @@ export interface Config {
   readonly httpCompression: boolean;
   readonly oidc: OidcConfig;
   readonly session: SessionConfig;
+  /** `RATE_PROVIDER`: when set, overrides and locks the `rates.provider` runtime setting. */
+  readonly rateProvider: RateProviderId | undefined;
 }
 
 export interface OidcConfig {
@@ -320,6 +335,7 @@ export function loadConfig(env: Env = process.env, readFile: ReadFile = readUtf8
       idleDays: data.SESSION_IDLE_DAYS,
       absoluteDays: data.SESSION_ABSOLUTE_DAYS,
     }),
+    rateProvider: data.RATE_PROVIDER,
   });
 }
 

@@ -82,6 +82,12 @@ describe('loadConfig', () => {
     expect(config.session).toEqual({ idleDays: 7, absoluteDays: 7 });
   });
 
+  it('parses RATE_PROVIDER (unset by default)', () => {
+    expect(loadConfig(BASE, noFiles).rateProvider).toBeUndefined();
+    expect(loadConfig({ ...BASE, RATE_PROVIDER: '' }, noFiles).rateProvider).toBeUndefined();
+    expect(loadConfig({ ...BASE, RATE_PROVIDER: ' NBP ' }, noFiles).rateProvider).toBe('nbp');
+  });
+
   it('treats empty strings as unset for optional variables', () => {
     const config = loadConfig(
       { ...BASE, PORT: '', LOG_LEVEL: undefined, API_DOCS_ENABLED: '' },
@@ -156,6 +162,7 @@ describe('loadConfig', () => {
     ['OIDC_DISPLAY_NAME', 'x'.repeat(61)],
     ['SESSION_IDLE_DAYS', '0'],
     ['SESSION_ABSOLUTE_DAYS', '29'],
+    ['RATE_PROVIDER', 'ecb'],
   ])('%s=%j produces a message naming the variable', (name, value) => {
     const problems = problemsOf({ ...BASE, [name]: value });
     expect(problems).toHaveLength(1);

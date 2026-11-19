@@ -172,7 +172,7 @@ The rule "LWW is never used for financial fields" (R-OFF-06) is enforced by this
 | delete | server changed financial fields since baseVersion | **CONFLICT `MODIFIED_ON_SERVER`** → user confirms delete of the current version, or keeps it |
 | delete | already deleted | APPLIED (idempotent) |
 | any | referenced entity missing (category, account deleted) | **REJECTED `REFERENCE_MISSING`** → the conflict UI lets the user pick a replacement and retry |
-| any | invariant violated (archived account, transfer same account, pot would go negative, type/category mismatch) | **REJECTED** with a validation code → the user edits and retries, or discards |
+| any | invariant violated (archived account, transfer same account, pot would go negative, type/category mismatch, refunds would exceed the expense `REFUND_EXCEEDS_EXPENSE`, expense with refunds deleted or retyped `EXPENSE_HAS_REFUNDS`) | **REJECTED** with a validation code → the user edits and retries, or discards |
 | occurrence confirm | already COMPLETED | `DUPLICATE`-like result `ALREADY_COMPLETED` with the existing transactionId. If the client's amounts differ → notice with a link to compare. No second transaction is created. |
 | occurrence skip | already COMPLETED | REJECTED `OCCURRENCE_COMPLETED` |
 | pot allocation create | any | APPLIED (commutative). If it would make the pot negative → REJECTED `POT_INSUFFICIENT` |

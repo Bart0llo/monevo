@@ -42,7 +42,7 @@ model Posting {
 }
 ```
 Use `NoAction` (checked at the end of the statement) rather than `Restrict` (checked immediately) for child→parent FKs between owned tables. That way a user deletion cascading from `users` through all owned tables succeeds, while deleting a single referenced parent (an account that has postings) is still rejected.
-Prisma supports composite relations natively. With this in place a bug that writes a cross-user reference fails at the database. This applies to postings→accounts, postings→transactions, transactions→categories, attachments→transactions, pots→accounts, allocations→pots, goals→pots/accounts, budget_categories→budgets/categories, schedules→accounts/categories, templates→accounts/categories, occurrences→schedules, transactions→schedules.
+Prisma supports composite relations natively. With this in place a bug that writes a cross-user reference fails at the database. This applies to postings→accounts, postings→transactions, transactions→categories, attachments→transactions, pots→accounts, allocations→pots, goals→pots/accounts, budget_categories→budgets/categories, schedules→accounts/categories, templates→accounts/categories, occurrences→schedules, transactions→schedules, transactions→transactions (`refund_of_id`, `transfer_fee_of_id`).
 
 Nullable composite FKs (for example `category_id` null) use `MATCH SIMPLE` (the default): if `category_id` is null, the constraint is not checked.
 
@@ -52,16 +52,18 @@ Prisma migrations are SQL files and can be hand-edited. These are added in raw S
 
 - `CHECK` constraints:
   - `postings.amount <> 0`; `postings.original_amount > 0`; `postings.rate_to_account > 0`; `rate_to_base > 0 OR NULL`.
-  - `exchange_rates.rate > 0`; `from_currency <> to_currency`.
-  - `accounts.custom_kind_label IS NOT NULL` when `kind = 'CUSTOM'`.
+  - `transactions`: `refund_of_id IS NOT NULL` exactly when `type = 'REFUND'`; `category_id IS NULL` unless `type IN ('INCOME','EXPENSE')`; `type <> 'ADJUSTMENT' OR btrim(description) <> ''` ([financial-domain-model.md](financial-domain-model.md#refunds)).
+  - `exchange_rates.rate > 0`; `from_currency <> to_currency`; `MANUAL` rows have `user_id` and no `provider_id`, `PROVIDER` rows the reverse.
+  - `accounts.custom_kind_label IS NOT NULL` exactly when `kind = 'CUSTOM'` (1–50 chars); `accounts.name` and `categories.name` 1–100 chars; `abs(accounts.opening_balance) < 10^15`; `categories.parent_id <> id`.
+  - `users.maintenance_state IN ('BASE_CURRENCY_CHANGE')` (or null).
   - `savings_goals`: exactly one of `pot_id`/`account_id` is non-null, matching `source`.
   - `scheduled_transactions.recurrence_interval >= 1`; `end_date >= start_date`.
 - **Partial unique indexes:**
   - `transactions (scheduled_transaction_id, occurrence_date) WHERE scheduled_transaction_id IS NOT NULL` (idempotent generation, INV-9).
   - `savings_goals (pot_id) WHERE status IN ('ACTIVE','PAUSED')` and the same for `account_id` (one active goal per source).
   - `exchange_rates`: unique over `(COALESCE(user_id, '00000000-…'), source, COALESCE(provider_id,''), from_currency, to_currency, rate_date)` as an expression index.
-- **Constraint triggers (deferred) [Proposed]:** `posting_shape_check`, a `DEFERRABLE INITIALLY DEFERRED` constraint trigger on `postings`/`transactions` that validates INV-4 (posting count and sign per type) at commit. This is defense in depth, since services already enforce it. It is cheap at this scale. The decision on whether to include it is made in Stage 4, with a performance check.
-- Category depth trigger (parent must be top-level, same type).
+- **Constraint triggers (deferred) [Proposed]:** `posting_shape_check`, a `DEFERRABLE INITIALLY DEFERRED` constraint trigger on `postings`/`transactions` that validates INV-4 (posting count and sign per type, and that `refund_of_id` points to an `EXPENSE`) at commit. This is defense in depth, since services already enforce it. It is cheap at this scale. The decision on whether to include it is made in Stage 4, with a performance check.
+- Category hierarchy trigger `categories_hierarchy_check` (parent must be top-level, same type; a category with subcategories cannot become a subcategory; a type change cannot leave subcategories with a different type). The subcategory → parent composite FK uses `ON DELETE CASCADE`: deleting a parent deletes its subcategories.
 
 ## 4. Indexes (initial set)
 
@@ -70,12 +72,15 @@ Prisma migrations are SQL files and can be hand-edited. These are added in raw S
 | transactions | `(user_id, occurred_on DESC, id DESC)` | list and cursor pagination |
 | transactions | `(user_id, category_id, occurred_on)` | category reports and budgets |
 | transactions | GIN trigram on `lower(unaccent(description))` | description search |
+| transactions | `(user_id, refund_of_id)` partial `WHERE refund_of_id IS NOT NULL` | refund totals (INV-10), category of refunds in reports |
 | postings | `(user_id, account_id)` include `amount` | balances |
 | postings | `(transaction_id)` | aggregate loading |
 | postings | `(user_id, account_id, base_amount)` partial `WHERE base_amount IS NULL` | missing rates |
 | change_log | `(user_id, seq)` | sync pull |
 | scheduled_occurrences | unique `(scheduled_transaction_id, occurrence_date)` | idempotency |
-| exchange_rates | `(from_currency, to_currency, rate_date DESC)` | resolution |
+| exchange_rates | `(from_currency, to_currency, rate_date DESC)`, `(user_id)` | resolution, manual rates |
+| accounts | `(user_id, sort_order)` | listing |
+| categories | `(user_id, type, sort_order)`, `(parent_id)` | tree listing |
 | notifications | `(user_id, created_at DESC)`, unique `(user_id, dedup_key)` | center, dedup |
 | sessions | unique `(token_hash)`, `(user_id)` | auth, listing |
 | transaction_audit | `(user_id, transaction_id, at)`, `(user_id, at DESC)` | history views |
@@ -103,7 +108,7 @@ Expected volume: ≤ 10 users × ≤ 50k transactions over years, which is trivi
 | Data | Retention |
 |---|---|
 | Financial entities | Until deleted by the user (transactions) or user deletion (cascade) |
-| Transaction audit | Same as the owning user. See [OQ-11](../planning/open-questions.md#oq-11-history-retention-for-deleted-transactions) |
+| Transaction audit | Same as the owning user, including the `CREATE`/`UPDATE` rows of deleted transactions; a deletion adds only a minimal `DELETE` row ([OQ-11](../planning/open-questions.md#oq-11-history-retention-for-deleted-transactions)) |
 | Change log tombstones | 90 days |
 | Idempotency records | 30 days |
 | Sessions | 30 days after expiry or revocation |

@@ -10,6 +10,7 @@
     "dashboard": "Pulpit",
     "transactions": "Transakcje",
     "accounts": "Konta",
+    "categories": "Kategorie",
     "budgets": "Budżety",
     "calendar": "Kalendarz",
     "reports": "Raporty",
@@ -21,12 +22,13 @@
   "sections": {
     "dashboard": "Przegląd Twoich finansów: salda, budżety i to, co nadchodzi.",
     "transactions": "Wszystkie przychody, wydatki i przelewy, z wyszukiwaniem i filtrami.",
-    "accounts": "Twoje konta i ich salda, w dowolnej walucie.",
+    "accounts": "Twoje konta bankowe, gotówka i karty, w dowolnej walucie.",
+    "categories": "Kategorie przychodów i wydatków, ułożone tak, jak myślisz o pieniądzach.",
     "budgets": "Limity wydatków dla kategorii i ile w każdej zostało.",
     "calendar": "Przeszłe i zaplanowane transakcje ułożone według dat.",
     "reports": "Wydatki, przychody i trendy w czasie.",
     "settings": "Twój profil, język, waluta i preferencje.",
-    "admin": "Konta w tej instancji Monevo i połączenie z dostawcą tożsamości."
+    "admin": "Konta w tej instancji Monevo, połączenie z dostawcą tożsamości i ustawienia instancji."
   },
   "placeholder": {
     "body": "Ta sekcja pojawi się w kolejnym etapie.",
@@ -77,7 +79,14 @@
     "save": "Zapisz zmiany",
     "copy": "Kopiuj",
     "copied": "Skopiowano",
-    "done": "Gotowe"
+    "done": "Gotowe",
+    "edit": "Edytuj",
+    "archive": "Archiwizuj",
+    "restore": "Przywróć",
+    "delete": "Usuń"
+  },
+  "conflict": {
+    "reopen": "Zamknij to okno i otwórz je ponownie, aby zobaczyć najnowszą wersję."
   },
   "account": {
     "label": "Konto",
@@ -99,15 +108,20 @@
   "onboarding": {
     "title": "Witaj w Monevo",
     "body": "Kilka ustawień na start. Język i strefę czasową zmienisz później.",
-    "baseCurrencyHint": "W tej walucie liczone są sumy i raporty. Po konfiguracji nie można jej zmienić.",
+    "baseCurrencyHint": "W tej walucie liczone są sumy i raporty. Możesz ją później zmienić w Ustawieniach.",
     "submit": "Zacznij korzystać z Monevo"
   },
   "validation": {
     "required": "To pole jest wymagane.",
-    "tooLong": "Użyj najwyżej {{max}} znaków."
+    "tooLong": "Użyj najwyżej {{max}} znaków.",
+    "amount": "Wpisz kwotę, na przykład 1250,50.",
+    "date": "Wpisz poprawną datę."
   },
   "fieldErrors": {
-    "BASE_CURRENCY_LOCKED": "Waluty bazowej nie można zmienić po konfiguracji."
+    "BASE_CURRENCY_LOCKED": "Walutę bazową zmienisz w osobnej sekcji Ustawień.",
+    "AMOUNT_PRECISION": "Ta waluta nie pozwala na tyle miejsc po przecinku.",
+    "BASE_CURRENCY_UNCHANGED": "To już jest Twoja waluta bazowa.",
+    "CURRENCY_INACTIVE": "Ta waluta nie jest już dostępna."
   },
   "roles": {
     "USER": "Użytkownik",
@@ -145,8 +159,16 @@
       "title": "Preferencje",
       "weekStart": "Pierwszy dzień tygodnia",
       "dateFormat": "Format daty",
-      "dateFormatLocale": "Domyślny dla języka",
-      "baseCurrencyLocked": "Ustawiona podczas konfiguracji; nie można jej zmienić."
+      "dateFormatLocale": "Domyślny dla języka"
+    },
+    "baseCurrencyChange": {
+      "title": "Waluta bazowa",
+      "description": "Sumy i raporty są pokazywane w walucie bazowej. Waluty kont i wpisane kwoty pozostają bez zmian.",
+      "submit": "Zmień walutę bazową",
+      "confirmTitle": "Zmienić walutę bazową?",
+      "confirmBody": "Waluta bazowa zmieni się z {{from}} na {{to}}. Konta zachowują swoje waluty i salda początkowe; zmienia się tylko waluta, w której liczone są sumy.",
+      "confirm": "Zmień na nową walutę",
+      "done": "Waluta bazowa zmieniona na {{currency}}."
     }
   },
   "sessions": {
@@ -176,8 +198,26 @@
     "namePlaceholder": "np. Home Assistant",
     "permissionsLabel": "Uprawnienia",
     "permissionsRequired": "Wybierz co najmniej jedno uprawnienie.",
+    "alsoRequires": "Wymaga też: {{permissions}}",
+    "resources": {
+      "profile": "Profil",
+      "currencies": "Waluty",
+      "exchangeRates": "Kursy walut",
+      "accounts": "Konta",
+      "categories": "Kategorie"
+    },
     "permissions": {
-      "profileRead": "Odczyt profilu i ustawień"
+      "profileRead": "Odczyt profilu i ustawień",
+      "currenciesRead": "Odczyt walut",
+      "exchangeRatesCreate": "Sprawdzanie kursów walut i dodawanie kursów ręcznych",
+      "accountsRead": "Odczyt kont",
+      "accountsCreate": "Tworzenie kont",
+      "accountsUpdate": "Edycja i archiwizacja kont",
+      "accountsDelete": "Usuwanie kont",
+      "categoriesRead": "Odczyt kategorii",
+      "categoriesCreate": "Tworzenie kategorii",
+      "categoriesUpdate": "Edycja, archiwizacja i zmiana kolejności kategorii",
+      "categoriesDelete": "Usuwanie kategorii"
     },
     "expiry": "Wygasa",
     "expiryDays_one": "Za {{count}} dzień",
@@ -199,8 +239,177 @@
     "revokeBody": "Integracje korzystające z „{{name}}” natychmiast przestaną działać. Tego nie można cofnąć.",
     "revoked": "Token unieważniony."
   },
+  "accounts": {
+    "description": "Konta bankowe, gotówka i karty, każde we własnej walucie. Salda pojawią się wraz z transakcjami.",
+    "create": "Dodaj konto",
+    "emptyTitle": "Nie masz jeszcze kont",
+    "emptyBody": "Dodaj konta, z których korzystasz, np. konto bankowe, gotówkę lub kartę kredytową.",
+    "active": "Aktywne konta",
+    "noActive": "Wszystkie Twoje konta są zarchiwizowane.",
+    "archived_one": "Zarchiwizowane ({{count}})",
+    "archived_few": "Zarchiwizowane ({{count}})",
+    "archived_many": "Zarchiwizowane ({{count}})",
+    "archived_other": "Zarchiwizowane ({{count}})",
+    "showArchived": "Pokaż zarchiwizowane konta",
+    "excludedFromNetWorth": "Poza majątkiem netto",
+    "openingLine": "Saldo początkowe {{amount}} z dnia {{date}}",
+    "actionsFor": "Działania dla: {{name}}",
+    "archivedDone": "Konto zarchiwizowane.",
+    "restoredDone": "Konto przywrócone.",
+    "saved": "Konto zapisane.",
+    "created": "Konto dodane.",
+    "editTitle": "Edytuj konto",
+    "createTitle": "Nowe konto",
+    "deleteTitle": "Usunąć konto?",
+    "deleteBody": "Konto „{{name}}” zostanie trwale usunięte. Jeśli chcesz je tylko ukryć, zarchiwizuj je.",
+    "deleted": "Konto usunięte.",
+    "kinds": {
+      "BANK": "Konto bankowe",
+      "CASH": "Gotówka",
+      "SAVINGS": "Oszczędności",
+      "CREDIT_CARD": "Karta kredytowa",
+      "E_WALLET": "Portfel elektroniczny",
+      "OTHER": "Inne",
+      "CUSTOM": "Własny typ"
+    },
+    "fields": {
+      "name": "Nazwa",
+      "currency": "Waluta",
+      "kind": "Typ",
+      "customKindLabel": "Nazwa typu",
+      "openingBalance": "Saldo początkowe",
+      "openingBalanceHint": "Saldo w dniu otwarcia. Dla zadłużenia użyj znaku minus.",
+      "openingDate": "Data otwarcia",
+      "icon": "Ikona",
+      "color": "Kolor",
+      "includeInNetWorth": "Uwzględniaj w majątku netto"
+    }
+  },
+  "rates": {
+    "loading": "Wczytywanie kursu…",
+    "missing": "Brak kursu dla {{from}} → {{to}}.",
+    "line": "1 {{from}} = {{rate}} {{to}} · {{source}} · {{date}}",
+    "stale": "starszy kurs",
+    "sources": {
+      "manual": "Kurs ręczny"
+    },
+    "providers": {
+      "frankfurter": "Frankfurter (EBC)",
+      "nbp": "NBP"
+    }
+  },
+  "categories": {
+    "title": "Kategorie",
+    "description": "Kategorie przychodów i wydatków z opcjonalnymi podkategoriami.",
+    "typeLabel": "Typ kategorii",
+    "types": {
+      "INCOME": "Przychody",
+      "EXPENSE": "Wydatki"
+    },
+    "showArchived": "Pokaż zarchiwizowane kategorie",
+    "create": "Dodaj kategorię",
+    "empty": {
+      "INCOME": "Nie masz jeszcze kategorii przychodów.",
+      "EXPENSE": "Nie masz jeszcze kategorii wydatków."
+    },
+    "archivedBadge": "Zarchiwizowana",
+    "hiddenByParent": "Ukryta: nadrzędna zarchiwizowana",
+    "actionsFor": "Działania dla: {{name}}",
+    "addSubcategory": "Dodaj podkategorię",
+    "moveUp": "Przesuń w górę",
+    "moveDown": "Przesuń w dół",
+    "archived": "Kategoria zarchiwizowana.",
+    "restored": "Kategoria przywrócona.",
+    "saved": "Kategoria zapisana.",
+    "created": "Kategoria dodana.",
+    "editTitle": "Edytuj kategorię",
+    "createTitle": "Nowa kategoria",
+    "fields": {
+      "name": "Nazwa",
+      "type": "Typ",
+      "typeLocked": "Nie można zmienić typu podkategorii ani kategorii z podkategoriami.",
+      "parent": "Kategoria nadrzędna",
+      "noParent": "Brak (najwyższy poziom)",
+      "parentLocked": "Kategoria z podkategoriami nie może stać się podkategorią.",
+      "icon": "Ikona",
+      "color": "Kolor"
+    },
+    "deleteTitle": "Usunąć kategorię?",
+    "deleteBody": "Kategoria „{{name}}” zostanie trwale usunięta. Jeśli chcesz ją tylko ukryć, zarchiwizuj ją.",
+    "deleteBodyWithChildren_one": "Kategoria „{{name}}” i jej {{count}} podkategoria zostaną trwale usunięte.",
+    "deleteBodyWithChildren_few": "Kategoria „{{name}}” i jej {{count}} podkategorie zostaną trwale usunięte.",
+    "deleteBodyWithChildren_many": "Kategoria „{{name}}” i jej {{count}} podkategorii zostaną trwale usunięte.",
+    "deleteBodyWithChildren_other": "Kategoria „{{name}}” i jej {{count}} podkategorii zostaną trwale usunięte.",
+    "deleted": "Kategoria usunięta."
+  },
+  "entityIcons": {
+    "wallet": "Portfel",
+    "bank": "Bank",
+    "cash": "Gotówka",
+    "credit-card": "Karta kredytowa",
+    "piggy-bank": "Skarbonka",
+    "coins": "Monety",
+    "receipt": "Paragon",
+    "briefcase": "Teczka",
+    "gift": "Prezent",
+    "trending-up": "Wzrost",
+    "home": "Dom",
+    "bolt": "Prąd",
+    "droplet": "Woda",
+    "flame": "Gaz i ogrzewanie",
+    "wifi": "Internet",
+    "phone": "Telefon",
+    "shopping-cart": "Zakupy spożywcze",
+    "shopping-bag": "Zakupy",
+    "tools-kitchen": "Restauracje",
+    "coffee": "Kawa",
+    "car": "Samochód",
+    "gas-station": "Paliwo",
+    "bus": "Komunikacja miejska",
+    "plane": "Podróże",
+    "bike": "Rower",
+    "heart": "Serce",
+    "pill": "Leki",
+    "stethoscope": "Zdrowie",
+    "school": "Edukacja",
+    "book": "Książki",
+    "device-tv": "Telewizja",
+    "device-gamepad": "Gry",
+    "music": "Muzyka",
+    "movie": "Filmy",
+    "shirt": "Ubrania",
+    "paw": "Zwierzęta",
+    "baby": "Dzieci",
+    "barbell": "Sport",
+    "beach": "Wakacje",
+    "building": "Budynek",
+    "tag": "Etykieta",
+    "dots": "Inne"
+  },
+  "entityColors": {
+    "gray": "Szary",
+    "red": "Czerwony",
+    "pink": "Różowy",
+    "grape": "Winogronowy",
+    "violet": "Fioletowy",
+    "indigo": "Indygo",
+    "blue": "Niebieski",
+    "cyan": "Cyjan",
+    "teal": "Morski",
+    "green": "Zielony",
+    "lime": "Limonkowy",
+    "yellow": "Żółty",
+    "orange": "Pomarańczowy"
+  },
   "admin": {
     "title": "Użytkownicy",
+    "settings": {
+      "title": "Ustawienia instancji",
+      "rateProvider": "Dostawca kursów walut",
+      "rateProviderHint": "Skąd Monevo pobiera kursy walut, gdy są potrzebne. Kursy ręczne mają zawsze pierwszeństwo.",
+      "lockedByEnv": "Ustawione przez środowisko",
+      "saved": "Zapisano ustawienia instancji."
+    },
     "idp": {
       "title": "Dostawca tożsamości",
       "discovery": {

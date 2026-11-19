@@ -1,5 +1,6 @@
 import {
   IconCalendar,
+  IconCategory,
   IconChartBar,
   IconHome,
   IconPigMoney,
@@ -50,6 +51,13 @@ export const NAV_ITEMS = [
     labelKey: 'nav.accounts',
     descriptionKey: 'sections.accounts',
     icon: IconWallet,
+    group: 'secondary',
+  },
+  {
+    path: '/categories',
+    labelKey: 'nav.categories',
+    descriptionKey: 'sections.categories',
+    icon: IconCategory,
     group: 'secondary',
   },
   {

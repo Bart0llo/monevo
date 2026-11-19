@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import type { Express } from 'express';
 import request from 'supertest';
+import type { RateProviderId } from '@monevo/contracts';
 import { type MockIdp, startMockIdp } from '@monevo/mock-idp';
 import { createApp } from '../src/app.js';
 import type { IdentityRateLimits } from '../src/http/rate-limit.js';
@@ -8,6 +9,7 @@ import type { IdentityConfig } from '../src/identity.js';
 import type { Clock } from '../src/infra/clock.js';
 import { createOidcClient } from '../src/infra/oidc.js';
 import { createPrismaClient, type PrismaClient } from '../src/infra/prisma.js';
+import type { FetchLike, FetchResponseLike } from '../src/modules/currencies/index.js';
 import { createReadinessChecker } from '../src/modules/health/index.js';
 import { captureLogger } from '../src/test-support/logger.js';
 import { createTestDatabase, type TestDatabase } from './database.js';
@@ -43,6 +45,8 @@ export interface HarnessOptions {
   readonly publicClient?: boolean;
   /** Rate-limit overrides; defaults are raised so tests don't trip them. */
   readonly limits?: Partial<IdentityRateLimits>;
+  /** `RATE_PROVIDER`; unset by default. */
+  readonly rateProvider?: RateProviderId;
 }
 
 export interface Harness {
@@ -53,10 +57,17 @@ export interface Harness {
   readonly db: TestDatabase;
   readonly config: IdentityConfig;
   logLines(): Record<string, unknown>[];
+  /** Replaces the rate providers' fake HTTP client. */
+  setFetch(fetchFn: FetchLike): void;
   close(): Promise<void>;
 }
 
 const RELAXED = { limit: 10_000, windowMs: 60_000 };
+
+/** A fake provider HTTP response. */
+export function fakeResponse(status: number, body: unknown): FetchResponseLike {
+  return { ok: status >= 200 && status < 300, status, json: () => Promise.resolve(body) };
+}
 
 export async function createHarness(options: HarnessOptions = {}): Promise<Harness> {
   const db = await createTestDatabase();
@@ -89,7 +100,10 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
       postLogoutRedirectUri: `${APP_URL}/login`,
     },
     session: { idleDays: 30, absoluteDays: 90 },
+    rateProvider: options.rateProvider,
   };
+  // Rate providers never reach the network: the default fake answers 503 (provider down).
+  let fakeFetch: FetchLike = () => Promise.resolve(fakeResponse(503, {}));
   const readiness = createReadinessChecker({
     ping: () => Promise.resolve(),
     pendingMigrations: () => Promise.resolve([]),
@@ -112,6 +126,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
       clock,
       config,
       limits: { oidc: RELAXED, user: RELAXED, invalidCredential: RELAXED, ...options.limits },
+      fetch: (url, init) => fakeFetch(url, init),
     },
   });
   return {
@@ -122,6 +137,9 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
     db,
     config,
     logLines: lines,
+    setFetch: (fetchFn) => {
+      fakeFetch = fetchFn;
+    },
     close: async () => {
       await prisma.$disconnect();
       await idp.close();

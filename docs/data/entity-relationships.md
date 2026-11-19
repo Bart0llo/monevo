@@ -19,6 +19,7 @@ erDiagram
     CATEGORIES |o--o{ TRANSACTIONS : classifies
     CATEGORIES |o--o{ CATEGORIES : "parent (depth 2)"
     TRANSACTIONS |o--o{ TRANSACTIONS : "transferFeeOf"
+    TRANSACTIONS |o--o{ TRANSACTIONS : "refundOf (REFUND → EXPENSE)"
     TRANSACTIONS ||--o{ ATTACHMENTS : has
     TRANSACTIONS ||..o{ TRANSACTION_AUDIT : "history (no FK)"
     CUSTOM_FIELD_DEFINITIONS ||..o{ TRANSACTIONS : "keys in customFields (no FK)"
@@ -83,8 +84,8 @@ erDiagram
 |---|---|---|
 | **User** (deferred UI, CLI later) | Cascade through every owned table. Storage objects enqueued in `storage_deletions`. | `ON DELETE CASCADE` from `users` + service for storage |
 | **Account** | Allowed only with no postings, pots, schedules, goals, or budget/template links that the user has not cleared ([features.md](../product/features.md#accounts)). Otherwise archive. Budget account filters and template defaults referencing it are removed by the service on delete. | Blocked (postings, pots, schedules, goals) + service |
-| **Category** | Transactions reassigned or uncategorized (each with an audit `UPDATE`). Subcategories follow the same choice. Removed from `budget_categories`. Templates and schedules lose the reference (warning). Category-spending alert rules are disabled (`REFERENCE_DELETED`). | Service, then delete; FKs `NoAction` catch misses |
-| **Transaction** | Postings deleted. Attachments deleted and objects enqueued in `storage_deletions`. Audit `DELETE` written; earlier audit rows kept (OQ-11). Linked occurrence: `transactionId` cleared, `transactionDeletedAt` set, user asked skip/keep due. A linked fee expense: the user chooses delete or keep (kept fee gets `transferFeeOfId = null`). `pot_allocations.transactionId` set to null (the allocation stays; it is history). | Service |
+| **Category** | Transactions reassigned or uncategorized (each with an audit `UPDATE`). Subcategories follow the same choice. Removed from `budget_categories`. Templates and schedules lose the reference (warning). Category-spending alert rules are disabled (`REFERENCE_DELETED`). Subcategories of a deleted parent are deleted with it (composite self-FK `ON DELETE CASCADE`; the UI names how many). | Service, then delete; FKs `NoAction` catch misses; cascade for subcategories |
+| **Transaction** | Postings deleted. Attachments deleted and objects enqueued in `storage_deletions`. Minimal audit `DELETE` written (no financial data); earlier `CREATE`/`UPDATE` audit rows kept for the lifetime of the user (OQ-11). Deleting a refund leaves its expense unchanged. An expense with refunds: blocked until the user deletes its refunds (`422 EXPENSE_HAS_REFUNDS`, composite FK `refundOfId` `NoAction`; refunds are never deleted implicitly; [OQ-24](../planning/open-questions.md#oq-24-deleting-an-expense-that-has-refunds)). Linked occurrence: `transactionId` cleared, `transactionDeletedAt` set, user asked skip/keep due. A linked fee expense: the user chooses delete or keep (kept fee gets `transferFeeOfId = null`). `pot_allocations.transactionId` set to null (the allocation stays; it is history). | Service; FK for refunds |
 | **Transaction template** | Nothing references it by FK (`transactions.templateId` is provenance only). | n/a |
 | **Custom field definition** | Blocked while any transaction has a value for it; archive instead. | Service |
 | **Scheduled transaction** | Amount changes and occurrence records deleted. Generated transactions are **kept**; their `scheduledTransactionId`/`occurrenceDate` are cleared (they are actual history). | Service |
@@ -96,7 +97,7 @@ erDiagram
 | **API token** (revoke/purge) | Revocation only sets `revokedAt`; the purge deletes the row. Audit rows keep `apiTokenId` (no FK) and the copied name. | Service |
 | **Attachment** | Row deleted, `storage_deletions` row inserted in the same transaction, quota released, audit `attachments.removed`. | Service |
 | **Alert rule, report definition, notification, insight, template** | Leaf entities, no dependants. | n/a |
-| **Exchange rate** | No dependants (postings hold snapshots, INV-6). | n/a |
+| **Exchange rate** | No dependants (postings hold snapshots, INV-6). Manual rates have no delete endpoint (saving the same pair and date replaces them); a user's manual rates go with the user. | n/a |
 | **Currency** | Never deleted (reference data); deactivated instead. | Migration policy |
 
 ## 4. Archive instead of delete
@@ -104,6 +105,7 @@ erDiagram
 | Entity | Archive effect |
 |---|---|
 | Account | No new postings, allocations, or schedules. Balance still counts in net worth. Requires pots released or archived. |
+| Category | Hidden from the default list and entry pickers. An archived parent hides its subcategories, which keep their own `archivedAt`; no new subcategory under an archived parent. |
 | Savings pot | Balance must be 0. Hidden from pickers. |
 | Savings goal | Status `ARCHIVED`; frees the one-active-goal slot for its source. |
 | Custom field definition | Hidden from forms; values kept and shown read-only. |

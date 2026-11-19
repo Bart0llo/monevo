@@ -1,6 +1,6 @@
 # ADR-0008: Transaction and transfer model
 
-- **Status:** Accepted
+- **Status:** Accepted (extended by [ADR-0021](ADR-0021-refund-and-adjustment-transaction-types.md))
 - **Date:** 2026-11-18
 
 ## Context
@@ -9,7 +9,7 @@ Transactions are income, expense, or transfers between the user's own accounts (
 
 ## Decision
 
-A **transaction header** with **postings**: INCOME and EXPENSE have one posting, TRANSFER has two (source and destination, each in its account's currency), ADJUSTMENT has one (**[Proposed]**, [OQ-12](../planning/open-questions.md#oq-12-adjustment-transaction-type)). `occurredOn` (a local date) is authoritative. Transfer fees are a separate linked EXPENSE. The opening balance is an account field. Account balance = opening balance + sum of its postings. Edits write `transaction_audit` diffs. Details: [financial-domain-model.md](../architecture/financial-domain-model.md).
+A **transaction header** with **postings**: INCOME and EXPENSE have one posting, TRANSFER has two (source and destination, each in its account's currency), ADJUSTMENT has one, and REFUND has one linked to the original expense (added by [ADR-0021](ADR-0021-refund-and-adjustment-transaction-types.md)). `occurredOn` (a local date) is authoritative. Transfer fees are a separate linked EXPENSE. The opening balance is an account field. Account balance = opening balance + sum of its postings. Edits write `transaction_audit` diffs. Details: [financial-domain-model.md](../architecture/financial-domain-model.md).
 
 ## Alternatives considered
 

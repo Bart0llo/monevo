@@ -4,7 +4,19 @@ import { z } from './zod.js';
 // Personal API tokens (api-tokens.md). The catalogue lists only permissions whose routes exist
 // (api-tokens.md#4-permission-catalogue); later stages add theirs.
 
-export const API_TOKEN_PERMISSIONS = ['profile:read'] as const;
+export const API_TOKEN_PERMISSIONS = [
+  'profile:read',
+  'currencies:read',
+  'exchange-rates:create',
+  'accounts:read',
+  'accounts:create',
+  'accounts:update',
+  'accounts:delete',
+  'categories:read',
+  'categories:create',
+  'categories:update',
+  'categories:delete',
+] as const;
 export type ApiTokenPermission = (typeof API_TOKEN_PERMISSIONS)[number];
 export const ApiTokenPermissionSchema = z.enum(API_TOKEN_PERMISSIONS).openapi('ApiTokenPermission');
 
@@ -13,6 +25,16 @@ export const API_TOKEN_PERMISSION_REQUIRES: Readonly<
   Record<ApiTokenPermission, readonly ApiTokenPermission[]>
 > = {
   'profile:read': [],
+  'currencies:read': [],
+  'exchange-rates:create': [],
+  'accounts:read': [],
+  'accounts:create': [],
+  'accounts:update': [],
+  'accounts:delete': [],
+  'categories:read': [],
+  'categories:create': [],
+  'categories:update': [],
+  'categories:delete': [],
 };
 
 /** OpenAPI extension that lists the permissions an operation requires. */

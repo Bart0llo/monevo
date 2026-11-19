@@ -13,7 +13,8 @@ This document describes the behaviour of each feature from the user's point of v
   - Unarchiving is always possible.
   - **Deletion** is only allowed for accounts with no postings, no pots, no scheduled transactions, and no goal links. Otherwise the user must archive. This avoids implicit mass deletion of financial history.
 - "Include in net worth": a display-only preference that lets a user exclude an account from the *dashboard total* widget. It **never** affects reports or calculations other than that widget's displayed total, and it defaults to on. *(Kept minimal; this is not an asset module.)*
-- Balance, allocated amount (pots), and available balance are shown per account.
+- Balance, allocated amount (pots), and available balance are shown per account (from Stage 4).
+- **Stage 3 (before transactions):** the accounts screen lists active accounts and, on request, archived ones. Each account shows its opening balance and date; an account in a currency other than the base currency also shows today's rate to the base currency with its source and date, for example `1 EUR = 4.2650 PLN · Frankfurter (ECB) · 19 Nov 2026`, or "No exchange rate available" ([multi-currency.md](../architecture/multi-currency.md#5-rate-resolution-algorithm)). Currency symbols come from `Intl` at display time and are never stored.
 
 ## Categories
 *R-CAT-01..02*
@@ -21,7 +22,11 @@ This document describes the behaviour of each feature from the user's point of v
 - Categories start empty, and the onboarding screen invites the user to create a few. Each category has: name, type (`INCOME`/`EXPENSE`), icon (from a bundled icon set), color, optional parent (one level of subcategories only), and sort order.
 - **Reorganize:** drag to reorder, move a subcategory to another parent of the same type, promote a subcategory to top level, demote a childless top-level category under a parent. Type changes are only allowed when the category has no transactions, budgets, templates, or scheduled transactions referencing it.
 - **Delete:** if referenced by transactions, the user chooses to (a) reassign to another category of the same type, or (b) leave them uncategorized. Deleting a parent applies the same choice to its subcategories. Budgets drop the deleted category from their sets, and templates and scheduled transactions lose the category reference (the user is warned).
-- A transaction's category must match its type: income uses income categories, expense uses expense categories. Transfers and adjustments have no category.
+- A transaction's category must match its type: income uses income categories, expense uses expense categories. Transfers and adjustments have no category. A refund has no category of its own: it is reported under its original expense's category.
+- **Archive:** a category can be archived and restored (`archivedAt`). Archived categories are hidden from the default list ("Show archived categories" shows them) and are excluded from entry pickers (Stage 4); history keeps them.
+  - An archived parent hides its subcategories. Subcategories keep their own archived state, so restoring the parent shows only the subcategories that are not archived themselves.
+  - A new subcategory cannot be created under an archived parent. Restoring a subcategory under an archived parent is allowed; it stays hidden ("Hidden: parent archived") until the parent is restored.
+- **Stage 3 (before transactions):** reordering uses "Move up"/"Move down" within the same level; deleting a category with no references is permanent, and deleting a parent deletes its subcategories after a confirmation that names how many there are. The reassign-or-uncategorize choice above arrives with transactions in Stage 4.
 
 ## Transactions
 *R-TX-01..12 · design: [financial-domain-model.md](../architecture/financial-domain-model.md)*
@@ -29,7 +34,8 @@ This document describes the behaviour of each feature from the user's point of v
 ### Types
 - **Income / Expense:** one account, an amount, optionally in a foreign currency (original amount and currency + rate → account amount).
 - **Transfer:** source account and amount, destination account and amount. Different currencies require a transfer rate. The user may enter the rate or both amounts (the rate is then derived). Same-currency transfers have equal amounts.
-- **Adjustment [Proposed]:** sets or corrects a balance (for example "my bank says 1 234.56"). The UI asks for the target balance and computes the difference. It is excluded from income and expense statistics.
+- **Refund:** money returned for an earlier expense (R-TX-13). Started from the expense's detail ("Refund"): the user enters the amount in the expense's original currency (prefilled with the remaining refundable amount), the receiving account (defaults to the expense's account), the date (not earlier than the expense), and, when the receiving account uses another currency, preferably the amount actually credited. Several partial refunds are allowed until the expense is fully refunded; the expense shows how much has been refunded. A refund is never income: it reduces spending in the expense's category. The expense itself is never changed. Rules: [financial-domain-model.md](../architecture/financial-domain-model.md#refunds).
+- **Adjustment:** reconciles a balance with reality (for example "my bank says 1 234.56"), R-TX-14. The UI asks for the account, the target balance, and a date, computes the difference (positive or negative), and requires a reason. A zero difference saves nothing. It changes the balance but is excluded from income, expense, budgets, and category statistics. Rules: [financial-domain-model.md](../architecture/financial-domain-model.md#adjustments).
 
 ### Quick entry
 A minimal sheet or dialog reachable from a floating action button and a keyboard shortcut. It contains:
@@ -42,12 +48,12 @@ All fields: type, account(s), amount and currency, original currency with rate o
 Name, type, default account(s), category, description, notes, custom field values, optional default amount and currency. They can be used from quick entry, full entry, and the template list. Using a template never auto-saves: it pre-fills a form.
 
 ### Custom fields
-The user defines fields (name, type: `TEXT`, `NUMBER`, `DATE`, `BOOLEAN`, `SELECT` with options), an optional per-type applicability (income/expense/transfer), and order. Values are shown in full entry and as optional list columns. Custom fields are **not** filterable in v1 (R-TX-10 lists the filter set), and they are not tags.
+The user defines fields (name, type: `TEXT`, `NUMBER`, `DATE`, `BOOLEAN`, `SELECT` with options), an optional per-type applicability (any transaction type), and order. Values are shown in full entry and as optional list columns. Custom fields are **not** filterable in v1 (R-TX-10 lists the filter set), and they are not tags.
 
 ### Editing, deletion, history
 - Every field is editable. Editing a foreign-currency transaction keeps a manual rate if one was set; otherwise, changing the date re-resolves the rate (see [multi-currency.md](../architecture/multi-currency.md#when-rates-are-re-resolved)).
-- Delete is permanent and requires confirmation that states "this cannot be undone". Attachments are deleted with the transaction.
-- **History** tab on each transaction: a chronological list of changes (field, old → new, when, by whom/what: user via device X, recurring automation, import). A global **"Recent changes"** view lists history across transactions, including deletions, so deleted items remain discoverable as minimal records.
+- Delete is permanent and requires confirmation that states "this cannot be undone". Attachments are deleted with the transaction. A deleted transaction no longer counts in balances, reports, or budgets. An expense that has refunds cannot be deleted until the user deletes its refunds: the dialog explains why and lists the refunds with links to each one. Deleting a transaction never deletes another financial operation automatically ([OQ-24](../planning/open-questions.md#oq-24-deleting-an-expense-that-has-refunds)).
+- **History** tab on each transaction: a chronological list of changes (field, old → new, when, by whom/what: user via device X, user via API token *name*, recurring automation, import). A global **"Recent changes"** view lists history across transactions, including deletions. A deletion record only says that the transaction was deleted, when, and by whom; what it was is shown from its earlier creation and update entries, which are kept ([financial-domain-model.md](../architecture/financial-domain-model.md#transaction-history-audit)).
 
 ### List, search, customization
 - A virtualized list grouped by day, with daily totals in the base currency. Infinite scroll uses cursor pagination.

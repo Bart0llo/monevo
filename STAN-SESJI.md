@@ -1,26 +1,21 @@
-# Session State: Stage 2 (Identity & Users) ACCEPTED, Stage 3 not started
+# Session state (2026-11-19)
 
 ## Goal
-Stage 2 (OIDC-only identity, sessions, settings, admin, personal API tokens; ADR-0020) was explicitly accepted by the user on 2026-11-19. Next up is Stage 3 (currencies, rates, accounts and categories).
-
-## Git state
-Stage 2 is committed in `91f47bb`. The acceptance status updates (implementation-stages.md, README.md, this file) go in a follow-up commit.
+Pre-Stage-4 documentation update (OQ-10 refunds, OQ-11 deletion audit, OQ-12 adjustments, OQ-24 deleting an expense with refunds). No Stage 4 implementation. No commits, pushes, or branch changes; all Stage 3 changes stay uncommitted on `master`.
 
 ## Done
-- Stage 2 fully implemented and verified: `pnpm validate` EXIT 0, `pnpm test:e2e` 11/11 passed (2026-11-19).
-- `docs/planning/implementation-stages.md`: Stage 2 marked "completed and accepted by user (2026-11-19)".
-- `README.md` status line: Stages 1 and 2 complete and accepted, Stage 3 not started.
+- OQ-10, OQ-11, OQ-12, OQ-24 closed in `docs/planning/open-questions.md` (user decisions, 2026-11-19). OQ-24: option 1, reject with `422 EXPENSE_HAS_REFUNDS`; the dialog lists refunds with links; nothing deleted implicitly.
+- ADR-0021 Accepted (no pending note); ADR-0008 no longer marks ADJUSTMENT as proposed.
+- [Proposed] markers for these decisions removed from financial-domain-model.md, entity-relationships.md, features.md, ADR-0021, ADR-0008.
+- multi-currency.md: base-currency refund difference is never corrected artificially. requirements.md R-TX-13 notes the OQ-24 rule. implementation-stages.md Stage 4 prerequisites/tests updated.
+- `pnpm docs:check` passed (1018 links, 71 files).
 
-## Left to do / next step
-- Stage 3 can't start until [OQ-05](docs/planning/open-questions.md#oq-05-changing-the-base-currency) (changing the base currency) is resolved. Recommendation: allow it as a confirmed recompute job. This needs a user decision.
-- After that, plan and implement Stage 3 per `docs/planning/implementation-stages.md`.
-
-## Codebase facts
-- Run eslint from the repo root; run `pnpm exec prettier --write <files>` after edits (docs/ is prettier-ignored).
-- e2e uses nodenext: relative imports need `.js` extensions. Mock IdP form labels: Username, Name, Email, Groups; buttons Sign in / Deny.
-- Integration tests: db-test container `monevo-dev-db-test-1` on 127.0.0.1:5433.
+## Left
+- User approval to start Stage 4 (implementation not started).
 
 ## Pitfalls
-- Never put code or non-ASCII through bash heredocs; use Write/Edit.
-- Background runs: echo `EXIT $?` into the task output; the reported task exit code belongs to the echo.
-- Don't touch the `ac-test-pg` container or the AccountCenter repo.
+- Stage 3 account update contract still allows changing `currency`; Stage 4 must lock it once postings exist.
+- `POST /me/base-currency-change` changes behaviour in Stage 4 (async job, `maintenanceState`); keep the response contract additive.
+- `users.maintenance_state` column already exists (Stage 3 migration).
+- Transfer-fee deletion (financial-domain-model.md, still [Proposed]) asks the user whether to delete the fee: an explicit choice, not automatic; confirm at Stage 4 start.
+- Repo uses `eol=lf`; some working-tree docs have CRLF from earlier edits (harmless, normalized by git).

@@ -1,5 +1,6 @@
 import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import {
+  BaseCurrencyChangeSchema,
   ProfileSchema,
   ProfileUpdateSchema,
   UserSettingsSchema,
@@ -67,6 +68,30 @@ export function registerUsersOpenApi(registry: OpenAPIRegistry): void {
     request: {
       headers: z.object({ 'If-Match': z.string().optional() }),
       body: { required: true, ...json(UserSettingsUpdateSchema) },
+    },
+    responses: {
+      200: { description: 'Updated settings', ...json(UserSettingsSchema) },
+      ...problemResponses(
+        ...SESSION_WRITE_ERRORS,
+        'MALFORMED_REQUEST',
+        'VERSION_CONFLICT',
+        'VALIDATION_FAILED',
+        'PRECONDITION_REQUIRED',
+      ),
+    },
+  });
+  registry.registerPath({
+    method: 'post',
+    path: '/me/base-currency-change',
+    operationId: 'changeBaseCurrency',
+    tags: ['me'],
+    summary: 'Change the base currency (explicit confirmation)',
+    description:
+      'Session only; never available to API tokens. Needs `confirm: true` and `If-Match: "<version>"` or `version`. Allowed before and after onboarding. Original amounts are never changed.',
+    ...securityFor('session'),
+    request: {
+      headers: z.object({ 'If-Match': z.string().optional() }),
+      body: { required: true, ...json(BaseCurrencyChangeSchema) },
     },
     responses: {
       200: { description: 'Updated settings', ...json(UserSettingsSchema) },

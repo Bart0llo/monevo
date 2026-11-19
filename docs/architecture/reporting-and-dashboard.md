@@ -52,6 +52,7 @@ Common query parameters (validated by the report's Zod contract): `from`, `to` (
 - **Flows** (income, expense, category, savings, budgets) sum the stored `postings.base_amount` snapshots. They never re-convert at today's rate, so history does not drift (R-CUR-03).
 - **Stocks** (net worth over time) compute `balance(a, D)` per account at each bucket end and convert at the rate on D. They never sum `base_amount`.
 - Transfers and adjustments are excluded from all flow reports (INV-7). Transfer fees are ordinary expenses.
+- Refunds are never income: they reduce expense in the original expense's category, in the period of the refund's own date, using the refund's own `base_amount` ([financial-calculations.md](../data/financial-calculations.md#income-and-expense-totals)). Category reports join a refund to its original expense (`refund_of_id`) for the category.
 - Buckets are computed on `occurred_on` (LocalDate). Week buckets start on the user's week-start setting. There is no time-zone conversion in SQL, because `occurred_on` is already the user's local date.
 - Every query takes `userId` as a bound parameter and filters `posting.base_currency = user.base_currency` as a safety net. Each query file has an isolation test ([authorization-and-data-isolation.md](authorization-and-data-isolation.md#layer-2-user-scoped-repositories)).
 - Queries are raw parameterized SQL (`prisma.$queryRaw`) in `modules/reports/queries/*.sql.ts`. The read-only cross-module access rule is in [application-structure.md](application-structure.md#package-responsibilities-and-dependency-rules).
@@ -138,6 +139,6 @@ All chart widgets use the shared `ChartCard` component (missing-rate warning, ac
 
 ## 7. Testing
 
-- Report SQL: fixture data sets with expected results (including transfers, adjustments, cross-currency, missing rates, subcategory rollup, week-start variants) shared with the domain unit tests.
+- Report SQL: fixture data sets with expected results (including transfers, refunds, adjustments, cross-currency, missing rates, subcategory rollup, week-start variants) shared with the domain unit tests.
 - Isolation: every report endpoint is covered by the automated isolation suite.
 - Dashboard: Zod schema tests for each widget config, unknown-type preservation test, drag-and-drop reorder E2E (pointer and keyboard).

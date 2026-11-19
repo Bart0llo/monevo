@@ -10,6 +10,7 @@
     "dashboard": "Dashboard",
     "transactions": "Transactions",
     "accounts": "Accounts",
+    "categories": "Categories",
     "budgets": "Budgets",
     "calendar": "Calendar",
     "reports": "Reports",
@@ -21,12 +22,13 @@
   "sections": {
     "dashboard": "An overview of your money: balances, budgets and what is coming up.",
     "transactions": "Every income, expense and transfer, with search and filters.",
-    "accounts": "Your accounts and their balances, in any currency.",
+    "accounts": "Your bank accounts, cash and cards, in any currency.",
+    "categories": "Income and expense categories, grouped the way you think about money.",
     "budgets": "Spending limits per category, and how much of each is left.",
     "calendar": "Past and planned transactions, laid out by date.",
     "reports": "Spending, income and trends over time.",
     "settings": "Your profile, language, currency and preferences.",
-    "admin": "Accounts on this Monevo instance and the identity provider connection."
+    "admin": "Accounts on this Monevo instance, the identity provider connection and instance settings."
   },
   "placeholder": {
     "body": "This section is coming in a later stage.",
@@ -77,7 +79,14 @@
     "save": "Save changes",
     "copy": "Copy",
     "copied": "Copied",
-    "done": "Done"
+    "done": "Done",
+    "edit": "Edit",
+    "archive": "Archive",
+    "restore": "Restore",
+    "delete": "Delete"
+  },
+  "conflict": {
+    "reopen": "Close this dialog and open it again to see the latest version."
   },
   "account": {
     "label": "Account",
@@ -99,15 +108,20 @@
   "onboarding": {
     "title": "Welcome to Monevo",
     "body": "A few settings before you start. You can change the language and time zone later.",
-    "baseCurrencyHint": "Totals and reports use this currency. It can't be changed after setup.",
+    "baseCurrencyHint": "Totals and reports use this currency. You can change it later in Settings.",
     "submit": "Start using Monevo"
   },
   "validation": {
     "required": "This field is required.",
-    "tooLong": "Use at most {{max}} characters."
+    "tooLong": "Use at most {{max}} characters.",
+    "amount": "Enter an amount, for example 1250.50.",
+    "date": "Enter a valid date."
   },
   "fieldErrors": {
-    "BASE_CURRENCY_LOCKED": "The base currency can't be changed after setup."
+    "BASE_CURRENCY_LOCKED": "Change the base currency in its own section of Settings.",
+    "AMOUNT_PRECISION": "This currency doesn't allow that many decimal places.",
+    "BASE_CURRENCY_UNCHANGED": "This is already your base currency.",
+    "CURRENCY_INACTIVE": "This currency is no longer available."
   },
   "roles": {
     "USER": "User",
@@ -145,8 +159,16 @@
       "title": "Preferences",
       "weekStart": "Week starts on",
       "dateFormat": "Date format",
-      "dateFormatLocale": "Language default",
-      "baseCurrencyLocked": "Set during setup; it can't be changed."
+      "dateFormatLocale": "Language default"
+    },
+    "baseCurrencyChange": {
+      "title": "Base currency",
+      "description": "Totals and reports are shown in your base currency. Account currencies and the amounts you enter stay as they are.",
+      "submit": "Change base currency",
+      "confirmTitle": "Change base currency?",
+      "confirmBody": "Your base currency will change from {{from}} to {{to}}. Accounts keep their own currencies and opening balances; only the currency used for totals changes.",
+      "confirm": "Change to the new currency",
+      "done": "Base currency changed to {{currency}}."
     }
   },
   "sessions": {
@@ -174,8 +196,26 @@
     "namePlaceholder": "e.g. Home Assistant",
     "permissionsLabel": "Permissions",
     "permissionsRequired": "Choose at least one permission.",
+    "alsoRequires": "Also needs: {{permissions}}",
+    "resources": {
+      "profile": "Profile",
+      "currencies": "Currencies",
+      "exchangeRates": "Exchange rates",
+      "accounts": "Accounts",
+      "categories": "Categories"
+    },
     "permissions": {
-      "profileRead": "Read your profile and settings"
+      "profileRead": "Read your profile and settings",
+      "currenciesRead": "Read currencies",
+      "exchangeRatesCreate": "Look up exchange rates and add manual rates",
+      "accountsRead": "Read accounts",
+      "accountsCreate": "Create accounts",
+      "accountsUpdate": "Edit and archive accounts",
+      "accountsDelete": "Delete accounts",
+      "categoriesRead": "Read categories",
+      "categoriesCreate": "Create categories",
+      "categoriesUpdate": "Edit, archive and reorder categories",
+      "categoriesDelete": "Delete categories"
     },
     "expiry": "Expires",
     "expiryDays_one": "In {{count}} day",
@@ -195,8 +235,173 @@
     "revokeBody": "Integrations using “{{name}}” will stop working immediately. This can't be undone.",
     "revoked": "Token revoked."
   },
+  "accounts": {
+    "description": "Bank accounts, cash and cards, each in its own currency. Balances arrive with transactions.",
+    "create": "Add account",
+    "emptyTitle": "No accounts yet",
+    "emptyBody": "Add the accounts you use, such as a bank account, cash or a credit card.",
+    "active": "Active accounts",
+    "noActive": "All your accounts are archived.",
+    "archived_one": "Archived ({{count}})",
+    "archived_other": "Archived ({{count}})",
+    "showArchived": "Show archived accounts",
+    "excludedFromNetWorth": "Not in net worth",
+    "openingLine": "Opening balance {{amount}} on {{date}}",
+    "actionsFor": "Actions for {{name}}",
+    "archivedDone": "Account archived.",
+    "restoredDone": "Account restored.",
+    "saved": "Account saved.",
+    "created": "Account added.",
+    "editTitle": "Edit account",
+    "createTitle": "New account",
+    "deleteTitle": "Delete account?",
+    "deleteBody": "“{{name}}” will be deleted permanently. Archive it instead if you only want to hide it.",
+    "deleted": "Account deleted.",
+    "kinds": {
+      "BANK": "Bank account",
+      "CASH": "Cash",
+      "SAVINGS": "Savings",
+      "CREDIT_CARD": "Credit card",
+      "E_WALLET": "E-wallet",
+      "OTHER": "Other",
+      "CUSTOM": "Custom type"
+    },
+    "fields": {
+      "name": "Name",
+      "currency": "Currency",
+      "kind": "Type",
+      "customKindLabel": "Type name",
+      "openingBalance": "Opening balance",
+      "openingBalanceHint": "The balance on the opening date. Use a minus sign for debt.",
+      "openingDate": "Opening date",
+      "icon": "Icon",
+      "color": "Color",
+      "includeInNetWorth": "Include in net worth"
+    }
+  },
+  "rates": {
+    "loading": "Loading exchange rate…",
+    "missing": "No exchange rate available for {{from}} → {{to}}.",
+    "line": "1 {{from}} = {{rate}} {{to}} · {{source}} · {{date}}",
+    "stale": "older rate",
+    "sources": {
+      "manual": "Manual rate"
+    },
+    "providers": {
+      "frankfurter": "Frankfurter (ECB)",
+      "nbp": "NBP"
+    }
+  },
+  "categories": {
+    "title": "Categories",
+    "description": "Income and expense categories with optional subcategories.",
+    "typeLabel": "Category type",
+    "types": {
+      "INCOME": "Income",
+      "EXPENSE": "Expenses"
+    },
+    "showArchived": "Show archived categories",
+    "create": "Add category",
+    "empty": {
+      "INCOME": "No income categories yet.",
+      "EXPENSE": "No expense categories yet."
+    },
+    "archivedBadge": "Archived",
+    "hiddenByParent": "Hidden: parent archived",
+    "actionsFor": "Actions for {{name}}",
+    "addSubcategory": "Add subcategory",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "archived": "Category archived.",
+    "restored": "Category restored.",
+    "saved": "Category saved.",
+    "created": "Category added.",
+    "editTitle": "Edit category",
+    "createTitle": "New category",
+    "fields": {
+      "name": "Name",
+      "type": "Type",
+      "typeLocked": "The type can't change for a subcategory or a category with subcategories.",
+      "parent": "Parent category",
+      "noParent": "None (top level)",
+      "parentLocked": "A category with subcategories can't become a subcategory.",
+      "icon": "Icon",
+      "color": "Color"
+    },
+    "deleteTitle": "Delete category?",
+    "deleteBody": "“{{name}}” will be deleted permanently. Archive it instead if you only want to hide it.",
+    "deleteBodyWithChildren_one": "“{{name}}” and its {{count}} subcategory will be deleted permanently.",
+    "deleteBodyWithChildren_other": "“{{name}}” and its {{count}} subcategories will be deleted permanently.",
+    "deleted": "Category deleted."
+  },
+  "entityIcons": {
+    "wallet": "Wallet",
+    "bank": "Bank",
+    "cash": "Cash",
+    "credit-card": "Credit card",
+    "piggy-bank": "Piggy bank",
+    "coins": "Coins",
+    "receipt": "Receipt",
+    "briefcase": "Briefcase",
+    "gift": "Gift",
+    "trending-up": "Trending up",
+    "home": "Home",
+    "bolt": "Electricity",
+    "droplet": "Water",
+    "flame": "Gas and heating",
+    "wifi": "Internet",
+    "phone": "Phone",
+    "shopping-cart": "Groceries",
+    "shopping-bag": "Shopping",
+    "tools-kitchen": "Restaurants",
+    "coffee": "Coffee",
+    "car": "Car",
+    "gas-station": "Fuel",
+    "bus": "Public transport",
+    "plane": "Travel",
+    "bike": "Bike",
+    "heart": "Heart",
+    "pill": "Medicine",
+    "stethoscope": "Health care",
+    "school": "Education",
+    "book": "Books",
+    "device-tv": "TV",
+    "device-gamepad": "Games",
+    "music": "Music",
+    "movie": "Movies",
+    "shirt": "Clothes",
+    "paw": "Pets",
+    "baby": "Children",
+    "barbell": "Sport",
+    "beach": "Holidays",
+    "building": "Building",
+    "tag": "Tag",
+    "dots": "Other"
+  },
+  "entityColors": {
+    "gray": "Gray",
+    "red": "Red",
+    "pink": "Pink",
+    "grape": "Grape",
+    "violet": "Violet",
+    "indigo": "Indigo",
+    "blue": "Blue",
+    "cyan": "Cyan",
+    "teal": "Teal",
+    "green": "Green",
+    "lime": "Lime",
+    "yellow": "Yellow",
+    "orange": "Orange"
+  },
   "admin": {
     "title": "Users",
+    "settings": {
+      "title": "Instance settings",
+      "rateProvider": "Exchange rate provider",
+      "rateProviderHint": "Where Monevo fetches exchange rates when they are needed. Manual rates always take priority.",
+      "lockedByEnv": "Set by environment",
+      "saved": "Instance settings saved."
+    },
     "idp": {
       "title": "Identity provider",
       "discovery": {

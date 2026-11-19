@@ -14,6 +14,7 @@ currentBalance(a)    = balance(a, today(userTz))
 ```
 - Future-dated transactions (occurredOn > today) are allowed. They are **actual** records with a future date (for example a card payment booked for tomorrow). They are excluded from `currentBalance` and included in `balance(a, D)` for D ≥ their date. The UI marks them "scheduled for <date>". *(These differ from scheduled-transaction occurrences, which aren't transactions at all.)*
 - Balance in base: `balanceBase(a, D) = convert(balance(a, D), a.currency → base, rate on D)` (stock rule).
+- Every posting type counts, including refunds and adjustments. An adjustment's amount is the reconciliation delta `target − balance(a, D)` for its date D ([financial-domain-model.md](../architecture/financial-domain-model.md#adjustments)).
 
 SQL shape (indexed on `postings(userId, accountId)` + join to `transactions.occurredOn`):
 ```sql
@@ -33,23 +34,34 @@ netWorth(u, D) = Σ_{a ∈ accounts(u)} balanceBase(a, D)      -- includes archi
 ## Income and expense totals
 
 ```
-income(u, R, filters)  = Σ { p.baseAmount | tx(p).type = INCOME  ∧ occurredOn ∈ R ∧ filters }
-expense(u, R, filters) = Σ { −p.baseAmount | tx(p).type = EXPENSE ∧ occurredOn ∈ R ∧ filters }   -- positive number
+cat(t)                 = t.type = REFUND ? orig(t).categoryId : t.categoryId     -- orig(t) = the expense t.refundOfId points to
+grossExpense(u, R, f)  = Σ { −p.baseAmount | tx(p).type = EXPENSE ∧ occurredOn ∈ R ∧ f }
+refunds(u, R, f)       = Σ {  p.baseAmount | tx(p).type = REFUND  ∧ occurredOn ∈ R ∧ f }
+income(u, R, f)        = Σ {  p.baseAmount | tx(p).type = INCOME  ∧ occurredOn ∈ R ∧ f }
+expense(u, R, f)       = grossExpense(u, R, f) − refunds(u, R, f)       -- net of refunds; normally positive
 net(u, R)              = income − expense
 savingsRate(u, R)      = net / income   (undefined when income = 0 → shown as "—")
 ```
 - Transfers and adjustments are excluded (INV-7).
+- **Refunds** ([financial-domain-model.md](../architecture/financial-domain-model.md#refunds)) are never income. They reduce `expense` in the period of the refund's own `occurredOn`, using the refund posting's own `baseAmount` snapshot ([multi-currency.md](../architecture/multi-currency.md#refunds-and-adjustments)). Because of that, `expense` for a range can be negative when refunds in the range exceed purchases (for example, a refund in December of a November purchase); it is shown as a negative number, never clamped. Reports may show `grossExpense` and `refunds` as separate lines; `expense` is always the net value.
 - Postings with null `baseAmount` are excluded and reported as `missingRateCount`.
-- Filters: account (posting.accountId ∈ set), category (category ∈ set, a parent selection includes its children), amount range (on |p.amount| or |p.baseAmount| per the selected mode), description (`ILIKE` with `unaccent`).
-- **Refunds [Open]:** in v1, a refund is entered as INCOME (optionally in an income category such as "Refunds"). It does not reduce expense totals. See [OQ-10](../planning/open-questions.md#oq-10-refunds).
+- Filters (`f`): account (posting.accountId ∈ set; for a refund, the account that received the money), category (`cat(t)` ∈ set, a parent selection includes its children; a refund matches through its original expense's category), amount range (on |p.amount| or |p.baseAmount| per the selected mode), description (`ILIKE` with `unaccent`).
+
+## Refund totals per expense
+
+```
+refundedAmount(e)   = Σ { r.posting.originalAmount | r.type = REFUND ∧ r.refundOfId = e.id }   -- in e.posting.originalCurrency
+refundableAmount(e) = e.posting.originalAmount − refundedAmount(e)                              -- INV-10: ≥ 0
+```
+A new or edited refund with amount `x` is accepted only if `refundedAmount(e) − (its previous amount, if editing) + x ≤ e.posting.originalAmount`; otherwise `REFUND_EXCEEDS_EXPENSE`. Exact decimal comparison in the original currency; no conversion is involved.
 
 ## Category breakdown
 
 ```
-spendByCategory(R) = group expense(u, R) by rollup(categoryId)   -- rollup: subcategory → parent unless drill-down
+spendByCategory(R) = group expense(u, R) by rollup(cat(t))   -- rollup: subcategory → parent unless drill-down
 share(c)           = spend(c) / Σ spend
 ```
-Uncategorized is its own bucket (`categoryId = null`).
+Uncategorized is its own bucket (`cat(t) = null`); a refund of an uncategorized expense reduces it. A category's spend for a period can be negative (refunds only); it is never clamped. How charts present negative category values is settled with the reports in Stage 10.
 
 ## Exchange differences
 
@@ -72,7 +84,8 @@ Budget `b` with category set `C(b)` (parents expanded to include subcategories),
 | `CUSTOM` repeating | `[anchor + k·N days, anchor + (k+1)·N − 1 days]` |
 
 ```
-spent(b, k)      = Σ { −p.baseAmount | tx.type = EXPENSE ∧ category ∈ C(b) ∧ (A(b) empty ∨ p.accountId ∈ A(b)) ∧ occurredOn ∈ period k }
+spent(b, k)      = Σ { −p.baseAmount | tx.type = EXPENSE ∧ cat(tx) ∈ C(b) ∧ (A(b) empty ∨ p.accountId ∈ A(b)) ∧ occurredOn ∈ period k }
+                 − Σ {  p.baseAmount | tx.type = REFUND  ∧ cat(tx) ∈ C(b) ∧ (A(b) empty ∨ p.accountId ∈ A(b)) ∧ occurredOn ∈ period k }
 limit(b, k)      = MANUAL: b.limitAmount
                    AUTO:   roundToCurrency( avg_{j=k−N..k−1} spent(b, j) × (1 + adjustmentPct/100), base )
                            (N = lookbackPeriods, default 3; only periods with data since budget creation or user-chosen history start;
@@ -85,6 +98,7 @@ dailyAllowance   = max(remaining, 0) / daysLeftInclusive(today, periodEnd)
 pace             = spent / (effective × elapsedDays/totalDays)      (> 1 = ahead of plan)
 ```
 - Rollover carry is limited to `maxRolloverPeriods` (default unlimited). Rollover is computed iteratively from the first period, and results are memoized per request.
+- Refunds reduce `spent` in the period of the refund's date (they may make `spent` negative for a period; the value is never clamped). Adjustments and transfers never count (INV-7).
 - **Overlapping budgets** are independent. The same expense may count in several budgets. Reports never sum budgets together.
 - Budgets use the base currency. Postings without `baseAmount` are excluded and flagged.
 

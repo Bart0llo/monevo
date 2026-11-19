@@ -10,14 +10,14 @@ Unresolved decisions and assumptions. Each entry has a recommendation, which the
 | [OQ-02](#oq-02-package-manager-and-repository-layout) | Package manager and repository layout | **Decided:** pnpm workspaces monorepo | Stage 1 | Closed |
 | [OQ-03](#oq-03-smtp-for-authentication-emails) | SMTP for authentication emails | **Obsolete:** OIDC-only, Monevo sends no email ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)) | Stage 2 | Closed |
 | [OQ-04](#oq-04-admin-backup-access-vs-financial-privacy) | Admin backup access vs financial privacy | Accept operator trust + optional encryption | Stage 15 | Open |
-| [OQ-05](#oq-05-changing-the-base-currency) | Changing the base currency | Allow, as a recompute job | Stage 3 | Open |
+| [OQ-05](#oq-05-changing-the-base-currency) | Changing the base currency | **Decided:** allowed, confirmed, session only; Stage 3 changes the setting, Stage 4 adds the recalculation job | Stage 3 | Closed |
 | [OQ-06](#oq-06-authentication-implementation) | Authentication implementation | **Decided:** OIDC-only with Account Center via `openid-client` + own session layer ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)) | Stage 2 | Closed |
 | [OQ-07](#oq-07-ci-platform) | CI platform | **Decided:** none for now; local validation ([ADR-0016](../decisions/ADR-0016-local-validation-ci-deferred.md)) | Later (does not block) | Deferred |
 | [OQ-08](#oq-08-nodejs-and-postgresql-versions) | Node.js and PostgreSQL versions | **Decided:** Node.js 24; external PostgreSQL via `DATABASE_URL`, maintained majors, minimum 16 ([ADR-0018](../decisions/ADR-0018-postgresql-16-minimum.md)) | Stage 1 | Closed |
 | [OQ-09](#oq-09-offline-attachment-uploads) | Offline attachment uploads | Online-only in v1 (deferred) | Stage 6 | Open |
-| [OQ-10](#oq-10-refunds) | Refunds | Enter as INCOME in v1 | Stage 4 | Open |
-| [OQ-11](#oq-11-history-retention-for-deleted-transactions) | History retention for deleted transactions | Retain prior audit entries | Stage 4 | Open |
-| [OQ-12](#oq-12-adjustment-transaction-type) | Adjustment transaction type | Add `ADJUSTMENT`, excluded from income/expense | Stage 4 | Open |
+| [OQ-10](#oq-10-refunds) | Refunds | **Decided:** dedicated `REFUND` type linked to the original expense; reduces expense, never income ([ADR-0021](../decisions/ADR-0021-refund-and-adjustment-transaction-types.md)) | Stage 4 | Closed |
+| [OQ-11](#oq-11-history-retention-for-deleted-transactions) | History retention for deleted transactions | **Decided:** minimal `DELETE` record (when, who/what); prior audit entries retained | Stage 4 | Closed |
+| [OQ-12](#oq-12-adjustment-transaction-type) | Adjustment transaction type | **Decided:** `ADJUSTMENT`, one posting, required reason, excluded from income/expense/budgets ([ADR-0021](../decisions/ADR-0021-refund-and-adjustment-transaction-types.md)) | Stage 4 | Closed |
 | [OQ-13](#oq-13-csv-re-import) | CSV re-import | No CSV import in v1 | Stage 13 | Open |
 | [OQ-14](#oq-14-backup-encryption) | Backup encryption | Optional age/passphrase encryption | Stage 15 | Open |
 | [OQ-15](#oq-15-pdf-export) | PDF export | Deferred | Stage 10 | Open |
@@ -29,8 +29,9 @@ Unresolved decisions and assumptions. Each entry has a recommendation, which the
 | [OQ-21](#oq-21-local-database-library) | Local database library | Dexie 4 | Stage 5 | Open |
 | [OQ-22](#oq-22-api-token-permission-catalogue-and-lifecycle) | API token permission catalogue and lifecycle | **Decided:** catalogue and defaults in api-tokens.md; revoked on deactivation and restore ([ADR-0017](../decisions/ADR-0017-personal-api-tokens.md), amended by [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)) | Stage 2 | Closed |
 | [OQ-23](#oq-23-s3-compatible-server-for-development-and-tests) | S3-compatible server for development and tests | Evaluate Garage and SeaweedFS against the driver contract suite | Stage 6 | Open |
+| [OQ-24](#oq-24-deleting-an-expense-that-has-refunds) | Deleting an expense that has refunds | **Decided:** rejected with `422 EXPENSE_HAS_REFUNDS` until the user deletes the refunds; nothing deleted implicitly | Stage 4 | Closed |
 
-**Before Stage 1:** nothing open (OQ-01, OQ-02, OQ-08 closed; OQ-07 deferred, 2026-11-18). **Before Stage 2:** nothing open (OQ-03, OQ-06, OQ-22 closed, 2026-11-19; reviewed again for the OIDC-only switch, [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)).
+**Before Stage 1:** nothing open (OQ-01, OQ-02, OQ-08 closed; OQ-07 deferred, 2026-11-18). **Before Stage 2:** nothing open (OQ-03, OQ-06, OQ-22 closed, 2026-11-19; reviewed again for the OIDC-only switch, [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)). **Before Stage 4:** nothing open (OQ-10, OQ-11, OQ-12, OQ-24 closed, 2026-11-19).
 
 ## Questions
 
@@ -64,7 +65,9 @@ R-ADM-05 says admin privileges never grant access to financial data, but R-BAK-0
 
 ### OQ-05: Changing the base currency
 
-**Recommendation:** allow it as an explicit, confirmed operation that runs as a job: recompute `baseAmount` for all postings at historical rates, convert budget limits and alert amounts at today's rate for the user to review, and block the user's financial writes meanwhile (`503 MAINTENANCE_USER`) ([multi-currency.md](../architecture/multi-currency.md)). Alternative: base currency fixed after onboarding (simpler, but a user who moves country is stuck).
+**Status: Closed (2026-11-19).** **Decision:** the base currency can be changed as an explicit, confirmed operation: `POST /me/base-currency-change` with `{ baseCurrency, confirm: true }` and `If-Match`, session only (never available to API tokens) ([api-design.md](../architecture/api-design.md#8-endpoint-map-v1-indicative)). Stage 3 changes only `user_settings.baseCurrency` (no ledger exists yet). From Stage 4 the same endpoint starts a recalculation background job: `users.maintenanceState = BASE_CURRENCY_CHANGE` blocks the user's financial writes (`503 MAINTENANCE_USER`) until the job succeeds; base amounts are recomputed at historical rates per item date; original amounts are never changed. The change is not complete until recalculation succeeds ([multi-currency.md](../architecture/multi-currency.md#9-base-currency)).
+
+**Original recommendation:** allow it as an explicit, confirmed operation that runs as a job: recompute `baseAmount` for all postings at historical rates, convert budget limits and alert amounts at today's rate for the user to review, and block the user's financial writes meanwhile (`503 MAINTENANCE_USER`) ([multi-currency.md](../architecture/multi-currency.md)). Alternative: base currency fixed after onboarding (simpler, but a user who moves country is stuck).
 
 ### OQ-06: Authentication implementation
 
@@ -90,15 +93,36 @@ R-ADM-05 says admin privileges never grant access to financial data, but R-BAK-0
 
 ### OQ-10: Refunds
 
-**Recommendation:** in v1 a refund is an INCOME transaction (optionally in a "Refunds" income category); it does not reduce expense totals ([financial-calculations.md](../data/financial-calculations.md)). Alternative for later: a refund link to the original expense that nets it in reports and budgets.
+**Status: Closed (2026-11-19).** **Decision:** the recommendation (refund as INCOME) is **not** accepted. Refunds are a dedicated `REFUND` transaction type (R-TX-13, [ADR-0021](../decisions/ADR-0021-refund-and-adjustment-transaction-types.md)):
+
+- A refund is linked to its original expense (`refundOfId`) and is a separate financial operation; the original expense and its history are never edited or deleted by it.
+- Partial and full refunds are supported, including several partial refunds for one expense, as long as their combined amount never exceeds the original expense.
+- A refund increases the balance of the account receiving the money, reduces reported expenses in the original expense's category (reports and budgets), and never appears as ordinary income. There is no default "Refunds" income category.
+- **Currency and exchange rates:** a refund is entered in the expense's original currency, so the cap is an exact comparison; the refund resolves its own rate to the receiving account and its own base conversion for its own date; neither transaction changes the other's rate snapshots. A full refund of a foreign-currency expense may therefore leave a small base-currency difference when the rate moved, which reflects the real rates on the two dates and is not corrected artificially.
+- **Reporting:** reports and budgets count a refund in the period of its own date; it takes its category from the original expense; account filters use the account receiving the refund.
+- **Entry rules:** a refund can go to any active account (default: the original expense's account); its date cannot be earlier than the expense's date; its link to the expense is immutable; no transaction can change type into or out of `REFUND`.
+- **Expense with refunds:** cannot change type or original currency, cannot lower its amount below the total already refunded, and cannot move its date after its first refund. Deleting it is rejected until its refunds are deleted ([OQ-24](#oq-24-deleting-an-expense-that-has-refunds)).
+
+Details: [financial-domain-model.md](../architecture/financial-domain-model.md#refunds), [multi-currency.md](../architecture/multi-currency.md#refunds-and-adjustments), [financial-calculations.md](../data/financial-calculations.md#income-and-expense-totals).
+
+**Original recommendation (rejected):** in v1 a refund is an INCOME transaction (optionally in a "Refunds" income category); it does not reduce expense totals. Alternative for later: a refund link to the original expense that nets it in reports and budgets.
 
 ### OQ-11: History retention for deleted transactions
 
-**Recommendation:** when a transaction is deleted, write a minimal `DELETE` audit record and **retain** the earlier `CREATE`/`UPDATE` records for the life of the user account ([financial-domain-model.md](../architecture/financial-domain-model.md), [database-architecture.md](../architecture/database-architecture.md#7-data-lifecycle)). Alternative: purge prior entries on delete (less data, but loses the "what was it" trail).
+**Status: Closed (2026-11-19).** **Decision:** the recommendation is accepted ([financial-domain-model.md](../architecture/financial-domain-model.md#transaction-history-audit), R-TX-09):
+
+- Deleting a transaction writes a minimal `DELETE` audit record containing only what establishes that it was deleted, when, and who or what initiated it (time, actor type, user, credential type, session or personal API token with a copy of the token name, device label). No amounts, accounts, category, description, notes, custom fields, or attachment data are copied.
+- Earlier `CREATE` and `UPDATE` records remain available for the lifetime of the user account.
+- A deleted transaction no longer affects balances, reports, or budgets (its postings are physically deleted).
+- A deletion made with a personal API token records `credentialType = API_TOKEN`, the token ID, and the token name, so it stays identifiable after the token is revoked or purged.
+
+**Original recommendation:** when a transaction is deleted, write a minimal `DELETE` audit record and **retain** the earlier `CREATE`/`UPDATE` records for the life of the user account. Alternative: purge prior entries on delete (less data, but loses the "what was it" trail).
 
 ### OQ-12: Adjustment transaction type
 
-**Recommendation:** add an `ADJUSTMENT` type (one posting) for reconciliation ("set balance to X"), excluded from income, expense, and budgets ([financial-domain-model.md](../architecture/financial-domain-model.md), R-TX-01 interpretation). Opening balances remain an account field. Alternative: use INCOME/EXPENSE in an "Adjustments" category (distorts reports).
+**Status: Closed (2026-11-19).** **Decision:** the recommendation is accepted (R-TX-14, [ADR-0021](../decisions/ADR-0021-refund-and-adjustment-transaction-types.md)). An `ADJUSTMENT` has a single posting and reconciles an account's recorded balance with its actual balance. It affects the balance, is not income or expense, does not affect budgets, requires a reason (`description`), and appears in transaction and audit history. Validation: amount non-zero, positive or negative, in the account currency only (no conversion), within the currency's precision, on an active account; the API accepts the signed amount; the UI computes the delta from the target balance and saves nothing when it is zero ([financial-domain-model.md](../architecture/financial-domain-model.md#adjustments)). Adjustments are not available in transaction templates or scheduled transactions. Opening balances remain an account field.
+
+**Original recommendation:** add an `ADJUSTMENT` type (one posting) for reconciliation ("set balance to X"), excluded from income, expense, and budgets. Opening balances remain an account field. Alternative: use INCOME/EXPENSE in an "Adjustments" category (distorts reports).
 
 ### OQ-13: CSV re-import
 
@@ -153,3 +177,24 @@ R-ADM-05 says admin privileges never grant access to financial data, but R-BAK-0
 Raised in Stage 1 (2026-11-18). The docs planned MinIO (`minio/minio`) for the `s3` storage-driver tests in `docker-compose.dev.yml`, the E2E stack, and the optional same-host `s3` profile in `docker-compose.yml` ([docker-compose.md](../infrastructure/docker-compose.md#2-compose-services), [testing-strategy.md](../development/testing-strategy.md)). The MinIO images are no longer publicly pullable (Docker Hub: pull access denied; quay.io: 401), so Stage 1 ships the compose files **without an S3 service**. Nothing in Stages 1-5 needs one; the `s3` driver and its contract suite arrive in Stage 6 ([file-storage.md](../architecture/file-storage.md)).
 
 **Recommendation:** at Stage 6, evaluate Garage and SeaweedFS (both maintained, open source, with public images) against the `StorageDriver` contract suite (multipart upload, streaming, ranged reads, delete) and pick the one that passes with the simplest configuration; use it for development, tests, and the optional `s3` profile. Alternatives: RustFS (newer, less proven); MinIO built from source into a project-maintained image (maintenance burden); a hosted S3 bucket for tests (needs credentials, not offline). Confirm before Stage 6.
+
+### OQ-24: Deleting an expense that has refunds
+
+**Status: Closed (2026-11-19).** **Decision:** option 1 (reject) is accepted:
+
+- Deleting an expense that still has refunds fails with `422 EXPENSE_HAS_REFUNDS`.
+- The delete confirmation lists the linked refunds, each with a link to its details.
+- The user deletes the refunds manually; only then can the expense be deleted.
+- Refunds are never deleted implicitly, and deleting a transaction never deletes any other financial operation automatically.
+
+Details: [financial-domain-model.md](../architecture/financial-domain-model.md#refunds), [entity-relationships.md](../data/entity-relationships.md#3-deletion-rules), [features.md](../product/features.md#editing-deletion-history).
+
+**Original question:** raised by the OQ-10 decision (2026-11-19). A refund must always be linked to its original expense, and Stage 4 implements permanent deletion (R-TX-08). The user's requirements do not say what happens when the user deletes an expense that already has refunds, and every option changes data the user did not explicitly pick, so it is a product decision. It blocks Stage 4 because it determines the delete command, the foreign key behaviour of `refundOfId`, the error codes, and the confirmation UI.
+
+Options:
+
+1. **Reject** with `422 EXPENSE_HAS_REFUNDS` until the user deletes the refunds; the UI lists them with links. Keeps every refund linked, never deletes anything implicitly (the same philosophy as account deletion, [features.md](../product/features.md#accounts)).
+2. **Delete together:** the confirmation names the N refunds, and the expense and its refunds are deleted in one command (each gets its own minimal `DELETE` audit record).
+3. **Ask each time** (like a transfer's fee): offer "delete with refunds" or cancel. In effect option 2 with an extra step; keeping the refunds is impossible, because a refund without an expense would break R-TX-13.
+
+**Original recommendation:** option 1 (accepted).

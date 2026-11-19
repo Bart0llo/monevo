@@ -69,6 +69,7 @@ describe('app shell (mobile)', () => {
       .map((item) => [item.textContent, item.getAttribute('data-group')]);
     expect(items).toEqual([
       ['Accounts', 'secondary'],
+      ['Categories', 'secondary'],
       ['Reports', 'secondary'],
       ['Settings', 'system'],
       ['Administration', 'system'],
@@ -81,7 +82,7 @@ describe('app shell (desktop)', () => {
     useDesktopViewport();
     await renderApp('/settings');
     const nav = await screen.findByRole('navigation', { name: 'Main navigation' });
-    expect(within(nav).getAllByRole('link')).toHaveLength(7);
+    expect(within(nav).getAllByRole('link')).toHaveLength(8);
     expect(within(nav).getByRole('link', { name: 'Settings' }).getAttribute('aria-current')).toBe(
       'page',
     );

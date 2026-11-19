@@ -15,7 +15,7 @@ export {
   ProblemSchema,
   problemTypeUri,
 } from './problem.js';
-export { CurrencyCodeSchema, DecimalStringSchema } from './common.js';
+export * from './common.js';
 export {
   type HealthResponse,
   HealthResponseSchema,
@@ -27,3 +27,6 @@ export * from './auth.js';
 export * from './me.js';
 export * from './api-tokens.js';
 export * from './admin.js';
+export * from './currencies.js';
+export * from './accounts.js';
+export * from './categories.js';

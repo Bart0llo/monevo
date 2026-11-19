@@ -33,6 +33,9 @@ describe('API tokens', () => {
     await user.click(screen.getByRole('button', { name: 'Create token' }));
     const dialog = await screen.findByRole('dialog', { name: 'New API token' });
     await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Scripts');
+    await user.click(
+      within(dialog).getByRole('checkbox', { name: 'Read your profile and settings' }),
+    );
     await user.click(within(dialog).getByRole('button', { name: 'Create token' }));
 
     const done = await screen.findByRole('dialog', { name: 'Token created' });
@@ -54,10 +57,32 @@ describe('API tokens', () => {
     await user.click(await screen.findByRole('button', { name: 'Create token' }));
     const dialog = await screen.findByRole('dialog', { name: 'New API token' });
     await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Scripts');
+    await user.click(
+      within(dialog).getByRole('checkbox', { name: 'Read your profile and settings' }),
+    );
     await user.click(within(dialog).getByRole('button', { name: 'Create token' }));
 
     const reauth = await screen.findByRole('dialog', { name: "Confirm it's you" });
     expect(within(reauth).getByRole('button', { name: 'Continue to sign-in' })).toBeTruthy();
     expect(screen.queryByRole('dialog', { name: 'New API token' })).toBeNull();
+  });
+
+  it('groups permissions by resource and selects none by default', async () => {
+    const api = stubApi();
+    const user = userEvent.setup();
+    await renderApp('/settings/api-tokens');
+    await user.click(await screen.findByRole('button', { name: 'Create token' }));
+    const dialog = await screen.findByRole('dialog', { name: 'New API token' });
+
+    const accounts = within(dialog).getByRole('group', { name: 'Accounts' });
+    expect(within(accounts).getAllByRole('checkbox')).toHaveLength(4);
+    const boxes = within(dialog).getAllByRole('checkbox');
+    expect(boxes).toHaveLength(11);
+    expect(boxes.every((box) => !(box as HTMLInputElement).checked)).toBe(true);
+
+    await user.type(within(dialog).getByRole('textbox', { name: 'Name' }), 'Scripts');
+    await user.click(within(dialog).getByRole('button', { name: 'Create token' }));
+    expect(await within(dialog).findByText('Choose at least one permission.')).toBeTruthy();
+    expect(api.calls.some((call) => call.method === 'POST')).toBe(false);
   });
 });

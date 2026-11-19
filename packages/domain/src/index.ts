@@ -33,4 +33,23 @@ export {
   sumMoney,
   zeroMoney,
 } from './money.js';
+export {
+  MAX_RATE_EXCLUSIVE,
+  RATE_SCALE,
+  RateError,
+  type RateErrorCode,
+  convertAmount,
+  crossRate,
+  invertRate,
+  isValidRateString,
+  rateToDecimalString,
+  roundRate,
+} from './rates.js';
+export {
+  type LocalDate,
+  addDays,
+  compareLocalDates,
+  isLocalDate,
+  localDateInZone,
+} from './local-date.js';
 export { isTimeZone } from './time-zone.js';

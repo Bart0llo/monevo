@@ -1,6 +1,6 @@
 # Financial Domain Model
 
-**[Accepted]**, see [ADR-0008](../decisions/ADR-0008-transaction-and-transfer-model.md) and [ADR-0014](../decisions/ADR-0014-virtual-savings-pots.md). Money representation and rate rules are in [multi-currency.md](multi-currency.md). Exact formulas are in [financial-calculations.md](../data/financial-calculations.md). Column-level schema is in [data-model.md](../data/data-model.md).
+**[Accepted]**, see [ADR-0008](../decisions/ADR-0008-transaction-and-transfer-model.md) (extended by [ADR-0021](../decisions/ADR-0021-refund-and-adjustment-transaction-types.md)) and [ADR-0014](../decisions/ADR-0014-virtual-savings-pots.md). Money representation and rate rules are in [multi-currency.md](multi-currency.md). Exact formulas are in [financial-calculations.md](../data/financial-calculations.md). Column-level schema is in [data-model.md](../data/data-model.md).
 
 ## Core invariants
 
@@ -10,17 +10,19 @@ These rules hold at all times. Code that could violate them must be covered by t
 2. **INV-2: Actual only.** The `transactions`/`postings` tables contain only completed operations. Planned, recurring, and forecast values never live there.
 3. **INV-3: Balance derivation.** `balance(account, asOf) = openingBalance + Σ postings.amount for that account where occurredOn ≤ asOf`. Nothing else changes a balance. There is no stored mutable balance that could drift (a cache, if ever added, must be rebuildable and verified by tests).
 4. **INV-4: Posting shape per type.**
-   | Type | Postings | Sign | Category |
-   |---|---|---|---|
-   | `INCOME` | exactly 1 | amount > 0 | null or an INCOME category |
-   | `EXPENSE` | exactly 1 | amount < 0 | null or an EXPENSE category |
-   | `TRANSFER` | exactly 2, different accounts | one < 0 (source), one > 0 (destination) | null |
-   | `ADJUSTMENT` | exactly 1 | ≠ 0 | null |
+   | Type | Postings | Sign | Category | Link |
+   |---|---|---|---|---|
+   | `INCOME` | exactly 1 | amount > 0 | null or an INCOME category | |
+   | `EXPENSE` | exactly 1 | amount < 0 | null or an EXPENSE category | |
+   | `TRANSFER` | exactly 2, different accounts | one < 0 (source), one > 0 (destination) | null | |
+   | `REFUND` | exactly 1 | amount > 0 | null (reported under the original expense's category) | `refundOfId` → an `EXPENSE`, required |
+   | `ADJUSTMENT` | exactly 1 | ≠ 0, no currency conversion | null | |
 5. **INV-5: Currency consistency.** `posting.accountCurrency = account.currency`. `posting.amount` is rounded to that currency's exponent.
 6. **INV-6: Snapshots are immutable.** `rateToAccount`, `baseAmount`, and `rateToBase` are set when a transaction is created or edited. They are never recalculated because exchange rate data changed, except when filling a *missing* base conversion (see [multi-currency.md](multi-currency.md#missing-rates)) or through the explicit base currency change operation.
-7. **INV-7: Transfers are neutral.** Transfers and adjustments never appear in income or expense totals, budgets, or category reports.
+7. **INV-7: Transfers and adjustments are neutral.** Transfers and adjustments never appear in income or expense totals, budgets, or category reports. Refunds never appear in income; they only reduce expense ([§ Refunds](#refunds)).
 8. **INV-8: Pots are virtual.** Pot allocations never create postings and never change any balance or net worth.
 9. **INV-9: Idempotent automation.** At most one transaction exists per `(scheduledTransactionId, occurrenceDate)` (unique index).
+10. **INV-10: Refunds never exceed the expense.** For every expense `e`: `Σ r.posting.originalAmount over refunds r with r.refundOfId = e.id ≤ e.posting.originalAmount`, and every such refund has `originalCurrency = e.posting.originalCurrency`. Enforced by the service under a row lock on `e` for every write that touches a refund or `e` ([§ Refunds](#refunds)).
 
 ## Transaction aggregate
 
@@ -30,11 +32,12 @@ A **Transaction** is the aggregate root. Its **Postings** are child rows created
 Transaction
   id (UUIDv7, may be client-generated)
   userId
-  type: INCOME | EXPENSE | TRANSFER | ADJUSTMENT
+  type: INCOME | EXPENSE | TRANSFER | REFUND | ADJUSTMENT
   occurredOn: LocalDate          ← authoritative calendar date (user-local) for all grouping
   occurredAt?: Instant           ← optional exact time (UTC), shown in user tz
-  description?, notes?
+  description?, notes?           ← description required for ADJUSTMENT (the reason)
   categoryId?                    ← income/expense only
+  refundOfId?                    ← REFUND only (required): the original EXPENSE; immutable
   customFields: { [definitionId]: value }
   source: MANUAL | TEMPLATE | SCHEDULE_AUTO | SCHEDULE_CONFIRMED | IMPORT
   templateId?                    ← provenance only, no behaviour
@@ -92,9 +95,33 @@ Rules:
 ### Transfer fees
 **[Proposed]** The transfer form has an optional **fee** field. A fee creates a separate `EXPENSE` transaction on the source account (category chosen by the user, or uncategorized), linked through `transferFeeOfId`. The fee is a real expense and counts in expense totals. Deleting the transfer asks whether to also delete the fee. Rationale: the transfer stays a pure, neutral movement while the cost is reported correctly.
 
+## Refunds
+
+**[Accepted]** ([OQ-10](../planning/open-questions.md#oq-10-refunds), [ADR-0021](../decisions/ADR-0021-refund-and-adjustment-transaction-types.md)). A refund is money returned for an earlier expense. It is a **separate transaction** of type `REFUND`, linked to the original expense by `refundOfId`. It is not an edit of the expense and not ordinary income. There is no "Refunds" income category.
+
+- **Shape:** one posting with `amount > 0` on the account that receives the money (any of the user's active accounts; the form defaults to the expense's account). `categoryId` is null: the refund is always reported under the original expense's current category, and follows it if that category changes.
+- **Link:** `refundOfId` must reference an `EXPENSE` of the same user (composite FK). It is set at creation and never changes; to move a refund to another expense, delete it and record a new one. A refund cannot refund another refund, an income, a transfer, or an adjustment.
+- **Partial and multiple refunds:** any number of refunds per expense, each with `originalAmount > 0`, as long as their total stays within the expense (INV-10). A full refund is simply refunds totalling the expense's `originalAmount`.
+- **Amount and currency:** the refund is entered in the expense's original currency (`originalCurrency = expense.originalCurrency`), so the cap is checked exactly, without conversion. The amount credited to the receiving account follows the normal income/expense conversion rules with the refund's own date and rate ([multi-currency.md](multi-currency.md#refunds-and-adjustments)).
+- **Date:** `refund.occurredOn ≥ expense.occurredOn`. Refunds are grouped by their own date in every report and budget period (the expense stays in its own period).
+- **Effect:** the refund increases the receiving account's balance like any positive posting (INV-3), and **reduces** expense totals, category spending, and budget spending in the original expense's category; it never counts as income ([financial-calculations.md](../data/financial-calculations.md#income-and-expense-totals)).
+- **History is preserved:** the original expense, its postings, rate snapshots, and audit history are never modified by recording, editing, or deleting a refund.
+- **Derived read-only fields** on an expense: `refundedAmount` (Σ refund `originalAmount`), `refundableAmount` (`originalAmount − refundedAmount`), and the refund count, all in the expense's original currency.
+- **Edits that would break the link are rejected:** an expense with refunds cannot change type (`EXPENSE_HAS_REFUNDS`), cannot change its `originalCurrency` (`REFUND_CURRENCY_MISMATCH`), cannot lower its `originalAmount` below `refundedAmount` (`REFUND_EXCEEDS_EXPENSE`), and cannot move its date after its earliest refund (`REFUND_BEFORE_EXPENSE`). Its category, account, description, and other fields stay editable. A refund cannot change type, and no transaction can change type into `REFUND`.
+- **Deleting:** deleting a refund removes its effect; the expense is untouched. Deleting an expense that still has refunds is rejected with `422 EXPENSE_HAS_REFUNDS` until the user has deleted each of its refunds ([OQ-24](../planning/open-questions.md#oq-24-deleting-an-expense-that-has-refunds)). The delete confirmation lists the linked refunds with links to their details. Deleting a transaction never deletes another transaction or any other financial record implicitly.
+- Refunds are entered from the original expense ("Refund" action in the transaction detail). They are not available in templates or scheduled transactions, because each one needs a specific original expense.
+
 ## Adjustments
 
-**[Proposed]**, see [OQ-12](../planning/open-questions.md#oq-12-adjustment-transaction-type). A single-posting transaction used for reconciliation ("set balance to X"). The UI computes `delta = target − currentBalance(asOf date)`. It is excluded from income, expense, and budgets. It is visible in the transaction list with a distinct icon, and it counts in balance and net worth. Opening balances use `account.openingBalance` instead of an adjustment, so new accounts don't create artificial transactions.
+**[Accepted]** ([OQ-12](../planning/open-questions.md#oq-12-adjustment-transaction-type), [ADR-0021](../decisions/ADR-0021-refund-and-adjustment-transaction-types.md)). A single-posting transaction of type `ADJUSTMENT` that reconciles an account's recorded balance with its actual balance ("my bank says 1 234.56").
+
+- **Shape:** exactly one posting on an active account, `amount ≠ 0`, positive (balance too low) or negative (balance too high). It is always in the account currency: `originalCurrency = accountCurrency`, `originalAmount = |amount|`, `rateToAccount = 1` (`IDENTITY`). The base conversion is resolved for `occurredOn` like any posting. `categoryId` is null.
+- **Reason:** `description` is **required** (non-blank after trimming, max 500 characters) and holds the reason for the adjustment.
+- **Validation:** zero is rejected; the amount must fit the currency's exponent and the general amount bounds; the account must be active; a foreign currency is rejected (`ADJUSTMENT_FOREIGN_CURRENCY`). Edits keep the same rules (for example, moving it to an account in another currency is rejected).
+- **Entry:** the UI asks for the target balance and computes `delta = target − balance(account, occurredOn)` ([financial-calculations.md](../data/financial-calculations.md#account-balances)); if the delta is zero, nothing is saved. The API takes the signed `amount` (the delta), so the server never depends on a client's view of the balance.
+- **Effect:** counts in the account balance and net worth. It is not income or expense, it is excluded from budgets and category reports (INV-7), and it is shown in the transaction list (type filter `ADJUSTMENT`, distinct icon) and in transaction history like any transaction.
+- Not available in templates or scheduled transactions. A type change to or from `ADJUSTMENT` is allowed only when the result satisfies the target type's rules.
+- Opening balances use `account.openingBalance` instead of an adjustment, so new accounts don't create artificial transactions.
 
 ## Accounts
 
@@ -106,14 +133,16 @@ Account: id, userId, name, currency, kind (BANK|CASH|SAVINGS|CREDIT_CARD|E_WALLE
 - `openingBalance` is in the account currency. Postings dated before `openingDate` are allowed (back-dated history) and the balance formula still holds. The UI warns because that usually means the opening balance should be adjusted.
 - Credit cards are simply accounts that typically have negative balances. There is no credit-limit logic in v1.
 - See [features.md](../product/features.md#accounts) for archive and delete policy.
+- Stage 3 delivers accounts without balances (there are no postings yet); balances and `GET /accounts/balances` arrive in Stage 4 ([implementation-stages.md](../planning/implementation-stages.md#stage-4-transactions)).
 
 ## Categories
 
 ```
-Category: id, userId, name, type (INCOME|EXPENSE), parentId?, icon, color, sortOrder, version
+Category: id, userId, name, type (INCOME|EXPENSE), parentId?, icon, color, sortOrder, archivedAt?, version
 ```
 - Depth ≤ 2 (enforced in the service, plus a trigger that checks the parent has no parent).
 - A subcategory's type equals its parent's.
+- A category is effectively hidden when it or its parent is archived. Archived categories cannot be picked for new entries; existing references keep working. Archive rules: [features.md](../product/features.md#categories).
 - A transaction references a leaf **or** a parent category. Reports roll subcategories up into parents.
 
 ## Savings pots
@@ -159,10 +188,12 @@ TransactionAudit: id, userId, transactionId (no FK – survives deletion), actio
                   deviceLabel?, clientChangedAt?, changes (JSONB)
 ```
 - Changes made with a personal API token have `actorType = USER`, `credentialType = API_TOKEN`, the token's ID, and a copy of its name, so the history clearly shows "via API token *name*" ([api-tokens.md](api-tokens.md#6-audit-and-logging)).
-- `CREATE`: `changes` holds a compact summary `{type, occurredOn, amount, currency, accountId(s)}`, not the full record.
+- `CREATE`: `changes` holds a compact summary `{type, occurredOn, amount, currency, accountId(s)}` (plus `refundOfId` for a refund), not the full record.
 - `UPDATE`: `changes = { field: { old, new } }` for changed fields only. Postings are flattened into stable keys (`source.amount`, `destination.accountId`, …). Custom fields appear as `customFields.<definitionId>`. Attachment add or remove is recorded as `attachments: {added: [filename], removed: [filename]}`.
-- `DELETE`: minimal record `{type, occurredOn, amount, currency, accountId(s), categoryId?}`. **No** description, notes, custom fields, or attachment contents. The transaction row, postings, and attachments are physically deleted.
-- Earlier `UPDATE` records of a deleted transaction are **retained** **[Proposed]** (they are its history). See [OQ-11](../planning/open-questions.md#oq-11-history-retention-for-deleted-transactions).
+- `DELETE` **[Accepted]** ([OQ-11](../planning/open-questions.md#oq-11-history-retention-for-deleted-transactions)): a minimal record that only establishes **that** the transaction was deleted, **when**, and **who or what** initiated it: `transactionId`, `action = DELETE`, `at`, and the actor columns (`actorType`, `actorUserId`, `credentialType`, `sessionId` or `apiTokenId` + `apiTokenName`, `deviceLabel`, `clientChangedAt`). `changes` is empty (`{}`): no amounts, accounts, category, description, notes, custom fields, or attachment data are copied. The transaction row, postings, and attachments are physically deleted.
+- Earlier `CREATE` and `UPDATE` records of a deleted transaction are **retained** for the lifetime of the user account (they are its history, and they let "Recent changes" show what the deleted item was). Nothing else about a deleted transaction is kept.
+- A deletion through a personal API token records `actorType = USER`, `credentialType = API_TOKEN`, `apiTokenId`, and the token name copied at write time, so the record stays meaningful after the token is revoked or purged.
+- A deleted transaction no longer affects balances, reports, budgets, or refund totals, because its postings are gone; no derived total is stored that would need correcting.
 - History is written in the same DB transaction as the change. It is user-owned and deleted only with the user.
 - History is **not** synced to IndexedDB. It is fetched online on demand (`GET /transactions/:id/history`, `GET /transaction-history`).
 
@@ -183,9 +214,10 @@ CustomFieldDefinition: id, userId, name, fieldType: TEXT|NUMBER|DATE|BOOLEAN|SEL
 
 | Operation | Rule |
 |---|---|
-| Edit transaction type | Allowed. Postings are rebuilt in the same command. Category cleared if incompatible. Audit records the change. |
-| Edit account of a posting | Target account must be active and owned. Currency differences re-resolve `rateToAccount` (unless manual). |
-| Delete transaction | Deletes postings and attachments (storage deletion via a delayed outbox; see [file-storage.md](file-storage.md#deletion)). If linked to an occurrence, that occurrence returns to "due/overdue" status unless the user marks it skipped (the UI asks). |
+| Edit transaction type | Allowed. Postings are rebuilt in the same command. Category cleared if incompatible. Audit records the change. Exceptions: nothing changes into or out of `REFUND`; an expense with refunds keeps its type; a change into `ADJUSTMENT` must satisfy the adjustment rules ([§ Refunds](#refunds), [§ Adjustments](#adjustments)). |
+| Edit account of a posting | Target account must be active and owned. Currency differences re-resolve `rateToAccount` (unless manual). An adjustment can only move to an account in the same currency. |
+| Edit an expense that has refunds | Allowed except changes that would break INV-10 or the link (type, original currency, amount below `refundedAmount`, date after the earliest refund). |
+| Delete transaction | Deletes postings and attachments (storage deletion via a delayed outbox; see [file-storage.md](file-storage.md#deletion)). Writes the minimal `DELETE` audit record. If linked to an occurrence, that occurrence returns to "due/overdue" status unless the user marks it skipped (the UI asks). An expense with refunds: rejected with `422 EXPENSE_HAS_REFUNDS` until the user deletes the refunds ([OQ-24](../planning/open-questions.md#oq-24-deleting-an-expense-that-has-refunds)). |
 | Delete account | Only when unused (see features). |
 | Delete category | Reassign or uncategorize (see features). Executed as one command that updates the affected transactions (each gets a history `UPDATE` entry with actor USER). |
 | Archive account | No new postings or allocations. Existing data unchanged. |

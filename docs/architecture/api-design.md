@@ -30,7 +30,7 @@
 | Dates | `LocalDate` = `"YYYY-MM-DD"`. Instants = RFC 3339 UTC (`"2026-11-18T10:00:00.000Z"`). Field names: `…On` for LocalDate, `…At` for instants. |
 | Enums | `UPPER_SNAKE` strings. |
 | Nulls | Optional fields are omitted or null consistently per schema. Updates use `PATCH` with partial bodies, where `null` clears a field. |
-| Versioning | `version` integer on mutable resources. `PATCH`/`DELETE` accept `If-Match: "<version>"` (or `version` in the body); for personal API tokens it is required ([api-tokens.md](api-tokens.md#3-authentication)). A mismatch returns `409 VERSION_CONFLICT` with the current resource. Web clients use sync push instead. |
+| Versioning | `version` integer on mutable resources. `PATCH`/`DELETE` accept `If-Match: "<version>"` (or `version` in the body); it is optional for browser sessions (no precondition when absent) and required for personal API tokens (`428 PRECONDITION_REQUIRED`) ([api-tokens.md](api-tokens.md#3-authentication)). A mismatch returns `409 VERSION_CONFLICT` with the current resource. Web clients use sync push instead. |
 | Timestamps | `createdAt`, `updatedAt` on all mutable resources. |
 
 ## 4. Error format
@@ -51,14 +51,14 @@ RFC 9457 **Problem Details** (`application/problem+json`) with stable machine co
 }
 ```
 - `code` values come from the `ErrorCode` enum in `@monevo/contracts`. The frontend translates `code`/`errors[].code` via i18n keys (`errors.<CODE>`). `title`/`message` are English fallbacks for developers and integrators.
-- Status mapping: 400 `MALFORMED_REQUEST` (unparseable body, e.g. invalid JSON), 401 `UNAUTHENTICATED`/`API_TOKEN_EXPIRED`/`API_TOKEN_REVOKED`, 403 `FORBIDDEN`/`CSRF_INVALID`/`REAUTH_REQUIRED`/`ACCOUNT_DEACTIVATED`/`API_TOKEN_NOT_ALLOWED`/`API_TOKEN_PERMISSION_DENIED` ([authentication.md](authentication.md), [api-tokens.md](api-tokens.md#3-authentication)), 404 `NOT_FOUND` (also for foreign IDs), 409 `VERSION_CONFLICT`/`ID_CONFLICT`/`IDEMPOTENCY_KEY_REUSED`/`SETTING_LOCKED_BY_ENV`/`LAST_ADMIN`/`ROLE_MANAGED_BY_IDP` ([configuration.md](../infrastructure/configuration.md)), 410 `SYNC_RESYNC_REQUIRED`, 428 `PRECONDITION_REQUIRED` (token-authenticated update without `If-Match`), 413 `PAYLOAD_TOO_LARGE`/`QUOTA_EXCEEDED`, 415 `UNSUPPORTED_MEDIA_TYPE` (unsupported content type or encoding), 422 `VALIDATION_FAILED` (field-level `errors[].code` such as `BASE_CURRENCY_LOCKED`), `API_TOKEN_LIMIT_REACHED`, and domain-rule violations (`ACCOUNT_ARCHIVED`, `CATEGORY_TYPE_MISMATCH`, …), 429 `RATE_LIMITED`, 503 `MAINTENANCE` (instance) / `MAINTENANCE_USER` (per-user base currency change), 500 `INTERNAL` (no stack traces).
+- Status mapping: 400 `MALFORMED_REQUEST` (unparseable body, e.g. invalid JSON), 401 `UNAUTHENTICATED`/`API_TOKEN_EXPIRED`/`API_TOKEN_REVOKED`, 403 `FORBIDDEN`/`CSRF_INVALID`/`REAUTH_REQUIRED`/`ACCOUNT_DEACTIVATED`/`API_TOKEN_NOT_ALLOWED`/`API_TOKEN_PERMISSION_DENIED` ([authentication.md](authentication.md), [api-tokens.md](api-tokens.md#3-authentication)), 404 `NOT_FOUND` (also for foreign IDs), 409 `VERSION_CONFLICT`/`ID_CONFLICT`/`IDEMPOTENCY_KEY_REUSED`/`SETTING_LOCKED_BY_ENV`/`LAST_ADMIN`/`ROLE_MANAGED_BY_IDP` ([configuration.md](../infrastructure/configuration.md)), 410 `SYNC_RESYNC_REQUIRED`, 428 `PRECONDITION_REQUIRED` (token-authenticated update without `If-Match`), 413 `PAYLOAD_TOO_LARGE`/`QUOTA_EXCEEDED`, 415 `UNSUPPORTED_MEDIA_TYPE` (unsupported content type or encoding), 422 `VALIDATION_FAILED` (field-level `errors[].code` such as `BASE_CURRENCY_LOCKED`), `API_TOKEN_LIMIT_REACHED`, and domain-rule violations (`ACCOUNT_ARCHIVED`, `CATEGORY_TYPE_MISMATCH`, `REFUND_TARGET_NOT_EXPENSE`, `REFUND_EXCEEDS_EXPENSE`, `REFUND_CURRENCY_MISMATCH`, `REFUND_BEFORE_EXPENSE`, `EXPENSE_HAS_REFUNDS`, `ADJUSTMENT_FOREIGN_CURRENCY`, …), 429 `RATE_LIMITED`, 503 `MAINTENANCE` (instance) / `MAINTENANCE_USER` (per-user base currency change), 500 `INTERNAL` (no stack traces).
 
 ## 5. Pagination, filtering, sorting
 
 - **Cursor pagination** for large or append-heavy collections (transactions, history, notifications): `?limit=50&cursor=<opaque>` → `{ items, nextCursor }`. The cursor encodes the sort key + ID (base64url JSON, signed or validated). `limit` defaults to 50, max 200.
 - **Offset pagination** is allowed for small admin lists (`?page=&pageSize=`); the admin user list uses cursor pagination.
 - Small collections (accounts, categories, budgets, goals, templates) return all items without pagination (bounded per user, max 1000 enforced).
-- **Filtering:** explicit query params per resource, defined in the contract. Example for transactions: `from`, `to`, `accountId` (repeatable), `categoryId` (repeatable, `includeSubcategories=true` default), `type` (repeatable), `amountMin`, `amountMax`, `amountBasis=ACCOUNT|BASE`, `q` (description contains).
+- **Filtering:** explicit query params per resource, defined in the contract. Example for transactions: `from`, `to`, `accountId` (repeatable), `categoryId` (repeatable, `includeSubcategories=true` default), `type` (repeatable), `refundOfId` (the refunds of one expense), `amountMin`, `amountMax`, `amountBasis=ACCOUNT|BASE`, `q` (description contains).
 - **Sorting:** `sort=-occurredOn,amount` (comma-separated, `-` = descending), with an allowlist per resource. The default for transactions is `-occurredOn,-createdAt`.
 
 ## 6. Idempotency
@@ -86,10 +86,10 @@ Two credentials, both resolved to the same `userId` ([authentication.md](authent
 |---|---|
 | Auth | `/auth/config`, `/auth/oidc/start`, `/auth/oidc/callback`, `/auth/session`, `/auth/logout` |
 | Me | `/me`, `/me/settings`, `/me/sessions[/:id]`, `/me/sessions/revoke-others`, `/me/storage`, `/me/push-subscriptions[/:id]`, `/me/base-currency-change`, `/me/api-tokens[/:id]` |
-| Currencies | `/currencies`, `/exchange-rates` (GET query by pair/date; POST manual), `/exchange-rates/resolve` (on-demand fetch), `/exchange-rates/missing` + `/exchange-rates/missing/resolve` |
-| Accounts | `/accounts[/:id]`, `/accounts/:id/archive`, `/accounts/:id/unarchive`, `/accounts/balances?asOf=` |
-| Categories | `/categories[/:id]`, `/categories/reorder`, `/categories/:id/delete` (POST with reassignment body) |
-| Transactions | `/transactions[/:id]`, `/transactions/:id/history`, `/transaction-history`, `/transfers` (convenience create; returns a transaction), `/adjustments` |
+| Currencies | `/currencies`, `/exchange-rates` (GET query by pair/date; POST manual, creates or replaces), `/exchange-rates/resolve` (POST; resolution with on-demand fetch), `/exchange-rates/missing` + `/exchange-rates/missing/resolve` (Stage 4) |
+| Accounts | `/accounts[/:id]`, `/accounts/:id/archive`, `/accounts/:id/unarchive` (POST), `/accounts/balances?asOf=` (Stage 4) |
+| Categories | `/categories[/:id]`, `/categories/:id/archive`, `/categories/:id/unarchive` (POST), `/categories/reorder`; Stage 3 deletes with `DELETE /categories/:id` (subcategories included); `/categories/:id/delete` (POST with reassignment body) arrives with transactions (Stage 4) |
+| Transactions | `/transactions[/:id]` (all types; a refund is created with `type: REFUND` and `refundOfId`; an expense's DTO carries the read-only `refundedAmount`, `refundableAmount`, and `refundCount`), `/transactions/:id/history`, `/transaction-history`, `/transfers` and `/adjustments` (convenience creates; return a transaction; an adjustment takes the signed `amount` and a required `description`) ([financial-domain-model.md](financial-domain-model.md#refunds)) |
 | Templates, custom fields | `/transaction-templates[/:id]`, `/custom-fields[/:id]` |
 | Attachments | `/transactions/:id/attachments` (POST multipart, GET list), `/attachments/:id` (DELETE), `/attachments/:id/content` (GET, `?disposition=inline` for previewable types) |
 | Scheduling | `/scheduled-transactions[/:id]`, `/scheduled-transactions/:id/amount-changes`, `/scheduled-transactions/:id/occurrences?from&to`, `/scheduled-transactions/:id/occurrences/:date/(confirm|skip|unskip|modify)`, `/upcoming` |

@@ -26,12 +26,17 @@ const TITLES: Readonly<Record<ErrorCode, string>> = {
   API_TOKEN_PERMISSION_DENIED: 'API token permission missing',
   NOT_FOUND: 'Not found',
   VERSION_CONFLICT: 'Version conflict',
+  ID_CONFLICT: 'Id already in use',
   LAST_ADMIN: 'Last active administrator',
   ROLE_MANAGED_BY_IDP: 'Role managed by the identity provider',
+  SETTING_LOCKED_BY_ENV: 'Setting enforced by the environment',
   PAYLOAD_TOO_LARGE: 'Payload too large',
   UNSUPPORTED_MEDIA_TYPE: 'Unsupported media type',
   VALIDATION_FAILED: 'Validation failed',
   API_TOKEN_LIMIT_REACHED: 'API token limit reached',
+  CATEGORY_TYPE_MISMATCH: 'Category type mismatch',
+  CATEGORY_DEPTH_EXCEEDED: 'Category nesting too deep',
+  CATEGORY_PARENT_ARCHIVED: 'Parent category archived',
   PRECONDITION_REQUIRED: 'Precondition required',
   RATE_LIMITED: 'Too many requests',
   INTERNAL: 'Internal server error',
@@ -51,6 +56,18 @@ export class AppError extends Error {
     this.name = 'AppError';
     this.status = ERROR_STATUS[code];
   }
+}
+
+/** `422 VALIDATION_FAILED` with one field error. */
+export function fieldError(path: string, code: string, message: string): AppError {
+  return new AppError('VALIDATION_FAILED', 'One or more fields are invalid.', [
+    { path: [path], code, message },
+  ]);
+}
+
+/** Whether a Prisma error is a unique-constraint violation (P2002). */
+export function isUniqueViolation(error: unknown): boolean {
+  return typeof error === 'object' && error !== null && 'code' in error && error.code === 'P2002';
 }
 
 export function sendProblem(res: Response, requestId: string, error: AppError): void {

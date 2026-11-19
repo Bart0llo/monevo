@@ -64,7 +64,7 @@ Bearer value starts with "mnv_pat_" → hash → SELECT api_token JOIN user WHER
 
 Permissions are strings `<resource>:<operation>`. The user selects them for each token from this predefined catalogue; free-form permissions are rejected (`422`). Operations are `read`, `create`, `update`, and `delete`, and each resource lists only the operations it actually supports. Every operation is granted independently: no operation implies another (`delete` does not imply `read`), although write responses still return the created or changed resource. Domain actions map to the closest operation: archive, unarchive, reorder, enable, disable, mark-read, and dismiss are `update`. The catalogue is defined once in `@monevo/contracts` and shared by the server (enforcement, OpenAPI) and the web app (token creation form). New permissions are additive within `/api/v1`.
 
-**The table below is the plan.** The catalogue in `@monevo/contracts` (and therefore the creation form and the validation of `POST /me/api-tokens`) contains **only permissions whose routes exist**. Stage 2 ships `profile:read`; each later stage adds the permissions of the routes it builds ([OQ-22](../planning/open-questions.md#oq-22-api-token-permission-catalogue-and-lifecycle)).
+**The table below is the plan.** The catalogue in `@monevo/contracts` (and therefore the creation form and the validation of `POST /me/api-tokens`) contains **only permissions whose routes exist**. Stage 2 ships `profile:read`; each later stage adds the permissions of the routes it builds ([OQ-22](../planning/open-questions.md#oq-22-api-token-permission-catalogue-and-lifecycle)). Stage 3 adds `currencies:read`, `exchange-rates:create`, `accounts:read|create|update|delete`, and `categories:read|create|update|delete`, for the routes that exist in Stage 3 (no `/exchange-rates/missing*`, no `/accounts/balances` yet). In Stage 3 `categories:delete` has no "also requires", because no transactions exist; the `transactions:update` requirement is revisited in Stage 4.
 
 | Resource | Operations | Grants | Also requires |
 |---|---|---|---|
@@ -79,8 +79,8 @@ Permissions are strings `<resource>:<operation>`. The user selects them for each
 | | `create` | Create categories. | |
 | | `update` | Edit and reorder categories. | |
 | | `delete` | Delete categories. | `transactions:update` (deleting reassigns or uncategorizes transactions) |
-| `transactions` | `read` | Transactions, transfers, adjustments, and their change history. | |
-| | `create` | Create transactions, transfers, adjustments. | `savings-pots:update` to pay from a pot |
+| `transactions` | `read` | Transactions, transfers, refunds, adjustments, and their change history. | |
+| | `create` | Create transactions, transfers, refunds, adjustments. | `savings-pots:update` to pay from a pot |
 | | `update` | Edit transactions. | |
 | | `delete` | Permanently delete transactions. | |
 | `transaction-templates` | `read`, `create`, `update`, `delete` | Transaction templates. | |

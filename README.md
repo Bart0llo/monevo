@@ -2,7 +2,7 @@
 
 A self-hosted, offline-first personal finance PWA. Multi-user, with each user's financial data kept private.
 
-> Status: in development. Stages 1 (foundation) and 2 (identity and users) are complete and accepted; Stage 3 has not started. Not ready for real financial data yet.
+> Status: in development. Stages 1 (foundation), 2 (identity and users) and 3 (currencies, rates, accounts and categories) are complete and accepted; Stage 4 (transactions) has not started. Not ready for real financial data yet.
 
 ## Run with Docker
 

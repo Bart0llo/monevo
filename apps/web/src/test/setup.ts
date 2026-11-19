@@ -24,6 +24,9 @@ class ResizeObserverStub {
 }
 globalThis.ResizeObserver = ResizeObserverStub;
 
+// Mantine's Combobox scrolls the selected option into view.
+Element.prototype.scrollIntoView = function scrollIntoView(): void {};
+
 afterEach(() => {
   cleanup();
   window.localStorage.clear();

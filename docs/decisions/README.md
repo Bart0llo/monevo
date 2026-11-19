@@ -13,7 +13,7 @@ Significant or hard-to-reverse decisions are recorded here as ADRs. The summary 
 | [ADR-0005](ADR-0005-authentication-and-sessions.md) | Authentication and sessions | Superseded by ADR-0020 |
 | [ADR-0006](ADR-0006-user-data-isolation.md) | User data isolation | Accepted (amended by ADR-0017) |
 | [ADR-0007](ADR-0007-money-and-multi-currency.md) | Money and multi-currency | Accepted |
-| [ADR-0008](ADR-0008-transaction-and-transfer-model.md) | Transaction and transfer model | Accepted |
+| [ADR-0008](ADR-0008-transaction-and-transfer-model.md) | Transaction and transfer model | Accepted (extended by ADR-0021) |
 | [ADR-0009](ADR-0009-offline-synchronization.md) | Offline synchronization | Proposed |
 | [ADR-0010](ADR-0010-file-storage-abstraction.md) | File storage abstraction | Accepted |
 | [ADR-0011](ADR-0011-backup-and-restore.md) | Backup and restore | Proposed |
@@ -26,6 +26,7 @@ Significant or hard-to-reverse decisions are recorded here as ADRs. The summary 
 | [ADR-0018](ADR-0018-postgresql-16-minimum.md) | PostgreSQL 16 as the minimum supported major | Accepted |
 | [ADR-0019](ADR-0019-release-management.md) | Release management and image publishing | Proposed |
 | [ADR-0020](ADR-0020-oidc-only-authentication.md) | OIDC-only authentication with Account Center | Accepted |
+| [ADR-0021](ADR-0021-refund-and-adjustment-transaction-types.md) | Refund and adjustment transaction types | Accepted |
 
 ## Process
 

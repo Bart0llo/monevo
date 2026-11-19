@@ -1,8 +1,11 @@
 import { OpenAPIRegistry, OpenApiGeneratorV31 } from '@asteasolutions/zod-to-openapi';
 import { ProblemSchema } from '@monevo/contracts';
+import { registerAccountsOpenApi } from '../modules/accounts/index.js';
 import { registerAdminOpenApi } from '../modules/admin/index.js';
 import { registerApiTokensOpenApi } from '../modules/api-tokens/index.js';
 import { registerAuthOpenApi } from '../modules/auth/index.js';
+import { registerCategoriesOpenApi } from '../modules/categories/index.js';
+import { registerCurrenciesOpenApi } from '../modules/currencies/index.js';
 import { registerHealthOpenApi } from '../modules/health/index.js';
 import { registerUsersOpenApi } from '../modules/users/index.js';
 import { API_TOKEN_AUTH, COOKIE_AUTH } from './helpers.js';
@@ -35,6 +38,9 @@ export function buildOpenApiDocument(): OpenApiDocument {
   registerUsersOpenApi(registry);
   registerApiTokensOpenApi(registry);
   registerAdminOpenApi(registry);
+  registerCurrenciesOpenApi(registry);
+  registerAccountsOpenApi(registry);
+  registerCategoriesOpenApi(registry);
 
   return new OpenApiGeneratorV31(registry.definitions).generateDocument({
     openapi: '3.1.0',

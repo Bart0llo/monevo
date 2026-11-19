@@ -14,6 +14,9 @@ function AdminOnly({ children }: { readonly children: React.ReactNode }) {
   return useIsAdmin() ? children : <NotFoundPage />;
 }
 
+/** Nav sections with a real page; the rest render the placeholder until their stage. */
+const REAL_PAGES: ReadonlySet<string> = new Set(['/settings', '/accounts', '/categories']);
+
 /** `extraPages` lets tests add pages inside the shell. */
 export function createRoutes(extraPages: RouteObject[] = []): RouteObject[] {
   return [
@@ -38,10 +41,23 @@ export function createRoutes(extraPages: RouteObject[] = []): RouteObject[] {
             {
               errorElement: <RouteError />,
               children: [
-                ...NAV_ITEMS.filter((item) => item.path !== '/settings').map((item) => ({
+                ...NAV_ITEMS.filter((item) => !REAL_PAGES.has(item.path)).map((item) => ({
                   path: item.path,
                   element: <PlaceholderPage item={item} />,
                 })),
+                {
+                  path: '/accounts',
+                  lazy: async () => ({
+                    Component: (await import('../features/accounts/AccountsPage')).AccountsPage,
+                  }),
+                },
+                {
+                  path: '/categories',
+                  lazy: async () => ({
+                    Component: (await import('../features/categories/CategoriesPage'))
+                      .CategoriesPage,
+                  }),
+                },
                 {
                   path: '/settings',
                   lazy: async () => ({

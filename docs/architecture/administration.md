@@ -59,6 +59,8 @@ Runtime settings are stored in `app_settings` (one key per setting, JSONB value,
 | Backups | see Backups |
 | Privacy | show session IP addresses to users (default on) |
 
+**Stage 3:** `GET/PATCH /admin/settings` handle only `rates.provider`. The response says, per setting, whether it is locked by the environment (`RATE_PROVIDER`); a `PATCH` of a locked setting returns `409`. In the web app this is the "Instance settings" section on the existing administration page (the page uses sections, not tabs, until more admin areas exist); the provider select is disabled with a "Set by environment" badge when locked.
+
 ### Storage (R-ADM-03)
 
 Driver status and totals from `/admin/storage` ([file-storage.md](file-storage.md#7-admin-view)), the default quota, and per-user overrides (edited in the Users tab). The driver itself is chosen by env (`STORAGE_DRIVER`) and cannot be switched from the UI.

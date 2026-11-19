@@ -50,7 +50,7 @@ This is the **canonical scope list**. Each requirement has a stable ID, which is
 
 | ID | Requirement |
 |---|---|
-| R-TX-01 | Transaction types: income, expense, transfer between the user's own accounts. *(Interpretation: plus a balance `ADJUSTMENT` type for opening and reconciliation corrections, which is excluded from income and expense; see [open questions](../planning/open-questions.md#oq-12-adjustment-transaction-type).)* |
+| R-TX-01 | Transaction types: income, expense, transfer between the user's own accounts. *(Amended 2026-11-19: plus `REFUND` (R-TX-13, [OQ-10](../planning/open-questions.md#oq-10-refunds)) and balance `ADJUSTMENT` (R-TX-14, [OQ-12](../planning/open-questions.md#oq-12-adjustment-transaction-type)). Opening balances remain an account field, not an adjustment.)* |
 | R-TX-02 | A transfer decreases the source balance, increases the destination balance, and counts as neither income nor expense. |
 | R-TX-03 | Cross-currency transfers preserve the original amount and currency, the exchange rate, and the converted amount. |
 | R-TX-04 | Quick entry mode (minimal) and full entry mode (all fields). |
@@ -58,16 +58,18 @@ This is the **canonical scope list**. Each requirement has a stable ID, which is
 | R-TX-06 | No tags or labels. |
 | R-TX-07 | User-defined transaction templates (default account, category, description, other fields). The amount is entered when the template is used, and all values stay adjustable. |
 | R-TX-08 | Transactions can be edited and permanently deleted. There is no recycle bin. |
-| R-TX-09 | Transaction change history: old and new values on edit, timestamp, responsible actor, and deletion records. Deletion removes the active record. A minimal audit record remains, not a full copy. |
+| R-TX-09 | Transaction change history: old and new values on edit, timestamp, responsible actor, and deletion records. Deletion removes the active record. A minimal audit record remains, not a full copy. *(Decided 2026-11-19, [OQ-11](../planning/open-questions.md#oq-11-history-retention-for-deleted-transactions): the deletion record holds only the fact of deletion, its time, and the initiating actor and credential (including the personal API token, if one was used); earlier creation and update history is kept for the lifetime of the user account; a deleted transaction no longer affects balances, reports, or budgets.)* |
 | R-TX-10 | Advanced filtering by amount or range, date range, account, category/subcategory, and description. No saved filter views. |
 | R-TX-11 | Transaction list sorting and visible column selection. No saved layout system. |
 | R-TX-12 | Transactions are created manually. No bank sync, Open Banking, OCR, or CSV/Excel statement import. |
+| R-TX-13 | Refunds are a dedicated `REFUND` transaction type linked to the original expense. Partial, full, and multiple partial refunds are supported; their total never exceeds the original expense. A refund increases the receiving account's balance, reduces reported expenses in the original expense's category, and is never ordinary income. The original expense and its history are preserved; a refund is a separate financial operation. Currency and exchange-rate behaviour is defined and historical rates are preserved. There is no default "Refunds" income category. An expense that still has refunds cannot be deleted until its refunds are deleted; nothing is deleted implicitly. *(Added 2026-11-19, [OQ-10](../planning/open-questions.md#oq-10-refunds), [OQ-24](../planning/open-questions.md#oq-24-deleting-an-expense-that-has-refunds); design: [financial-domain-model.md](../architecture/financial-domain-model.md#refunds).)* |
+| R-TX-14 | Balance adjustments are an `ADJUSTMENT` transaction type with a single posting, used to reconcile an account's recorded balance with its actual balance. They affect the account balance, are neither income nor expense, do not affect budgets, require a reason, and appear in transaction and audit history. *(Added 2026-11-19, [OQ-12](../planning/open-questions.md#oq-12-adjustment-transaction-type); design: [financial-domain-model.md](../architecture/financial-domain-model.md#adjustments).)* |
 
 ## Multi-currency
 
 | ID | Requirement |
 |---|---|
-| R-CUR-01 | Each user selects one base currency, used for aggregated balances, budgets, reports, summaries, and forecasts. |
+| R-CUR-01 | Each user selects one base currency, used for aggregated balances, budgets, reports, summaries, and forecasts. It can be changed later through an explicit, confirmed operation ([multi-currency.md](../architecture/multi-currency.md#9-base-currency)). |
 | R-CUR-02 | Original transaction amounts are always preserved. |
 | R-CUR-03 | Historical results do not change when exchange rates are updated later. |
 | R-CUR-04 | Exchange rates come from an external API on demand, from manual entry, or from per-transaction overrides. Historical rates are stored. Cross-currency transfers use explicit rates. |
@@ -79,7 +81,7 @@ This is the **canonical scope list**. Each requirement has a stable ID, which is
 
 | ID | Requirement |
 |---|---|
-| R-CAT-01 | Categories start empty (no seed list). Users create categories and subcategories with names, icons, and colors, and can edit, delete, and reorganize them. |
+| R-CAT-01 | Categories start empty (no seed list). Users create categories and subcategories with names, icons, and colors, and can edit, archive, delete, and reorganize them. An archived parent hides its subcategories ([features.md](features.md#categories)). |
 | R-CAT-02 | Income and expense categories are distinguishable. |
 | R-BUD-01 | Any number of budgets. Monthly, weekly, or custom date ranges. Assigned to categories or groups of categories. |
 | R-BUD-02 | Manual limits or automatic limits based on history. Individual rule configuration. No forced methodology. |

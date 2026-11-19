@@ -1,5 +1,7 @@
 import type { OpenAPIRegistry } from '@asteasolutions/zod-to-openapi';
 import {
+  AdminSettingsSchema,
+  AdminSettingsUpdateSchema,
   AdminUserListQuerySchema,
   AdminUserPageSchema,
   AdminUserSchema,
@@ -106,6 +108,39 @@ export function registerAdminOpenApi(registry: OpenAPIRegistry): void {
     responses: {
       200: { description: 'Status', ...json(IdentityProviderStatusSchema) },
       ...problemResponses(...READ_ERRORS),
+    },
+  });
+  registry.registerPath({
+    method: 'get',
+    path: '/admin/settings',
+    operationId: 'adminGetSettings',
+    tags: ['admin'],
+    summary: 'Instance runtime settings',
+    description: 'Settings set by an environment variable are reported with `lockedByEnv: true`.',
+    ...securityFor('session'),
+    responses: {
+      200: { description: 'Settings', ...json(AdminSettingsSchema) },
+      ...problemResponses(...READ_ERRORS),
+    },
+  });
+  registry.registerPath({
+    method: 'patch',
+    path: '/admin/settings',
+    operationId: 'adminUpdateSettings',
+    tags: ['admin'],
+    summary: 'Change instance runtime settings',
+    description:
+      'Changing a setting enforced by an environment variable returns `SETTING_LOCKED_BY_ENV`.',
+    ...securityFor('session'),
+    request: { body: { required: true, ...json(AdminSettingsUpdateSchema) } },
+    responses: {
+      200: { description: 'Settings', ...json(AdminSettingsSchema) },
+      ...problemResponses(
+        ...SESSION_WRITE_ERRORS,
+        'FORBIDDEN',
+        'SETTING_LOCKED_BY_ENV',
+        'VALIDATION_FAILED',
+      ),
     },
   });
 }
