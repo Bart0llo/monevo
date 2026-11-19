@@ -34,7 +34,7 @@ Rules for every stage:
 
 ## Stage 2: Identity and users
 
-**Status:** completed, awaiting acceptance (OIDC-only via Account Center, [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)). `pnpm validate` and `pnpm test:e2e` passed locally on 2026-11-19.
+**Status:** completed and **accepted by user** (explicit acceptance granted 2026-11-19; OIDC-only via Account Center, [ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)). `pnpm validate` and `pnpm test:e2e` passed locally on 2026-11-19 before acceptance.
 
 - **Objective:** users sign in through Account Center (OIDC-only), manage sessions, settings and personal API tokens; admins can manage users; isolation is enforced and tested from the first owned table.
 - **Prerequisites:** Stage 1; [OQ-03](open-questions.md#oq-03-smtp-for-authentication-emails), [OQ-06](open-questions.md#oq-06-authentication-implementation), [OQ-22](open-questions.md#oq-22-api-token-permission-catalogue-and-lifecycle) resolved. Scope changed on 2026-11-19 to OIDC-only ([ADR-0020](../decisions/ADR-0020-oidc-only-authentication.md)); OIDC moved here from the removed Stage 14.

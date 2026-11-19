@@ -1,25 +1,19 @@
-# Session State: Stage 2 (Identity & Users): OIDC-only — COMPLETE, awaiting acceptance
+# Session State: Stage 2 (Identity & Users) ACCEPTED, Stage 3 not started
 
 ## Goal
-Stage 2 of Monevo with OIDC-only authentication via Account Center (user decision 2026-11-19, ADR-0020 supersedes ADR-0005; OQ-03/06/22 resolved). Local auth (argon2, SMTP, registration, password reset, email verification, BOOTSTRAP_ADMIN_EMAIL, password reauth) is cancelled.
-
-Constraints: branch `master` only; no branch/commit/push/tag. Stay in Stage 2. Don't touch the `ac-test-pg` container, the AccountCenter repo, or existing ADR texts (status lines only).
+Stage 2 (OIDC-only identity, sessions, settings, admin, personal API tokens; ADR-0020) was explicitly accepted by the user on 2026-11-19. Next up is Stage 3 (currencies, rates, accounts and categories).
 
 ## Git state
-Session 9 (2026-11-19): nothing committed. `master`, HEAD `6fc1a48`. All Stage 2 work is uncommitted, waiting for the user's review.
+Stage 2 is committed in `91f47bb`. The acceptance status updates (implementation-stages.md, README.md, this file) go in a follow-up commit.
 
-## Done (all items 1–11)
-- Docs sweep + ADR-0020, deps, schema + migration `20261119000000_identity`, config/env/compose, server code, CLI + `sessions.purge` job, `tools/mock-idp/`, web code, web unit tests, E2E specs, docs.
-- Session 9:
-  - Fixed E2E selectors: `e2e/tests/support/auth.ts` (exact labels `Username`/`Name`, exact `Sign in` button); `e2e/tests/auth.spec.ts` (admin page uses the heading role for "Identity provider").
-  - Formatted with prettier: docker-compose.e2e.yml, packages/contracts/src/{index,me,problem}.ts.
-  - `docs/planning/implementation-stages.md`: Stage 2 `**Status:** completed, awaiting acceptance`.
-  - **`pnpm test:e2e`: 11/11 passed, EXIT 0.**
-  - **`pnpm validate`: EXIT 0.** Unit tests: i18n 4, eslint-plugin 35, domain 66, contracts 7, server 155, web 26; test:release 26; integration 94; i18n/docs/openapi checks passed.
-  - Stage notification sent (completed, acceptance pending).
+## Done
+- Stage 2 fully implemented and verified: `pnpm validate` EXIT 0, `pnpm test:e2e` 11/11 passed (2026-11-19).
+- `docs/planning/implementation-stages.md`: Stage 2 marked "completed and accepted by user (2026-11-19)".
+- `README.md` status line: Stages 1 and 2 complete and accepted, Stage 3 not started.
 
-## Left to do
-- Nothing in Stage 2. Wait for the user's manual review and acceptance. Don't start Stage 3 until Stage 2 is accepted.
+## Left to do / next step
+- Stage 3 can't start until [OQ-05](docs/planning/open-questions.md#oq-05-changing-the-base-currency) (changing the base currency) is resolved. Recommendation: allow it as a confirmed recompute job. This needs a user decision.
+- After that, plan and implement Stage 3 per `docs/planning/implementation-stages.md`.
 
 ## Codebase facts
 - Run eslint from the repo root; run `pnpm exec prettier --write <files>` after edits (docs/ is prettier-ignored).
@@ -29,3 +23,4 @@ Session 9 (2026-11-19): nothing committed. `master`, HEAD `6fc1a48`. All Stage 2
 ## Pitfalls
 - Never put code or non-ASCII through bash heredocs; use Write/Edit.
 - Background runs: echo `EXIT $?` into the task output; the reported task exit code belongs to the echo.
+- Don't touch the `ac-test-pg` container or the AccountCenter repo.
