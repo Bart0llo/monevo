@@ -15,7 +15,7 @@
 
 RELEASE_MODE ?= manual
 IMAGE_REGISTRY ?= ghcr.io
-IMAGE_OWNER ?=
+IMAGE_OWNER ?= bart0llo
 IMAGE_NAME ?= monevo
 IMAGE_PLATFORMS ?= linux/amd64,linux/arm64
 VERSION ?=
